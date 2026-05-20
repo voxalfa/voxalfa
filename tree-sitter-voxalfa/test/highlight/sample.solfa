@@ -1,0 +1,45 @@
+~~@version 1.0
+~~ ^keyword
+
+~~~
+This is a multiline comment
+~~~
+
+[#] title="Hello World"
+~~  ^property
+~~               ^string
+[#] author={"Foo Bar", "Jane Doe"}
+~~         ^punctuation.bracket
+[#] composer="Bob"
+[#] description="Lorem Ipsum."
+[#] release={2026}
+~~           ^number
+
+[$] key={C} | bpm={100} | time={4,4} | voices={S,T,A,B}
+~~       ^identifier
+
+---
+~~^punctuation.delimiter
+
+[$] repeat={true}
+
+[^] p={1} | cre={3,6}
+
+[S] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[T] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[A] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[B] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+~~                                ^type.qualifier
+~~                                  ^number
+~~    ^operator
+~~        ^operator
+~~                                      ^constant.builtin
+~~                                               ^constant.builtin
+
+[1] do <re> mi\ fa so la ti do_o_o. ~ ~ (scream)
+~~     ^punctuation.bracket
+~~                            ^operator
+
+--
+
+~~ ...

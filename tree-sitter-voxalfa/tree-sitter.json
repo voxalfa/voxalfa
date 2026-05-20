@@ -1,0 +1,41 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "voxalfa",
+      "camelcase": "voxalfa",
+      "title": "Voxalfa",
+      "scope": "source.solfa",
+      "file-types": ["solfa"],
+      "injection-regex": "^voxalfa$",
+      "class-name": "TreeSitterVoxalfa",
+      "highlights": "queries/highlights.scm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "Apache-2.0",
+    "description": "Voxalfa tree-sitter parser",
+    "authors": [
+      {
+        "name": "LIOKA Ranarison Fiderana",
+        "email": "luckasranarison@gmail.com",
+        "url": "https://luckasranarison.github.io"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/voxalfa/voxalfa",
+      "funding": ""
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "java": false,
+    "node": false,
+    "python": false,
+    "rust": true,
+    "swift": false,
+    "zig": false
+  }
+}

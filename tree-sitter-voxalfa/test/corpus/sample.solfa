@@ -1,0 +1,371 @@
+=================================================
+Sample Partition
+=================================================
+~~@version 1.0
+
+~~~
+This is a sample voxalfa file (.solfa), it was designed to be a simple language for composing and storing Tonic-Solfa pieces.
+It is a markup language with inline markers denoted with [<marker>]
+
+We can divide the file into two parts:
+- Header: contains metadata and the initial parameters for the song
+- Body: contains the actual Solfa composition and lyrics, it can be divided into multiple sections with their own parameters
+
+There are two kinds of markers:
+- K/V: they define a key/value pair ([#], [$], [^])
+- Formatters: they are immediately followed by tokens that follows a specific syntax rule ([<voice>], [<verse>])
+
+The language supports simple data types, types without delimiters needs curly brackets {...}.
+- Strings: delimited by double quotes "..."
+- Numbers: signed integer or float
+- Boolean: true or false
+- List: a simple one dimensional list of scalar values delimited by {...}, we can think of any scalar value as a list of 1 item
+- Tokens: they represent built-in values or identifiers (notes, voices, ...)
+
+There are 3 types of comment:
+- Inline: starting with two tildes, they can also be used for language directives (@version, ...)
+- Delimited: delimited by parentheses
+- Multiline: delimited by 3 tildes
+~~~
+
+[#] title="Hello World"
+[#] author={"Foo Bar", "Jane Doe"}
+[#] composer="Bob"
+[#] description="Lorem Ipsum."
+[#] release={2026}
+
+[$] key={C} | bpm={100} | time={4,4} | voices={S,T,A,B}
+
+---
+
+~~ we can override the global parameters inside sections
+~~ [$] bpm={80}
+
+~~ there are also section-only parameters
+[$] repeat={true}
+
+[^] p={1} | cre={3,6}
+
+[S] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[T] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[A] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[B] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+
+[1] do <re> mi\ fa so la ti do_o_o. ~ ~ (scream)
+
+--
+
+~~ more sections...
+
+----
+
+(source_file
+  (inline_comment
+    (language_directive
+      type: (identifier)
+      value: (inline_string)))
+  (multiline_comment)
+  (header
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (string)))
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (list
+          (string)
+          (string))))
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (string)))
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (string)))
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (integer)))
+    (parameter_line
+      (parameter_assignment
+        name: (identifier)
+        value: (token))
+      (parameter_assignment
+        name: (identifier)
+        value: (integer))
+      (parameter_assignment
+        name: (identifier)
+        value: (list
+          (integer)
+          (integer)))
+      (parameter_assignment
+        name: (identifier)
+        value: (list
+          (token)
+          (token)
+          (token)
+          (token)))))
+  (body
+    (section
+      (inline_comment)
+      (inline_comment)
+      (inline_comment)
+      (parameter_line
+        (parameter_assignment
+          name: (identifier)
+          value: (boolean)))
+      (dynamics_line
+        (parameter_assignment
+          name: (identifier)
+          value: (integer))
+        (parameter_assignment
+          name: (identifier)
+          value: (list
+            (integer)
+            (integer))))
+      (solfa_line
+        voice: (token)
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base))))
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (underline_start)
+          (pulse
+            (note
+              base: (note_base)
+              variation: (note_variation)
+              octave: (note_octave))))
+        (measure
+          (pulse
+            (prolonged_note))
+          (normal_division)
+          (pulse
+            (prolonged_note))
+          (underline_end)
+          (medium_division)
+          (pulse
+            (empty_note))
+          (normal_division)
+          (pulse
+            (empty_note))))
+      (solfa_line
+        voice: (token)
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base))))
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (underline_start)
+          (pulse
+            (note
+              base: (note_base)
+              variation: (note_variation)
+              octave: (note_octave))))
+        (measure
+          (pulse
+            (prolonged_note))
+          (normal_division)
+          (pulse
+            (prolonged_note))
+          (underline_end)
+          (medium_division)
+          (pulse
+            (empty_note))
+          (normal_division)
+          (pulse
+            (empty_note))))
+      (solfa_line
+        voice: (token)
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base))))
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (underline_start)
+          (pulse
+            (note
+              base: (note_base)
+              variation: (note_variation)
+              octave: (note_octave))))
+        (measure
+          (pulse
+            (prolonged_note))
+          (normal_division)
+          (pulse
+            (prolonged_note))
+          (underline_end)
+          (medium_division)
+          (pulse
+            (empty_note))
+          (normal_division)
+          (pulse
+            (empty_note))))
+      (solfa_line
+        voice: (token)
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base))))
+        (measure
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (medium_division)
+          (pulse
+            (note
+              base: (note_base)))
+          (normal_division)
+          (underline_start)
+          (pulse
+            (note
+              base: (note_base)
+              variation: (note_variation)
+              octave: (note_octave))))
+        (measure
+          (pulse
+            (prolonged_note))
+          (normal_division)
+          (pulse
+            (prolonged_note))
+          (underline_end)
+          (medium_division)
+          (pulse
+            (empty_note))
+          (normal_division)
+          (pulse
+            (empty_note))))
+      (lyric_line
+        verse: (integer)
+        (space_operator)
+        (lyric_chunk
+          (lyric_string))
+        (space_operator)
+        (lyric_chunk
+          (underline_start)
+          (lyric_string)
+          (underline_end))
+        (space_operator)
+        (lyric_chunk
+          (lyric_string)
+          (lyric_break))
+        (space_operator)
+        (lyric_chunk
+          (lyric_string))
+        (space_operator)
+        (lyric_chunk
+          (lyric_string))
+        (space_operator)
+        (lyric_chunk
+          (lyric_string))
+        (space_operator)
+        (lyric_chunk
+          (lyric_string))
+        (space_operator)
+        (lyric_chunk
+          (lyric_string))
+        (concat_operator)
+        (lyric_chunk
+          (lyric_string))
+        (concat_operator)
+        (lyric_chunk
+          (lyric_string))
+        (space_operator)
+        (lyric_placeholder)
+        (space_operator)
+        (lyric_placeholder)
+        (space_operator)
+        (lyric_chunk
+          (lyric_string))))
+    (section
+      (inline_comment))))
