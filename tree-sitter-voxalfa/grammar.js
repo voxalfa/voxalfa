@@ -83,13 +83,13 @@ export default grammar({
         optional($._space),
         "=",
         optional($._space),
-        field("value", choice($.string, $._delimited_value)),
+        choice(field("value", $.string), $._delimited_value),
       ),
 
     identifier: () => /[a-zA-Z_-]+/,
 
     _delimited_value: ($) =>
-      prec(1, seq("{", choice($._value_atom, $.list), "}")),
+      prec(1, seq("{", field("value", choice($._value_atom, $.list)), "}")),
 
     _value_atom: ($) =>
       seq(
@@ -100,7 +100,8 @@ export default grammar({
 
     list: ($) => sep1(",", $._value_atom),
 
-    string: () => seq('"', field("value", /[^"\n]*/), '"'),
+    string: ($) => seq('"', $.string_content, '"'),
+    string_content: () => /[^"\n]*/,
     inline_string: () => /[^\n]+/,
 
     token: () => /[a-zA-Z#]+/,

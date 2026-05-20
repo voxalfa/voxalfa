@@ -69,21 +69,26 @@ There are 3 types of comment:
     (metadata_line
       (parameter_assignment
         name: (identifier)
-        value: (string)))
+        value: (string
+          (string_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (list
-          (string)
-          (string))))
+          (string
+            (string_content))
+          (string
+            (string_content)))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
-        value: (string)))
+        value: (string
+          (string_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
-        value: (string)))
+        value: (string
+          (string_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)

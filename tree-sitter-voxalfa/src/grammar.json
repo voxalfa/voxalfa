@@ -638,21 +638,21 @@
           ]
         },
         {
-          "type": "FIELD",
-          "name": "value",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "value",
+              "content": {
                 "type": "SYMBOL",
                 "name": "string"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "_delimited_value"
               }
-            ]
-          }
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_delimited_value"
+            }
+          ]
         }
       ]
     },
@@ -671,17 +671,21 @@
             "value": "{"
           },
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_value_atom"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "list"
-              }
-            ]
+            "type": "FIELD",
+            "name": "value",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_value_atom"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "list"
+                }
+              ]
+            }
           },
           {
             "type": "STRING",
@@ -773,18 +777,18 @@
           "value": "\""
         },
         {
-          "type": "FIELD",
-          "name": "value",
-          "content": {
-            "type": "PATTERN",
-            "value": "[^\"\\n]*"
-          }
+          "type": "SYMBOL",
+          "name": "string_content"
         },
         {
           "type": "STRING",
           "value": "\""
         }
       ]
+    },
+    "string_content": {
+      "type": "PATTERN",
+      "value": "[^\"\\n]*"
     },
     "inline_string": {
       "type": "PATTERN",
