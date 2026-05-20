@@ -43,7 +43,7 @@ impl<'a> DocumentValidator<'a> {
     fn handle_root_node(&mut self, root: Node<'_>) {
         for child in root.named_children(&mut root.walk()) {
             match child.kind() {
-                "inline_comment" => {}
+                "inline_comment" => {} // TODO: Handle language directives
                 "header" => self.handle_header_node(child),
                 "body" => self.handle_body_node(child),
                 _ => {}

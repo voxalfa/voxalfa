@@ -92,3 +92,50 @@ impl TryFrom<&str> for Voice {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum DynamicKind {
+    P,
+    MP,
+    PP,
+    PPP,
+    F,
+    MF,
+    FF,
+    FFF,
+    DC,
+    DS,
+    Seg,
+    Cre,
+    Dec,
+}
+
+impl TryFrom<&str> for DynamicKind {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "p" => Ok(Self::P),
+            "mp" => Ok(Self::MP),
+            "pp" => Ok(Self::PP),
+            "ppp" => Ok(Self::PPP),
+            "f" => Ok(Self::F),
+            "mf" => Ok(Self::MF),
+            "ff" => Ok(Self::FF),
+            "fff" => Ok(Self::FFF),
+            "dc" => Ok(Self::DC),
+            "ds" => Ok(Self::DS),
+            "stg" => Ok(Self::Seg),
+            "cre" => Ok(Self::Cre),
+            "dec" => Ok(Self::Dec),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Dynamic {
+    pub kind: DynamicKind,
+    pub start: usize,
+    pub end: usize,
+}

@@ -1,4 +1,4 @@
-use crate::ast::types::{Key, TimeSignature, Voice};
+use crate::ast::types::{Dynamic, Key, TimeSignature, Voice};
 
 pub type Range = tree_sitter::Range;
 
@@ -45,6 +45,7 @@ pub struct Body {
 #[derive(Debug, Default)]
 pub struct Section {
     pub params: SectionParams,
+    pub dynamics: Vec<Assignment<Dynamic>>,
 }
 
 #[derive(Debug, Clone, Copy)]
