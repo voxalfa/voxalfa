@@ -7,6 +7,18 @@ on:
     branches: [main]
 
 jobs:
+  test-rust-workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint workspace
+        run: cargo clippy -- -D warnings
+
+      - name: Run all workspace tests
+        run: cargo test --workspace
+
   test-parser:
     runs-on: ubuntu-latest
 
