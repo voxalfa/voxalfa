@@ -41,6 +41,8 @@ pub enum DiagnosticKind {
     InvalidNoteDistribution,
     #[error("expected {0} columns, got {1}")]
     MeasureColumnMismatch(usize, usize, Range),
+    #[error("expected {0} measures, got {1}")]
+    MeasureCountMismatch(usize, usize, Range),
     #[error("expected {0} voices, got {1}")]
     VoiceCountMismatch(usize, usize, Range),
 }
@@ -63,7 +65,8 @@ impl DiagnosticKind {
             DiagnosticKind::VoiceMismatch(_, _) => "E013",
             DiagnosticKind::InvalidNoteDistribution => "E014",
             DiagnosticKind::MeasureColumnMismatch(_, _, _) => "E015",
-            DiagnosticKind::VoiceCountMismatch(_, _, _) => "E016",
+            DiagnosticKind::MeasureCountMismatch(_, _, _) => "E016",
+            DiagnosticKind::VoiceCountMismatch(_, _, _) => "E017",
         }
     }
 
@@ -86,6 +89,12 @@ impl DiagnosticKind {
                 message: "time signature defined here".to_string(),
                 range: *range,
             }],
+            DiagnosticKind::MeasureCountMismatch(expected, _, range) => {
+                vec![DiagnosticRelatedInfo {
+                    message: format!("first line has {expected} measures"),
+                    range: *range,
+                }]
+            }
             DiagnosticKind::VoiceCountMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
                 message: "voices defined here".to_string(),
                 range: *range,

@@ -274,32 +274,55 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        if let Some(voices) = &self.output.header.params.voices {
-            let count = section.solfa.len();
-            let expected = voices.value.len();
-
-            if count != expected {
-                let start_range = section.solfa.first().map(|line| line.range);
-                let end_range = section.solfa.last().map(|line| line.range);
-
-                let range = start_range
-                    .zip(end_range)
-                    .map(|(start, end)| Range {
-                        start_byte: start.start_byte,
-                        end_byte: end.end_byte,
-                        start_point: start.start_point,
-                        end_point: end.end_point,
-                    })
-                    .unwrap_or(node.range());
-
-                self.report_error(
-                    range,
-                    DiagnosticKind::VoiceCountMismatch(expected, count, voices.data.range),
-                );
-            }
-        }
+        self.validate_voice_count(&section, node.range());
+        self.validate_masure_count(&section);
 
         section
+    }
+
+    fn validate_voice_count(&mut self, section: &Section, fallback_range: Range) {
+        let Some(voices) = &self.output.header.params.voices else {
+            return;
+        };
+
+        let count = section.solfa.len();
+        let expected = voices.value.len();
+
+        if count != expected {
+            let start_range = section.solfa.first().map(|line| line.range);
+            let end_range = section.solfa.last().map(|line| line.range);
+
+            let range = start_range
+                .zip(end_range)
+                .map(|(start, end)| Range {
+                    start_byte: start.start_byte,
+                    end_byte: end.end_byte,
+                    start_point: start.start_point,
+                    end_point: end.end_point,
+                })
+                .unwrap_or(fallback_range);
+
+            self.report_error(
+                range,
+                DiagnosticKind::VoiceCountMismatch(expected, count, voices.data.range),
+            );
+        }
+    }
+
+    fn validate_masure_count(&mut self, section: &Section) {
+        if let Some(first) = section.solfa.first() {
+            for line in section.solfa.iter().skip(1) {
+                let expected = first.measures.len();
+                let count = line.measures.len();
+
+                if expected != count {
+                    self.report_error(
+                        line.range,
+                        DiagnosticKind::MeasureCountMismatch(expected, count, first.range),
+                    );
+                }
+            }
+        }
     }
 
     fn handle_parser_errors(&mut self, root: Node<'_>, context: &mut TSContext) {
