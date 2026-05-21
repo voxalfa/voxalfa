@@ -10,19 +10,15 @@
 export default grammar({
   name: "voxalfa",
 
-  extras: ($) => [
-    $._multispace,
-    $.inline_comment,
-    $.delimited_comment,
-    $.multiline_comment,
-  ],
+  extras: ($) => [$.inline_comment, $.delimited_comment, $.multiline_comment],
 
   rules: {
     source_file: ($) => seq(optional($.header), "---", optional($.body)),
 
     header: ($) => repeat1($._header_line),
 
-    _header_line: ($) => choice($.metadata_line, $.parameter_line),
+    _header_line: ($) =>
+      choice($.metadata_line, $.parameter_line, $._multispace),
 
     body: ($) => sep1("--", $.section),
 
@@ -65,12 +61,14 @@ export default grammar({
       ),
 
     solfa_line: ($) =>
-      seq(seq("[", field("voice", $.token), "]"), sep1("|", $.measure)),
+      seq(
+        seq("[", field("voice", $.token), "]"),
+        sep1("|", field("measure", $.measure)),
+      ),
 
     lyric_line: ($) =>
       seq(
         seq("[", field("verse", $.integer), "]"),
-        optional($._space),
         sep1(
           choice($.concat_operator, $.space_operator),
           choice($.lyric_chunk, $.lyric_placeholder, blank()),
@@ -86,7 +84,7 @@ export default grammar({
         choice(field("value", $.string), $._delimited_value),
       ),
 
-    identifier: () => /[a-zA-Z_-]+/,
+    identifier: () => /[a-zA-Z_$-]+/,
 
     _delimited_value: ($) =>
       prec(1, seq("{", field("value", choice($._value_atom, $.list)), "}")),
@@ -165,7 +163,7 @@ export default grammar({
     space_operator: () => / +/,
     concat_operator: () => /_+/,
 
-    lyric_string: () => /[^\s_/~``<>\\/]+/,
+    lyric_string: () => /[^\s_/~``<>\\/\(]+/,
     lyric_break: () => "\\",
     lyric_split: () => "/",
     lyric_placeholder: () => "~",

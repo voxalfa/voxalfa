@@ -1,12 +1,8 @@
 use tree_sitter::Node;
 
 use crate::{
-    ast::{
-        symbols::{CompositionParams, HeaderMetadata, SectionParams},
-        types::{Key, TimeSignature, Voice},
-    },
+    ast::types::{Key, TimeSignature, Voice},
     diagnostic::DiagnosticKind,
-    ts_utils::types::AssignmentDataSource,
     validator::DocumentValidator,
 };
 
@@ -146,44 +142,6 @@ impl<T: ParseNode> ParseNode for Vec<T> {
             Some(result)
         } else {
             T::parse_node(node, context).map(|v| vec![v])
-        }
-    }
-}
-
-pub trait FieldAssign {
-    fn assign_field(&mut self, source: AssignmentDataSource, context: &mut DocumentValidator);
-}
-
-impl FieldAssign for HeaderMetadata {
-    fn assign_field(&mut self, source: AssignmentDataSource, context: &mut DocumentValidator) {
-        match source.data.key.name.as_str() {
-            "title" => context.assign_field(source, &mut self.title),
-            "author" => context.assign_field(source, &mut self.author),
-            "composer" => context.assign_field(source, &mut self.composer),
-            "release" => context.assign_field(source, &mut self.release),
-            "description" => context.assign_field(source, &mut self.description),
-            _ => {}
-        }
-    }
-}
-
-impl FieldAssign for CompositionParams {
-    fn assign_field(&mut self, source: AssignmentDataSource, context: &mut DocumentValidator) {
-        match source.data.key.name.as_str() {
-            "key" => context.assign_field(source, &mut self.key),
-            "time" => context.assign_field(source, &mut self.time),
-            "bpm" => context.assign_field(source, &mut self.bpm),
-            "voices" => context.assign_field(source, &mut self.voices),
-            _ => {}
-        }
-    }
-}
-
-impl FieldAssign for SectionParams {
-    fn assign_field(&mut self, source: AssignmentDataSource, context: &mut DocumentValidator) {
-        match source.data.key.name.as_str() {
-            "repeat" => context.assign_field(source, &mut self.repeat),
-            _ => self.base.assign_field(source, context),
         }
     }
 }

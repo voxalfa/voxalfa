@@ -71,7 +71,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "metadata_line",
@@ -441,6 +441,16 @@
     "type": "solfa_line",
     "named": true,
     "fields": {
+      "measure": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "measure",
+            "named": true
+          }
+        ]
+      },
       "voice": {
         "multiple": false,
         "required": true,
@@ -451,16 +461,6 @@
           }
         ]
       }
-    },
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "measure",
-          "named": true
-        }
-      ]
     }
   },
   {

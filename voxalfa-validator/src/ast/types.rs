@@ -6,8 +6,8 @@ pub struct TimeSignature {
 
 #[derive(Debug)]
 pub struct Key {
-    pub base: NoteBase,
-    pub accidental: NoteAccidental,
+    pub base: BaseKey,
+    pub accidental: KeyAccidental,
 }
 
 impl TryFrom<&str> for Key {
@@ -16,15 +16,15 @@ impl TryFrom<&str> for Key {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let base_str = value.get(..1).ok_or(())?;
         let accidental_str = value.get(1..).ok_or(())?;
-        let base = NoteBase::try_from(base_str)?;
-        let accidental = NoteAccidental::try_from(accidental_str)?;
+        let base = BaseKey::try_from(base_str)?;
+        let accidental = KeyAccidental::try_from(accidental_str)?;
 
         Ok(Key { base, accidental })
     }
 }
 
 #[derive(Debug)]
-pub enum NoteBase {
+pub enum BaseKey {
     C,
     D,
     E,
@@ -34,7 +34,7 @@ pub enum NoteBase {
     B,
 }
 
-impl TryFrom<&str> for NoteBase {
+impl TryFrom<&str> for BaseKey {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -52,13 +52,13 @@ impl TryFrom<&str> for NoteBase {
 }
 
 #[derive(Debug)]
-pub enum NoteAccidental {
+pub enum KeyAccidental {
     Sharp,
     Flat,
     Neutral,
 }
 
-impl TryFrom<&str> for NoteAccidental {
+impl TryFrom<&str> for KeyAccidental {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -71,7 +71,7 @@ impl TryFrom<&str> for NoteAccidental {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Voice {
     S,
     A,
@@ -125,7 +125,7 @@ impl TryFrom<&str> for DynamicKind {
             "fff" => Ok(Self::FFF),
             "dc" => Ok(Self::DC),
             "ds" => Ok(Self::DS),
-            "stg" => Ok(Self::Seg),
+            "seg" | "$" => Ok(Self::Seg),
             "cre" => Ok(Self::Cre),
             "dec" => Ok(Self::Dec),
             _ => Err(()),

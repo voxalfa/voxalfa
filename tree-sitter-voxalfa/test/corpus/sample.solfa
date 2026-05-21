@@ -64,8 +64,8 @@ There are 3 types of comment:
     (language_directive
       type: (identifier)
       value: (inline_string)))
-  (multiline_comment)
   (header
+    (multiline_comment)
     (metadata_line
       (parameter_assignment
         name: (identifier)
@@ -132,7 +132,7 @@ There are 3 types of comment:
             (integer))))
       (solfa_line
         voice: (token)
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -148,7 +148,7 @@ There are 3 types of comment:
           (pulse
             (note
               base: (note_base))))
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -167,7 +167,7 @@ There are 3 types of comment:
               base: (note_base)
               variation: (note_variation)
               octave: (note_octave))))
-        (measure
+        measure: (measure
           (pulse
             (prolonged_note))
           (normal_division)
@@ -182,7 +182,7 @@ There are 3 types of comment:
             (empty_note))))
       (solfa_line
         voice: (token)
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -198,7 +198,7 @@ There are 3 types of comment:
           (pulse
             (note
               base: (note_base))))
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -217,7 +217,7 @@ There are 3 types of comment:
               base: (note_base)
               variation: (note_variation)
               octave: (note_octave))))
-        (measure
+        measure: (measure
           (pulse
             (prolonged_note))
           (normal_division)
@@ -232,7 +232,7 @@ There are 3 types of comment:
             (empty_note))))
       (solfa_line
         voice: (token)
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -248,7 +248,7 @@ There are 3 types of comment:
           (pulse
             (note
               base: (note_base))))
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -267,7 +267,7 @@ There are 3 types of comment:
               base: (note_base)
               variation: (note_variation)
               octave: (note_octave))))
-        (measure
+        measure: (measure
           (pulse
             (prolonged_note))
           (normal_division)
@@ -282,7 +282,7 @@ There are 3 types of comment:
             (empty_note))))
       (solfa_line
         voice: (token)
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -298,7 +298,7 @@ There are 3 types of comment:
           (pulse
             (note
               base: (note_base))))
-        (measure
+        measure: (measure
           (pulse
             (note
               base: (note_base)))
@@ -317,7 +317,7 @@ There are 3 types of comment:
               base: (note_base)
               variation: (note_variation)
               octave: (note_octave))))
-        (measure
+        measure: (measure
           (pulse
             (prolonged_note))
           (normal_division)
@@ -369,8 +369,7 @@ There are 3 types of comment:
         (lyric_placeholder)
         (space_operator)
         (lyric_placeholder)
-        (space_operator)
-        (lyric_chunk
-          (lyric_string))))
+        (space_operator))
+        (delimited_comment))
     (section
       (inline_comment))))

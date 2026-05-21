@@ -38,7 +38,7 @@ This is a multiline comment
 
 [1] do <re> mi\ fa so la ti do_o_o. ~ ~ (scream)
 ~~     ^punctuation.bracket
-~~                            ^operator
+~~                            ^operator  ^comment
 
 --
 

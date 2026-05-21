@@ -52,6 +52,10 @@
         {
           "type": "SYMBOL",
           "name": "parameter_line"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_multispace"
         }
       ]
     },
@@ -479,8 +483,12 @@
           "type": "SEQ",
           "members": [
             {
-              "type": "SYMBOL",
-              "name": "measure"
+              "type": "FIELD",
+              "name": "measure",
+              "content": {
+                "type": "SYMBOL",
+                "name": "measure"
+              }
             },
             {
               "type": "REPEAT",
@@ -492,8 +500,12 @@
                     "value": "|"
                   },
                   {
-                    "type": "SYMBOL",
-                    "name": "measure"
+                    "type": "FIELD",
+                    "name": "measure",
+                    "content": {
+                      "type": "SYMBOL",
+                      "name": "measure"
+                    }
                   }
                 ]
               }
@@ -523,18 +535,6 @@
             {
               "type": "STRING",
               "value": "]"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "_space"
-            },
-            {
-              "type": "BLANK"
             }
           ]
         },
@@ -658,7 +658,7 @@
     },
     "identifier": {
       "type": "PATTERN",
-      "value": "[a-zA-Z_-]+"
+      "value": "[a-zA-Z_$-]+"
     },
     "_delimited_value": {
       "type": "PREC",
@@ -1409,7 +1409,7 @@
     },
     "lyric_string": {
       "type": "PATTERN",
-      "value": "[^\\s_/~``<>\\\\/]+"
+      "value": "[^\\s_/~``<>\\\\/\\(]+"
     },
     "lyric_break": {
       "type": "STRING",
@@ -1505,10 +1505,6 @@
     }
   },
   "extras": [
-    {
-      "type": "SYMBOL",
-      "name": "_multispace"
-    },
     {
       "type": "SYMBOL",
       "name": "inline_comment"

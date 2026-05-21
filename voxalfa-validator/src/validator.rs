@@ -1,16 +1,16 @@
 use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
-    ast::symbols::{
-        Assignment, AssignmentData, Document, Field, Header, KeyData, Range, Section, ValueData,
-        ValueKind,
+    ast::{
+        solfa::SolfaLine,
+        symbols::{
+            Assignment, AssignmentData, Document, Field, FieldAssign, Header, KeyData, Range,
+            Section, ValueData, ValueKind,
+        },
+        types::Voice,
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
-    ts_utils::{
-        context::TSContext,
-        decoding::{FieldAssign, ParseNode},
-        types::AssignmentDataSource,
-    },
+    ts_utils::{context::TSContext, parsing::ParseNode, types::AssignmentDataSource},
 };
 
 #[derive(Debug)]
@@ -109,14 +109,61 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
+    fn handle_solfa_node(&mut self, node: Node<'_>, lines: &mut Vec<SolfaLine>) {
+        if let Some(value) = self.resolve_solfa_line(node, lines.len()) {
+            lines.push(value);
+        }
+    }
+
+    fn resolve_solfa_line(&mut self, node: Node<'_>, id: usize) -> Option<SolfaLine> {
+        let voice = self.resolve_solfa_voice(node, id)?;
+        let mut measures = Vec::new();
+
+        for measure in node.children_by_field_name("measure", &mut node.walk()) {}
+
+        Some(SolfaLine {
+            voice,
+            measures,
+            range: node.range(),
+        })
+    }
+
+    fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
+        let voice_node = node.child_by_field_name("voice")?;
+        let voice_str = self.resolve_node_string(voice_node)?;
+        let voice = Voice::try_from(voice_str.as_str());
+
+        if let Ok(value) = voice {
+            if let Some(expected) = self.output.get_voice(id) {
+                if value == expected {
+                    return Some(value);
+                }
+
+                self.report_error(
+                    voice_node.range(),
+                    DiagnosticKind::VoiceMismatch(expected, value),
+                );
+            } else {
+                self.report_error(
+                    voice_node.range(),
+                    DiagnosticKind::UndefinedVoice(voice_str),
+                );
+            }
+        } else {
+            self.report_error(voice_node.range(), DiagnosticKind::InvalidVoice(voice_str));
+        }
+
+        None
+    }
+
     fn resolve_section(&mut self, node: Node<'_>) -> Section {
         let mut section = Section::default();
 
         for child in node.named_children(&mut node.walk()) {
             match child.kind() {
                 "parameter_line" => self.handle_assignment_node(child, &mut section.params),
-                "dynamics_line" => {}
-                "solfa_line" => {}
+                "dynamics_line" => self.handle_assignment_node(child, &mut section.dynamics),
+                "solfa_line" => self.handle_solfa_node(child, &mut section.solfa),
                 "lyric_line" => {}
                 _ => {}
             }

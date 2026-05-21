@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::ast::symbols::Range;
+use crate::ast::{symbols::Range, types::Voice};
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -17,16 +17,26 @@ pub enum DiagnosticKind {
     Missing(String),
     #[error("invalid UTF-8")]
     InvalidUTF8(#[from] std::str::Utf8Error),
+    #[error("reassignment of key '{name}'")]
+    KeyReassignment { name: String, range: Range },
+    #[error("unknown parameter '{0}'")]
+    UnknownParameter(String),
     #[error("expected {0}, got {1}")]
     ExpectedType(&'static str, &'static str),
     #[error("invalid {0}")]
     InvalidType(&'static str),
     #[error("invalid time signature, expected two integers")]
     InvalidTimeSignature,
-    #[error("invalid assignment")]
-    InvalidAssignment,
-    #[error("reassignment of key '{name}'")]
-    KeyReassignment { name: String, range: Range },
+    #[error("invalid dynamic identifier '{0}'")]
+    InvalidDynamic(String),
+    #[error("invalid dynamic parameters, expected {0}")]
+    InvalidDynamicParams(usize),
+    #[error("invalid voice '{0}'")]
+    InvalidVoice(String),
+    #[error("undefined voice '{0}'")]
+    UndefinedVoice(String),
+    #[error("expected '{0:?}', got '{1:?}")]
+    VoiceMismatch(Voice, Voice),
 }
 
 impl DiagnosticKind {
@@ -35,11 +45,16 @@ impl DiagnosticKind {
             DiagnosticKind::SyntaxError => "E001",
             DiagnosticKind::Missing(_) => "E002",
             DiagnosticKind::InvalidUTF8(_) => "E003",
-            DiagnosticKind::ExpectedType(_, _) => "E004",
-            DiagnosticKind::InvalidType(_) => "E005",
-            DiagnosticKind::InvalidTimeSignature => "E006",
-            DiagnosticKind::InvalidAssignment => "E007",
-            DiagnosticKind::KeyReassignment { .. } => "E008",
+            DiagnosticKind::KeyReassignment { .. } => "E004",
+            DiagnosticKind::UnknownParameter(_) => "E005",
+            DiagnosticKind::ExpectedType(_, _) => "E006",
+            DiagnosticKind::InvalidType(_) => "E007",
+            DiagnosticKind::InvalidTimeSignature => "E008",
+            DiagnosticKind::InvalidDynamic(_) => "E009",
+            DiagnosticKind::InvalidDynamicParams(_) => "E010",
+            DiagnosticKind::InvalidVoice(_) => "E011",
+            DiagnosticKind::UndefinedVoice(_) => "E012",
+            DiagnosticKind::VoiceMismatch(_, _) => "E013",
         }
     }
 
