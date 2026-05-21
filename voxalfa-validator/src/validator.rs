@@ -2,7 +2,7 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
     ast::{
-        solfa::SolfaLine,
+        solfa::{Measure, MeasureState, MeasureToken, SolfaLine},
         symbols::{
             Assignment, AssignmentData, Document, Field, FieldAssign, Header, KeyData, Range,
             Section, ValueData, ValueKind,
@@ -119,7 +119,11 @@ impl<'a> DocumentValidator<'a> {
         let voice = self.resolve_solfa_voice(node, id)?;
         let mut measures = Vec::new();
 
-        for measure in node.children_by_field_name("measure", &mut node.walk()) {}
+        for measure in node.children_by_field_name("measure", &mut node.walk()) {
+            if let Some(measure) = self.resolve_measure(measure) {
+                measures.push(measure);
+            }
+        }
 
         Some(SolfaLine {
             voice,
@@ -135,25 +139,126 @@ impl<'a> DocumentValidator<'a> {
 
         if let Ok(value) = voice {
             if let Some(expected) = self.output.get_voice(id) {
-                if value == expected {
-                    return Some(value);
+                if value != expected {
+                    self.report_error(
+                        voice_node.range(),
+                        DiagnosticKind::VoiceMismatch(expected, value),
+                    );
                 }
 
-                self.report_error(
-                    voice_node.range(),
-                    DiagnosticKind::VoiceMismatch(expected, value),
-                );
-            } else {
-                self.report_error(
-                    voice_node.range(),
-                    DiagnosticKind::UndefinedVoice(voice_str),
-                );
+                return Some(expected);
             }
+
+            self.report_error(
+                voice_node.range(),
+                DiagnosticKind::UndefinedVoice(voice_str),
+            );
         } else {
             self.report_error(voice_node.range(), DiagnosticKind::InvalidVoice(voice_str));
         }
 
         None
+    }
+
+    fn resolve_measure(&mut self, node: Node<'_>) -> Option<Measure> {
+        let mut measure = Measure::new(node.range());
+        let mut state = MeasureState::default();
+
+        for child in node.named_children(&mut node.walk()) {
+            let range = child.range();
+            let token = self.resolve_measure_token(child);
+
+            if state.col_start.is_none() {
+                state.col_start = Some(range);
+            }
+
+            match token {
+                Some(MeasureToken::NormalDivision | MeasureToken::MediumDivision) => {
+                    self.validate_measure_column(&state);
+                    state.col_acc = vec![0];
+                    state.col_start = None;
+                    state.col_count += 1;
+                }
+                Some(MeasureToken::HalfDivision) => {
+                    state.col_acc.push(0);
+                }
+                Some(
+                    MeasureToken::Note(_) | MeasureToken::ProlongedNote | MeasureToken::EmptyNote,
+                ) => {
+                    if let Some(last) = state.col_acc.last_mut() {
+                        *last += 1;
+                    }
+                } // note
+                _ => {}
+            }
+
+            state.col_end = Some(range);
+
+            if let Some(value) = token {
+                measure.tokens.push(value);
+            }
+        }
+
+        state.col_count += 1;
+
+        if let Some(time) = &self.output.header.params.time
+            && state.col_count != time.value.top
+        {
+            self.report_error(
+                node.range(),
+                DiagnosticKind::MeasureColumnMismatch(
+                    time.value.top,
+                    state.col_count,
+                    time.data.range,
+                ),
+            );
+        }
+
+        self.validate_measure_column(&state);
+
+        Some(measure)
+    }
+
+    fn validate_measure_column(&mut self, state: &MeasureState) {
+        if state.col_acc.len() > 1 || state.col_acc[0] == 1 {
+            return;
+        }
+
+        if let Some((start_range, end_range)) = state.col_start.zip(state.col_end) {
+            self.report_error(
+                Range {
+                    start_byte: start_range.start_byte,
+                    end_byte: end_range.end_byte,
+                    start_point: start_range.start_point,
+                    end_point: end_range.end_point,
+                },
+                DiagnosticKind::InvalidNoteDistribution,
+            );
+        }
+    }
+
+    fn resolve_measure_token(&mut self, node: Node<'_>) -> Option<MeasureToken> {
+        match node.kind() {
+            "half_division" => Some(MeasureToken::HalfDivision),
+            "quarter_division" => Some(MeasureToken::QuarterDivision),
+            "medium_division" => Some(MeasureToken::MediumDivision),
+            "normal_division" => Some(MeasureToken::NormalDivision),
+            "underline_start" => Some(MeasureToken::UnderlineStart),
+            "underline_end" => Some(MeasureToken::UnderlineEnd),
+            "pulse" => self.resolve_pulse_node(node),
+            _ => None,
+        }
+    }
+
+    fn resolve_pulse_node(&mut self, node: Node<'_>) -> Option<MeasureToken> {
+        let child = node.named_child(0)?;
+
+        match child.kind() {
+            "note" => self.parse_node(child).map(MeasureToken::Note),
+            "empty_note" => Some(MeasureToken::EmptyNote),
+            "prolonged_note" => Some(MeasureToken::ProlongedNote),
+            _ => None,
+        }
     }
 
     fn resolve_section(&mut self, node: Node<'_>) -> Section {
@@ -166,6 +271,31 @@ impl<'a> DocumentValidator<'a> {
                 "solfa_line" => self.handle_solfa_node(child, &mut section.solfa),
                 "lyric_line" => {}
                 _ => {}
+            }
+        }
+
+        if let Some(voices) = &self.output.header.params.voices {
+            let count = section.solfa.len();
+            let expected = voices.value.len();
+
+            if count != expected {
+                let start_range = section.solfa.first().map(|line| line.range);
+                let end_range = section.solfa.last().map(|line| line.range);
+
+                let range = start_range
+                    .zip(end_range)
+                    .map(|(start, end)| Range {
+                        start_byte: start.start_byte,
+                        end_byte: end.end_byte,
+                        start_point: start.start_point,
+                        end_point: end.end_point,
+                    })
+                    .unwrap_or(node.range());
+
+                self.report_error(
+                    range,
+                    DiagnosticKind::VoiceCountMismatch(expected, count, voices.data.range),
+                );
             }
         }
 
@@ -217,6 +347,11 @@ impl<'a> DocumentValidator<'a> {
         })
     }
 
+    #[inline]
+    pub(crate) fn parse_node<T: ParseNode>(&mut self, node: Node<'_>) -> Option<T> {
+        T::parse_node(node, self)
+    }
+
     pub(crate) fn assign_field<T: ParseNode>(
         &mut self,
         source: AssignmentDataSource,
@@ -225,13 +360,10 @@ impl<'a> DocumentValidator<'a> {
         if let Some(value) = field {
             self.report_warning(
                 source.data.range,
-                DiagnosticKind::KeyReassignment {
-                    name: source.data.key.name.clone(),
-                    range: value.data.range,
-                },
+                DiagnosticKind::KeyReassignment(source.data.key.name.clone(), value.data.range),
             );
         } else {
-            *field = T::parse_node(source.value_node, self).map(|value| Assignment {
+            *field = self.parse_node(source.value_node).map(|value| Assignment {
                 value,
                 data: source.data,
             });

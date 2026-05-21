@@ -17,8 +17,8 @@ pub enum DiagnosticKind {
     Missing(String),
     #[error("invalid UTF-8")]
     InvalidUTF8(#[from] std::str::Utf8Error),
-    #[error("reassignment of key '{name}'")]
-    KeyReassignment { name: String, range: Range },
+    #[error("reassignment of key '{0}'")]
+    KeyReassignment(String, Range),
     #[error("unknown parameter '{0}'")]
     UnknownParameter(String),
     #[error("expected {0}, got {1}")]
@@ -37,6 +37,12 @@ pub enum DiagnosticKind {
     UndefinedVoice(String),
     #[error("expected '{0:?}', got '{1:?}")]
     VoiceMismatch(Voice, Voice),
+    #[error("invalid note distribution")]
+    InvalidNoteDistribution,
+    #[error("expected {0} columns, got {1}")]
+    MeasureColumnMismatch(usize, usize, Range),
+    #[error("expected {0} voices, got {1}")]
+    VoiceCountMismatch(usize, usize, Range),
 }
 
 impl DiagnosticKind {
@@ -55,12 +61,15 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidVoice(_) => "E011",
             DiagnosticKind::UndefinedVoice(_) => "E012",
             DiagnosticKind::VoiceMismatch(_, _) => "E013",
+            DiagnosticKind::InvalidNoteDistribution => "E014",
+            DiagnosticKind::MeasureColumnMismatch(_, _, _) => "E015",
+            DiagnosticKind::VoiceCountMismatch(_, _, _) => "E016",
         }
     }
 
     pub fn get_label(&self) -> Option<String> {
         match self {
-            DiagnosticKind::KeyReassignment { name, .. } => {
+            DiagnosticKind::KeyReassignment(name, _) => {
                 Some(format!("'{name}' has been reassigned here"))
             }
             _ => None,
@@ -69,8 +78,16 @@ impl DiagnosticKind {
 
     pub fn get_extra_info(&self) -> Vec<DiagnosticRelatedInfo> {
         match self {
-            DiagnosticKind::KeyReassignment { name, range } => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::KeyReassignment(name, range) => vec![DiagnosticRelatedInfo {
                 message: format!("'{name}' has been assigned here"),
+                range: *range,
+            }],
+            DiagnosticKind::MeasureColumnMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
+                message: "time signature defined here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::VoiceCountMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
+                message: "voices defined here".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),

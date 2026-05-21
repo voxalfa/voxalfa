@@ -1,7 +1,10 @@
 use tree_sitter::Node;
 
 use crate::{
-    ast::types::{Key, TimeSignature, Voice},
+    ast::{
+        solfa::{BaseNote, Note, NoteVariation},
+        types::{Key, TimeSignature, Voice},
+    },
     diagnostic::DiagnosticKind,
     validator::DocumentValidator,
 };
@@ -112,7 +115,7 @@ impl ParseNode for Voice {
 
 impl ParseNode for TimeSignature {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let value: Vec<usize> = ParseNode::parse_node(node, context)?;
+        let value = context.parse_node::<Vec<_>>(node)?;
 
         if value.len() != 2 {
             context.report_error(node.range(), DiagnosticKind::InvalidTimeSignature);
@@ -134,14 +137,41 @@ impl<T: ParseNode> ParseNode for Vec<T> {
             let mut result = Vec::new();
 
             for child in node.named_children(&mut node.walk()) {
-                if let Some(value) = T::parse_node(child, context) {
+                if let Some(value) = context.parse_node(child) {
                     result.push(value);
                 }
             }
 
             Some(result)
         } else {
-            T::parse_node(node, context).map(|v| vec![v])
+            context.parse_node(node).map(|v| vec![v])
         }
+    }
+}
+
+impl ParseNode for Note {
+    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+        let base_node = node.child_by_field_name("base")?;
+        let variation_node = node.child_by_field_name("variation");
+        let octave_node = node.child_by_field_name("octave");
+
+        let base_str = context.resolve_node_string(base_node)?;
+        let base = BaseNote::try_from(base_str.as_str()).ok()?;
+
+        let variation = variation_node
+            .and_then(|v| context.resolve_node_string(v))
+            .and_then(|v| NoteVariation::try_from(v.as_str()).ok())
+            .unwrap_or_default();
+
+        let octave = octave_node
+            .and_then(|n| context.resolve_node_string(n))
+            .and_then(|n| n.replace("+", "").parse::<i8>().ok())
+            .unwrap_or_default();
+
+        Some(Note {
+            base,
+            variation,
+            octave,
+        })
     }
 }

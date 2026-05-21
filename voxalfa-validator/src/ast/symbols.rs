@@ -4,7 +4,7 @@ use crate::{
         types::{Dynamic, DynamicKind, Key, TimeSignature, Voice},
     },
     diagnostic::DiagnosticKind,
-    ts_utils::{parsing::ParseNode, types::AssignmentDataSource},
+    ts_utils::types::AssignmentDataSource,
     validator::DocumentValidator,
 };
 
@@ -131,6 +131,12 @@ impl FieldAssign for SectionParams {
     fn assign_field(&mut self, source: AssignmentDataSource, context: &mut DocumentValidator) {
         match source.data.key.name.as_str() {
             "repeat" => context.assign_field(source, &mut self.repeat),
+            "voices" => {
+                context.report_error(
+                    source.data.range,
+                    DiagnosticKind::UnknownParameter(source.data.key.name.clone()),
+                ); // do not allow voice override inside sections
+            }
             _ => self.base.assign_field(source, context),
         }
     }
@@ -158,7 +164,9 @@ impl FieldAssign for Dynamics {
         let name = source.data.key.name.clone();
 
         if let Ok(kind) = DynamicKind::try_from(name.as_str()) {
-            let params = Vec::parse_node(source.value_node, context).unwrap_or_default();
+            let params = context
+                .parse_node::<Vec<_>>(source.value_node)
+                .unwrap_or_default();
 
             let expected_params = match kind {
                 DynamicKind::Cre | DynamicKind::Dec => 2,

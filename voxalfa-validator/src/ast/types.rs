@@ -17,7 +17,7 @@ impl TryFrom<&str> for Key {
         let base_str = value.get(..1).ok_or(())?;
         let accidental_str = value.get(1..).ok_or(())?;
         let base = BaseKey::try_from(base_str)?;
-        let accidental = KeyAccidental::try_from(accidental_str)?;
+        let accidental = KeyAccidental::try_from(accidental_str).unwrap_or_default();
 
         Ok(Key { base, accidental })
     }
@@ -51,11 +51,12 @@ impl TryFrom<&str> for BaseKey {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum KeyAccidental {
+    #[default]
+    Neutral,
     Sharp,
     Flat,
-    Neutral,
 }
 
 impl TryFrom<&str> for KeyAccidental {
@@ -63,7 +64,6 @@ impl TryFrom<&str> for KeyAccidental {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "" => Ok(Self::Neutral),
             "b" => Ok(Self::Flat),
             "#" => Ok(Self::Sharp),
             _ => Err(()),
