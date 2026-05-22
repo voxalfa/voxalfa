@@ -57,6 +57,7 @@ pub struct Note {
 
 #[derive(Debug)]
 pub struct SolfaLine {
+    pub id: usize,
     pub voice: Voice,
     pub measures: Vec<Measure>,
     pub range: Range,
@@ -106,5 +107,11 @@ impl Default for MeasureState {
             col_end: None,
             col_count: 0,
         }
+    }
+}
+
+impl MeasureState {
+    pub fn is_valid(&self) -> bool {
+        self.col_acc.len() > 1 || self.col_acc[0] == 1
     }
 }

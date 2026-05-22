@@ -1,7 +1,10 @@
+use std::any::Any;
+
 use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
     ast::{
+        lyrics::{Lyric, LyricChunk, LyricToken},
         solfa::{Measure, MeasureState, MeasureToken, SolfaLine},
         symbols::{
             Assignment, AssignmentData, Document, Field, FieldAssign, Header, KeyData, Range,
@@ -126,10 +129,27 @@ impl<'a> DocumentValidator<'a> {
         }
 
         Some(SolfaLine {
+            id,
             voice,
             measures,
             range: node.range(),
         })
+    }
+
+    fn handle_lyric_node(&mut self, node: Node<'_>, section: &mut Section) {
+        let id = section.solfa.len();
+
+        if let Some(tokens) = self.resolve_lyric_tokens(node) {
+            section.lyrics.push(Lyric {
+                id,
+                verse: 0,
+                tokens,
+            });
+        }
+    }
+
+    fn resolve_lyric_tokens(&mut self, node: Node<'_>) -> Option<Vec<LyricToken>> {
+        todo!()
     }
 
     fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
@@ -201,6 +221,13 @@ impl<'a> DocumentValidator<'a> {
 
         state.col_count += 1;
 
+        self.validate_measure_column(&state);
+        self.validate_time_signature(&state, node);
+
+        Some(measure)
+    }
+
+    fn validate_time_signature(&mut self, state: &MeasureState, node: Node<'_>) {
         if let Some(time) = &self.output.header.params.time
             && state.col_count != time.value.top
         {
@@ -213,14 +240,10 @@ impl<'a> DocumentValidator<'a> {
                 ),
             );
         }
-
-        self.validate_measure_column(&state);
-
-        Some(measure)
     }
 
     fn validate_measure_column(&mut self, state: &MeasureState) {
-        if state.col_acc.len() > 1 || state.col_acc[0] == 1 {
+        if state.is_valid() {
             return;
         }
 
@@ -250,6 +273,36 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
+    fn resolve_lyric_token(&mut self, node: Node<'_>) -> Option<LyricToken> {
+        match node.kind() {
+            "space_operator" => Some(LyricToken::Space),
+            "concat_operator" => Some(LyricToken::Concat),
+            "lyric_chunk" => self.resolve_lyric_chunk(node),
+            _ => None,
+        }
+    }
+
+    fn resolve_lyric_chunk(&mut self, node: Node<'_>) -> Option<LyricToken> {
+        let mut chunks = Vec::new();
+
+        for child in node.named_children(&mut node.walk()) {
+            match child.kind() {
+                "lyric_string" => {
+                    if let Some(s) = self.resolve_node_string(child) {
+                        chunks.push(LyricChunk::String(s));
+                    }
+                }
+                "lyric_break" => chunks.push(LyricChunk::Break),
+                "lyric_split" => chunks.push(LyricChunk::Split),
+                "underline_start" => chunks.push(LyricChunk::UnderlineStart),
+                "underline_end" => chunks.push(LyricChunk::UnderlineEnd),
+                _ => {}
+            }
+        }
+
+        Some(LyricToken::Chunk(chunks))
+    }
+
     fn resolve_pulse_node(&mut self, node: Node<'_>) -> Option<MeasureToken> {
         let child = node.named_child(0)?;
 
@@ -269,7 +322,7 @@ impl<'a> DocumentValidator<'a> {
                 "parameter_line" => self.handle_assignment_node(child, &mut section.params),
                 "dynamics_line" => self.handle_assignment_node(child, &mut section.dynamics),
                 "solfa_line" => self.handle_solfa_node(child, &mut section.solfa),
-                "lyric_line" => {}
+                "lyric_line" => self.handle_lyric_node(child, &mut section),
                 _ => {}
             }
         }
