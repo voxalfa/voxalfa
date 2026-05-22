@@ -69,11 +69,27 @@ export default grammar({
     lyric_line: ($) =>
       seq(
         seq("[", field("verse", $.integer), "]"),
-        sep1(
-          choice($.concat_operator, $.space_operator),
-          choice($.lyric_chunk, $.lyric_placeholder, blank()),
+        optional($._space),
+        field("content", $.lyric_content),
+        field("anchor", optional($._lyric_anchor)),
+        optional($._space),
+      ),
+
+    lyric_content: ($) =>
+      seq(
+        choice($.lyric_chunk, $.lyric_placeholder),
+        repeat(
+          seq(
+            choice($.concat_operator, $.space_operator),
+            choice($.lyric_chunk, $.lyric_placeholder, blank()), // FIXME: blank() is used to allow trailing spaces and concat
+          ),
         ),
       ),
+
+    _lyric_anchor: ($) => seq("%", choice($.space_anchor, $.concat_anchor)),
+
+    space_anchor: ($) => seq("(", $.space_operator, ")"),
+    concat_anchor: ($) => seq("(", $.concat_operator, ")"),
 
     parameter_assignment: ($) =>
       seq(
@@ -163,7 +179,7 @@ export default grammar({
     space_operator: () => / +/,
     concat_operator: () => /_+/,
 
-    lyric_string: () => /[^\s_/~``<>\\/\(]+/,
+    lyric_string: () => /[^\s_/~``<>\\/\($]+/,
     lyric_break: () => "\\",
     lyric_split: () => "/",
     lyric_placeholder: () => "~",

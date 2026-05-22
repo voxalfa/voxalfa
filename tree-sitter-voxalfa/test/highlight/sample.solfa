@@ -36,7 +36,8 @@ This is a multiline comment
 ~~                                      ^constant.builtin
 ~~                                               ^constant.builtin
 
-[1] do <re> mi\ fa so la ti do_o_o. ~ ~ (scream)
+[1] do <re> mi\ fa so la ti do_o_o. ~ ~ %(_)
+[2] do <re> mi\ fa so la ti do_o_o. ~ ~ %( ) (scream)
 ~~     ^punctuation.bracket
 ~~                            ^operator  ^comment
 

@@ -539,62 +539,163 @@
           ]
         },
         {
-          "type": "SEQ",
+          "type": "CHOICE",
           "members": [
             {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "lyric_chunk"
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "lyric_placeholder"
-                },
-                {
-                  "type": "BLANK"
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "_space"
             },
             {
-              "type": "REPEAT",
-              "content": {
-                "type": "SEQ",
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "FIELD",
+          "name": "content",
+          "content": {
+            "type": "SYMBOL",
+            "name": "lyric_content"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "anchor",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_lyric_anchor"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_space"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        }
+      ]
+    },
+    "lyric_content": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "lyric_chunk"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "lyric_placeholder"
+            }
+          ]
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "CHOICE",
                 "members": [
                   {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "concat_operator"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "space_operator"
-                      }
-                    ]
+                    "type": "SYMBOL",
+                    "name": "concat_operator"
                   },
                   {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "lyric_chunk"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "lyric_placeholder"
-                      },
-                      {
-                        "type": "BLANK"
-                      }
-                    ]
+                    "type": "SYMBOL",
+                    "name": "space_operator"
+                  }
+                ]
+              },
+              {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "lyric_chunk"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "lyric_placeholder"
+                  },
+                  {
+                    "type": "BLANK"
                   }
                 ]
               }
+            ]
+          }
+        }
+      ]
+    },
+    "_lyric_anchor": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "$"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "space_anchor"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "concat_anchor"
             }
           ]
+        }
+      ]
+    },
+    "space_anchor": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "SYMBOL",
+          "name": "space_operator"
+        },
+        {
+          "type": "STRING",
+          "value": ")"
+        }
+      ]
+    },
+    "concat_anchor": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "SYMBOL",
+          "name": "concat_operator"
+        },
+        {
+          "type": "STRING",
+          "value": ")"
         }
       ]
     },
@@ -1409,7 +1510,7 @@
     },
     "lyric_string": {
       "type": "PATTERN",
-      "value": "[^\\s_/~``<>\\\\/\\(]+"
+      "value": "[^\\s_/~``<>\\\\/\\($]+"
     },
     "lyric_break": {
       "type": "STRING",

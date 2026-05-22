@@ -20,6 +20,21 @@
     "fields": {}
   },
   {
+    "type": "concat_anchor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "concat_operator",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "delimited_comment",
     "named": true,
     "extra": true,
@@ -189,23 +204,12 @@
     }
   },
   {
-    "type": "lyric_line",
+    "type": "lyric_content",
     "named": true,
-    "fields": {
-      "verse": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "integer",
-            "named": true
-          }
-        ]
-      }
-    },
+    "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
+      "required": true,
       "types": [
         {
           "type": "concat_operator",
@@ -224,6 +228,50 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "lyric_line",
+    "named": true,
+    "fields": {
+      "anchor": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "$",
+            "named": false
+          },
+          {
+            "type": "concat_anchor",
+            "named": true
+          },
+          {
+            "type": "space_anchor",
+            "named": true
+          }
+        ]
+      },
+      "content": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "lyric_content",
+            "named": true
+          }
+        ]
+      },
+      "verse": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "integer",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -478,6 +526,21 @@
         },
         {
           "type": "header",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "space_anchor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "space_operator",
           "named": true
         }
       ]
