@@ -35,8 +35,11 @@
  "]"
  "{"
  "}"
- (underline_start)
- (underline_end)
+ "("
+ ")"
+ "<"
+ ">"
+ (underline_marker)
 ] @punctuation.bracket
 
 [
@@ -49,9 +52,8 @@
   (normal_division)
   (half_division)
   (quarter_division)
-  (lyric_break)
-  (lyric_split)
   (concat_operator)
+  (newline_operator)
 ] @operator
 
 [

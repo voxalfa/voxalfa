@@ -24,7 +24,7 @@ The language supports simple data types, types without delimiters needs curly br
 
 There are 3 types of comment:
 - Inline: starting with two tildes, they can also be used for language directives (@version, ...)
-- Delimited: delimited by parentheses
+- Delimited: delimited by '(*' and '*)'
 - Multiline: delimited by 3 tildes
 ~~~
 
@@ -46,12 +46,13 @@ There are 3 types of comment:
 
 [^] p={1} | cre={3,6}
 
-[S] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
-[T] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
-[A] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
-[B] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[S] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
+[T] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
+[A] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
+[B] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
 
-[1] do <re> mi\ fa so la ti do_o_o. ~ ~ (scream)
+[1] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\>
+[2] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\> (~ scream ~)
 
 --
 
@@ -161,7 +162,7 @@ There are 3 types of comment:
             (note
               base: (note_base)))
           (normal_division)
-          (underline_start)
+          (underline_marker)
           (pulse
             (note
               base: (note_base)
@@ -173,7 +174,7 @@ There are 3 types of comment:
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_end)
+          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -211,7 +212,7 @@ There are 3 types of comment:
             (note
               base: (note_base)))
           (normal_division)
-          (underline_start)
+          (underline_marker)
           (pulse
             (note
               base: (note_base)
@@ -223,7 +224,7 @@ There are 3 types of comment:
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_end)
+          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -261,7 +262,7 @@ There are 3 types of comment:
             (note
               base: (note_base)))
           (normal_division)
-          (underline_start)
+          (underline_marker)
           (pulse
             (note
               base: (note_base)
@@ -273,7 +274,7 @@ There are 3 types of comment:
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_end)
+          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -311,7 +312,7 @@ There are 3 types of comment:
             (note
               base: (note_base)))
           (normal_division)
-          (underline_start)
+          (underline_marker)
           (pulse
             (note
               base: (note_base)
@@ -323,7 +324,7 @@ There are 3 types of comment:
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_end)
+          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -332,44 +333,92 @@ There are 3 types of comment:
             (empty_note))))
       (lyric_line
         verse: (integer)
-        (space_operator)
-        (lyric_chunk
-          (lyric_string))
-        (space_operator)
-        (lyric_chunk
-          (underline_start)
-          (lyric_string)
-          (underline_end))
-        (space_operator)
-        (lyric_chunk
-          (lyric_string)
-          (lyric_break))
-        (space_operator)
-        (lyric_chunk
-          (lyric_string))
-        (space_operator)
-        (lyric_chunk
-          (lyric_string))
-        (space_operator)
-        (lyric_chunk
-          (lyric_string))
-        (space_operator)
-        (lyric_chunk
-          (lyric_string))
-        (space_operator)
-        (lyric_chunk
-          (lyric_string))
-        (concat_operator)
-        (lyric_chunk
-          (lyric_string))
-        (concat_operator)
-        (lyric_chunk
-          (lyric_string))
-        (space_operator)
-        (lyric_placeholder)
-        (space_operator)
-        (lyric_placeholder)
-        (space_operator))
-        (delimited_comment))
+        content: (lyric_content
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (underline_marker)
+            (lyric_string)
+            (underline_marker))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (newline_operator)
+          (lyric_chunk
+            (lyric_group
+              (lyric_string)
+              (space_operator)
+              (lyric_string)))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (concat_operator)
+          (lyric_chunk
+            (lyric_string))
+          (concat_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_placeholder)
+          (space_operator)
+          (lyric_placeholder)
+          (space_operator))
+        anchor: (newline_anchor
+          (newline_operator)))
+      (lyric_line
+        verse: (integer)
+        content: (lyric_content
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (underline_marker)
+            (lyric_string)
+            (underline_marker))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (newline_operator)
+          (lyric_chunk
+            (lyric_group
+              (lyric_string)
+              (space_operator)
+              (lyric_string)))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_chunk
+            (lyric_string))
+          (concat_operator)
+          (lyric_chunk
+            (lyric_string))
+          (concat_operator)
+          (lyric_chunk
+            (lyric_string))
+          (space_operator)
+          (lyric_placeholder)
+          (space_operator)
+          (lyric_placeholder)
+          (space_operator))
+        anchor: (newline_anchor
+          (newline_operator)))
+      (delimited_comment))
     (section
       (inline_comment))))

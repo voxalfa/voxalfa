@@ -181,11 +181,7 @@
       "required": true,
       "types": [
         {
-          "type": "lyric_break",
-          "named": true
-        },
-        {
-          "type": "lyric_split",
+          "type": "lyric_group",
           "named": true
         },
         {
@@ -193,11 +189,7 @@
           "named": true
         },
         {
-          "type": "underline_end",
-          "named": true
-        },
-        {
-          "type": "underline_start",
+          "type": "underline_marker",
           "named": true
         }
       ]
@@ -224,7 +216,34 @@
           "named": true
         },
         {
+          "type": "newline_operator",
+          "named": true
+        },
+        {
           "type": "space_operator",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "lyric_group",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "lyric_string",
+          "named": true
+        },
+        {
+          "type": "space_operator",
+          "named": true
+        },
+        {
+          "type": "underline_marker",
           "named": true
         }
       ]
@@ -235,15 +254,15 @@
     "named": true,
     "fields": {
       "anchor": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
           {
-            "type": "$",
-            "named": false
+            "type": "concat_anchor",
+            "named": true
           },
           {
-            "type": "concat_anchor",
+            "type": "newline_anchor",
             "named": true
           },
           {
@@ -308,11 +327,7 @@
           "named": true
         },
         {
-          "type": "underline_end",
-          "named": true
-        },
-        {
-          "type": "underline_start",
+          "type": "underline_marker",
           "named": true
         }
       ]
@@ -328,6 +343,21 @@
       "types": [
         {
           "type": "parameter_assignment",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "newline_anchor",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "newline_operator",
           "named": true
         }
       ]
@@ -578,6 +608,10 @@
     "named": false
   },
   {
+    "type": "(~",
+    "named": false
+  },
+  {
     "type": ")",
     "named": false
   },
@@ -598,7 +632,15 @@
     "named": false
   },
   {
+    "type": "<",
+    "named": false
+  },
+  {
     "type": "=",
+    "named": false
+  },
+  {
+    "type": ">",
     "named": false
   },
   {
@@ -638,14 +680,6 @@
     "named": true
   },
   {
-    "type": "lyric_break",
-    "named": true
-  },
-  {
-    "type": "lyric_split",
-    "named": true
-  },
-  {
     "type": "lyric_string",
     "named": true
   },
@@ -657,6 +691,10 @@
     "type": "multiline_comment",
     "named": true,
     "extra": true
+  },
+  {
+    "type": "newline_operator",
+    "named": true
   },
   {
     "type": "normal_division",
@@ -695,11 +733,7 @@
     "named": false
   },
   {
-    "type": "underline_end",
-    "named": true
-  },
-  {
-    "type": "underline_start",
+    "type": "underline_marker",
     "named": true
   },
   {
@@ -716,6 +750,10 @@
   },
   {
     "type": "~",
+    "named": false
+  },
+  {
+    "type": "~)",
     "named": false
   },
   {

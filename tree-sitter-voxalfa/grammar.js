@@ -80,16 +80,18 @@ export default grammar({
         choice($.lyric_chunk, $.lyric_placeholder),
         repeat(
           seq(
-            choice($.concat_operator, $.space_operator),
+            choice($.concat_operator, $.space_operator, $.newline_operator),
             choice($.lyric_chunk, $.lyric_placeholder, blank()), // FIXME: blank() is used to allow trailing spaces and concat
           ),
         ),
       ),
 
-    _lyric_anchor: ($) => seq("%", choice($.space_anchor, $.concat_anchor)),
+    _lyric_anchor: ($) =>
+      choice($.space_anchor, $.concat_anchor, $.newline_anchor),
 
-    space_anchor: ($) => seq("(", $.space_operator, ")"),
-    concat_anchor: ($) => seq("(", $.concat_operator, ")"),
+    space_anchor: ($) => seq("<", $.space_operator, ">"),
+    concat_anchor: ($) => seq("<", $.concat_operator, ">"),
+    newline_anchor: ($) => seq("<", $.newline_operator, ">"),
 
     parameter_assignment: ($) =>
       seq(
@@ -103,8 +105,7 @@ export default grammar({
     identifier: () => /[a-zA-Z_$-]+/,
 
     _delimited_value: ($) =>
-      prec(1, seq("{", field("value", choice($._value_atom, $.list)), "}")),
-
+      seq("{", field("value", choice($._value_atom, $.list)), "}"),
     _value_atom: ($) =>
       seq(
         optional($._space),
@@ -112,7 +113,7 @@ export default grammar({
         optional($._space),
       ),
 
-    list: ($) => sep1(",", $._value_atom),
+    list: ($) => seq($._value_atom, ",", sep1(",", $._value_atom)),
 
     string: ($) => seq('"', $.string_content, '"'),
     string_content: () => /[^"\n]*/,
@@ -131,11 +132,11 @@ export default grammar({
           repeat1(choice($.half_division, $.quarter_division)),
           seq(
             optional($._space),
-            optional($.underline_start),
+            optional($.underline_marker),
             optional($._space),
             $.pulse,
             optional($._space),
-            optional($.underline_end),
+            optional($.underline_marker),
             optional($._space),
           ),
         ),
@@ -146,8 +147,7 @@ export default grammar({
     half_division: () => ".",
     quarter_division: () => ",",
 
-    underline_start: () => "<",
-    underline_end: () => ">",
+    underline_marker: () => "`",
 
     pulse: ($) => choice($.empty_note, $.prolonged_note, $.note),
 
@@ -166,23 +166,24 @@ export default grammar({
     note_variation: () => /[ai]/,
 
     lyric_chunk: ($) =>
-      repeat1(
-        choice(
-          $.lyric_string,
-          $.lyric_break,
-          $.lyric_split,
-          $.underline_start,
-          $.underline_end,
-        ),
-      ),
+      repeat1(choice($.lyric_string, $.lyric_group, $.underline_marker)),
 
     space_operator: () => / +/,
     concat_operator: () => /_+/,
+    newline_operator: () => /\\+/,
 
-    lyric_string: () => /[^\s_/~``<>\\/\($]+/,
-    lyric_break: () => "\\",
-    lyric_split: () => "/",
+    lyric_string: () => /[^\s_/~``<>\\/\()]+/,
     lyric_placeholder: () => "~",
+
+    lyric_group: ($) =>
+      seq(
+        "(",
+        sep1(
+          $.space_operator,
+          repeat1(choice($.lyric_string, $.underline_marker)),
+        ),
+        ")",
+      ),
 
     _space: () => /[ \t]+/,
     _multispace: () => /[ \t]*[\n]+[ \t]*/,
@@ -198,7 +199,7 @@ export default grammar({
     inline_comment: ($) =>
       seq("~~", choice(/[ \t]*[^@][^\n]*/, $.language_directive)),
 
-    delimited_comment: () => seq("(", /[^)\n]*/, ")"),
+    delimited_comment: () => seq("(~", /[^~\n]*/, "~)"),
     multiline_comment: () => /~~~[^~]*~~~/,
   },
 });

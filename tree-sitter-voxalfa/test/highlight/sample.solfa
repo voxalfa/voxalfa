@@ -25,10 +25,10 @@ This is a multiline comment
 
 [^] p={1} | cre={3,6}
 
-[S] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
-[T] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
-[A] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
-[B] d : r ! m : f | s : l ! t : <da+1 | - : -> ! ~ : ~
+[S] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
+[T] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
+[A] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
+[B] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
 ~~                                ^type.qualifier
 ~~                                  ^number
 ~~    ^operator
@@ -36,10 +36,13 @@ This is a multiline comment
 ~~                                      ^constant.builtin
 ~~                                               ^constant.builtin
 
-[1] do <re> mi\ fa so la ti do_o_o. ~ ~ %(_)
-[2] do <re> mi\ fa so la ti do_o_o. ~ ~ %( ) (scream)
+[1] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\>
+[2] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\> (~ scream ~)
 ~~     ^punctuation.bracket
-~~                            ^operator  ^comment
+~~             ^punctuation.bracket
+~~                                        ^punctuation.bracket
+~~                                    ^constant.builtin
+~~                              ^operator        ^comment
 
 --
 
