@@ -5,11 +5,9 @@ use crate::{
         types::{Dynamic, DynamicKind, Key, TimeSignature, Voice},
     },
     diagnostic::DiagnosticKind,
-    ts_utils::types::AssignmentDataSource,
+    ts_utils::{range::Range, types::AssignmentDataSource},
     validator::DocumentValidator,
 };
-
-pub type Range = tree_sitter::Range;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValueKind {

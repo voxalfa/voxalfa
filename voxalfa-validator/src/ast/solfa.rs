@@ -1,4 +1,4 @@
-use crate::ast::{symbols::Range, types::Voice};
+use crate::{ast::types::Voice, ts_utils::range::Range};
 
 #[derive(Debug)]
 pub enum BaseNote {
@@ -79,7 +79,13 @@ impl Measure {
 }
 
 #[derive(Debug)]
-pub enum MeasureToken {
+pub struct MeasureToken {
+    pub range: Range,
+    pub kind: MeasureTokenKind,
+}
+
+#[derive(Debug)]
+pub enum MeasureTokenKind {
     Note(Note),
     EmptyNote,
     ProlongedNote,
@@ -87,8 +93,7 @@ pub enum MeasureToken {
     MediumDivision,
     HalfDivision,
     QuarterDivision,
-    UnderlineStart,
-    UnderlineEnd,
+    UnderlineMarker,
 }
 
 #[derive(Debug)]

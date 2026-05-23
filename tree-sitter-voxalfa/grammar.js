@@ -77,11 +77,11 @@ export default grammar({
 
     lyric_content: ($) =>
       seq(
-        choice($.lyric_chunk, $.lyric_placeholder),
+        $.lyric_chunk,
         repeat(
           seq(
             choice($.concat_operator, $.space_operator, $.newline_operator),
-            choice($.lyric_chunk, $.lyric_placeholder, blank()), // FIXME: blank() is used to allow trailing spaces and concat
+            choice($.lyric_chunk, blank()), // FIXME: blank() is used to allow trailing spaces and concat
           ),
         ),
       ),
@@ -166,7 +166,14 @@ export default grammar({
     note_variation: () => /[ai]/,
 
     lyric_chunk: ($) =>
-      repeat1(choice($.lyric_string, $.lyric_group, $.underline_marker)),
+      repeat1(
+        choice(
+          $.lyric_placeholder,
+          $.lyric_string,
+          $.lyric_group,
+          $.underline_marker,
+        ),
+      ),
 
     space_operator: () => / +/,
     concat_operator: () => /_+/,

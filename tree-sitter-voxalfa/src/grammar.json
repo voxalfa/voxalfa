@@ -592,17 +592,8 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "lyric_chunk"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "lyric_placeholder"
-            }
-          ]
+          "type": "SYMBOL",
+          "name": "lyric_chunk"
         },
         {
           "type": "REPEAT",
@@ -632,10 +623,6 @@
                   {
                     "type": "SYMBOL",
                     "name": "lyric_chunk"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "lyric_placeholder"
                   },
                   {
                     "type": "BLANK"
@@ -1498,6 +1485,10 @@
       "content": {
         "type": "CHOICE",
         "members": [
+          {
+            "type": "SYMBOL",
+            "name": "lyric_placeholder"
+          },
           {
             "type": "SYMBOL",
             "name": "lyric_string"

@@ -3,21 +3,23 @@ pub struct Lyric {
     pub id: usize,
     pub verse: usize,
     pub tokens: Vec<LyricToken>,
+    pub anchor: Option<LyricAnchor>,
+}
+
+#[derive(Debug)]
+pub enum LyricAnchor {
+    Newline,
+    Space,
+    Concat,
 }
 
 #[derive(Debug)]
 pub enum LyricToken {
     Space,
     Concat,
+    Newline,
+    UnderlineMarker,
     Placeholder,
-    Chunk(Vec<LyricChunk>),
-}
-
-#[derive(Debug)]
-pub enum LyricChunk {
     String(String),
-    Break,
-    Split,
-    UnderlineStart,
-    UnderlineEnd,
+    Group(Vec<LyricToken>),
 }

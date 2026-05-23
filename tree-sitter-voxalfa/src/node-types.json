@@ -185,6 +185,10 @@
           "named": true
         },
         {
+          "type": "lyric_placeholder",
+          "named": true
+        },
+        {
           "type": "lyric_string",
           "named": true
         },
@@ -209,10 +213,6 @@
         },
         {
           "type": "lyric_chunk",
-          "named": true
-        },
-        {
-          "type": "lyric_placeholder",
           "named": true
         },
         {

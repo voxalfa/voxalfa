@@ -24,7 +24,7 @@ The language supports simple data types, types without delimiters needs curly br
 
 There are 3 types of comment:
 - Inline: starting with two tildes, they can also be used for language directives (@version, ...)
-- Delimited: delimited by '(*' and '*)'
+- Delimited: delimited by '(<tilde>' and '<tilde>)'
 - Multiline: delimited by 3 tildes
 ~~~
 
@@ -369,9 +369,11 @@ There are 3 types of comment:
           (lyric_chunk
             (lyric_string))
           (space_operator)
-          (lyric_placeholder)
+          (lyric_chunk
+            (lyric_placeholder))
           (space_operator)
-          (lyric_placeholder)
+          (lyric_chunk
+            (lyric_placeholder))
           (space_operator))
         anchor: (newline_anchor
           (newline_operator)))
@@ -413,9 +415,11 @@ There are 3 types of comment:
           (lyric_chunk
             (lyric_string))
           (space_operator)
-          (lyric_placeholder)
+          (lyric_chunk
+            (lyric_placeholder))
           (space_operator)
-          (lyric_placeholder)
+          (lyric_chunk
+            (lyric_placeholder))
           (space_operator))
         anchor: (newline_anchor
           (newline_operator)))

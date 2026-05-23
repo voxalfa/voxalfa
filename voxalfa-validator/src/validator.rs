@@ -1,19 +1,22 @@
-use std::any::Any;
-
 use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
     ast::{
-        lyrics::{Lyric, LyricChunk, LyricToken},
-        solfa::{Measure, MeasureState, MeasureToken, SolfaLine},
+        lyrics::{Lyric, LyricAnchor, LyricToken},
+        solfa::{Measure, MeasureState, MeasureToken, MeasureTokenKind, SolfaLine},
         symbols::{
-            Assignment, AssignmentData, Document, Field, FieldAssign, Header, KeyData, Range,
-            Section, ValueData, ValueKind,
+            Assignment, AssignmentData, Document, Field, FieldAssign, Header, KeyData, Section,
+            ValueData, ValueKind,
         },
         types::Voice,
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
-    ts_utils::{context::TSContext, parsing::ParseNode, types::AssignmentDataSource},
+    ts_utils::{
+        context::TSContext,
+        parsing::ParseNode,
+        range::{Range, RangeMerge},
+        types::AssignmentDataSource,
+    },
 };
 
 #[derive(Debug)]
@@ -128,28 +131,65 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        Some(SolfaLine {
+        let line = SolfaLine {
             id,
             voice,
             measures,
             range: node.range(),
-        })
+        };
+
+        self.validate_solfa_line(&line);
+
+        Some(line)
     }
 
     fn handle_lyric_node(&mut self, node: Node<'_>, section: &mut Section) {
-        let id = section.solfa.len();
-
-        if let Some(tokens) = self.resolve_lyric_tokens(node) {
-            section.lyrics.push(Lyric {
-                id,
-                verse: 0,
-                tokens,
-            });
+        if let Some(line) = self.resolve_lyric_line(node, section) {
+            section.lyrics.push(line);
         }
     }
 
-    fn resolve_lyric_tokens(&mut self, node: Node<'_>) -> Option<Vec<LyricToken>> {
-        todo!()
+    fn resolve_lyric_line(&mut self, node: Node<'_>, section: &Section) -> Option<Lyric> {
+        let verse_node = node.child_by_field_name("verse")?;
+        let content_node = node.child_by_field_name("content")?;
+        let anchor_node = node.child_by_field_name("anchor");
+
+        let id = section.solfa.len();
+        let verse = self.parse_node(verse_node)?;
+        let expected_verse = section.lyrics.iter().filter(|l| l.id == id).count() + 1;
+
+        let anchor = anchor_node.and_then(|n| match n.kind() {
+            "space_anchor" => Some(LyricAnchor::Space),
+            "concat_anchor" => Some(LyricAnchor::Concat),
+            "newline_anchor" => Some(LyricAnchor::Newline),
+            _ => None,
+        });
+
+        if verse != expected_verse {
+            self.report_warning(
+                verse_node.range(),
+                DiagnosticKind::MismatchedVerseIndex(expected_verse, verse),
+            );
+        }
+
+        Some(Lyric {
+            id,
+            verse: expected_verse,
+            tokens: self.resolve_lyric_tokens(content_node),
+            anchor,
+        })
+    }
+
+    fn resolve_lyric_tokens(&mut self, node: Node<'_>) -> Vec<LyricToken> {
+        let mut tokens = Vec::new();
+
+        for child in node.named_children(&mut node.walk()) {
+            if let Some(token) = self.resolve_lyric_token(child) {
+                tokens.push(token);
+            }
+        }
+
+        tokens
     }
 
     fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
@@ -193,17 +233,19 @@ impl<'a> DocumentValidator<'a> {
             }
 
             match token {
-                Some(MeasureToken::NormalDivision | MeasureToken::MediumDivision) => {
+                Some(MeasureTokenKind::NormalDivision | MeasureTokenKind::MediumDivision) => {
                     self.validate_measure_column(&state);
                     state.col_acc = vec![0];
                     state.col_start = None;
                     state.col_count += 1;
                 }
-                Some(MeasureToken::HalfDivision) => {
+                Some(MeasureTokenKind::HalfDivision) => {
                     state.col_acc.push(0);
                 }
                 Some(
-                    MeasureToken::Note(_) | MeasureToken::ProlongedNote | MeasureToken::EmptyNote,
+                    MeasureTokenKind::Note(_)
+                    | MeasureTokenKind::ProlongedNote
+                    | MeasureTokenKind::EmptyNote,
                 ) => {
                     if let Some(last) = state.col_acc.last_mut() {
                         *last += 1;
@@ -214,8 +256,8 @@ impl<'a> DocumentValidator<'a> {
 
             state.col_end = Some(range);
 
-            if let Some(value) = token {
-                measure.tokens.push(value);
+            if let Some(kind) = token {
+                measure.tokens.push(MeasureToken { range, kind });
             }
         }
 
@@ -249,25 +291,40 @@ impl<'a> DocumentValidator<'a> {
 
         if let Some((start_range, end_range)) = state.col_start.zip(state.col_end) {
             self.report_error(
-                Range {
-                    start_byte: start_range.start_byte,
-                    end_byte: end_range.end_byte,
-                    start_point: start_range.start_point,
-                    end_point: end_range.end_point,
-                },
+                start_range.merge(end_range),
                 DiagnosticKind::InvalidNoteDistribution,
             );
         }
     }
 
-    fn resolve_measure_token(&mut self, node: Node<'_>) -> Option<MeasureToken> {
+    fn validate_solfa_line(&mut self, line: &SolfaLine) {
+        let mut current_underline = None;
+
+        for measure in &line.measures {
+            for token in &measure.tokens {
+                if matches!(token.kind, MeasureTokenKind::UnderlineMarker)
+                    && current_underline.take().is_none()
+                {
+                    current_underline = Some(token);
+                }
+            }
+        }
+
+        if let Some(token) = current_underline {
+            self.report_error(
+                token.range.merge(line.range),
+                DiagnosticKind::UnmatchedUnderline,
+            );
+        }
+    }
+
+    fn resolve_measure_token(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
         match node.kind() {
-            "half_division" => Some(MeasureToken::HalfDivision),
-            "quarter_division" => Some(MeasureToken::QuarterDivision),
-            "medium_division" => Some(MeasureToken::MediumDivision),
-            "normal_division" => Some(MeasureToken::NormalDivision),
-            "underline_start" => Some(MeasureToken::UnderlineStart),
-            "underline_end" => Some(MeasureToken::UnderlineEnd),
+            "half_division" => Some(MeasureTokenKind::HalfDivision),
+            "quarter_division" => Some(MeasureTokenKind::QuarterDivision),
+            "medium_division" => Some(MeasureTokenKind::MediumDivision),
+            "normal_division" => Some(MeasureTokenKind::NormalDivision),
+            "underline_marker" => Some(MeasureTokenKind::UnderlineMarker),
             "pulse" => self.resolve_pulse_node(node),
             _ => None,
         }
@@ -277,39 +334,23 @@ impl<'a> DocumentValidator<'a> {
         match node.kind() {
             "space_operator" => Some(LyricToken::Space),
             "concat_operator" => Some(LyricToken::Concat),
-            "lyric_chunk" => self.resolve_lyric_chunk(node),
+            "newline_operator" => Some(LyricToken::Newline),
+            "underline_marker" => Some(LyricToken::UnderlineMarker),
+            "lyric_placeholder" => Some(LyricToken::Placeholder),
+            "lyric_group" => Some(LyricToken::Group(self.resolve_lyric_tokens(node))),
+            "lyric_string" => self.resolve_node_string(node).map(LyricToken::String),
+            "lyric_chunk" => node.child(0).and_then(|n| self.resolve_lyric_token(n)),
             _ => None,
         }
     }
 
-    fn resolve_lyric_chunk(&mut self, node: Node<'_>) -> Option<LyricToken> {
-        let mut chunks = Vec::new();
-
-        for child in node.named_children(&mut node.walk()) {
-            match child.kind() {
-                "lyric_string" => {
-                    if let Some(s) = self.resolve_node_string(child) {
-                        chunks.push(LyricChunk::String(s));
-                    }
-                }
-                "lyric_break" => chunks.push(LyricChunk::Break),
-                "lyric_split" => chunks.push(LyricChunk::Split),
-                "underline_start" => chunks.push(LyricChunk::UnderlineStart),
-                "underline_end" => chunks.push(LyricChunk::UnderlineEnd),
-                _ => {}
-            }
-        }
-
-        Some(LyricToken::Chunk(chunks))
-    }
-
-    fn resolve_pulse_node(&mut self, node: Node<'_>) -> Option<MeasureToken> {
+    fn resolve_pulse_node(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
         let child = node.named_child(0)?;
 
         match child.kind() {
-            "note" => self.parse_node(child).map(MeasureToken::Note),
-            "empty_note" => Some(MeasureToken::EmptyNote),
-            "prolonged_note" => Some(MeasureToken::ProlongedNote),
+            "note" => self.parse_node(child).map(MeasureTokenKind::Note),
+            "empty_note" => Some(MeasureTokenKind::EmptyNote),
+            "prolonged_note" => Some(MeasureTokenKind::ProlongedNote),
             _ => None,
         }
     }
@@ -347,12 +388,7 @@ impl<'a> DocumentValidator<'a> {
 
             let range = start_range
                 .zip(end_range)
-                .map(|(start, end)| Range {
-                    start_byte: start.start_byte,
-                    end_byte: end.end_byte,
-                    start_point: start.start_point,
-                    end_point: end.end_point,
-                })
+                .map(|(start, end)| start.merge(end))
                 .unwrap_or(fallback_range);
 
             self.report_error(

@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::ast::{symbols::Range, types::Voice};
+use crate::{ast::types::Voice, ts_utils::range::Range};
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -45,6 +45,10 @@ pub enum DiagnosticKind {
     MeasureCountMismatch(usize, usize, Range),
     #[error("expected {0} voices, got {1}")]
     VoiceCountMismatch(usize, usize, Range),
+    #[error("unmatched underline delimiter '`'")]
+    UnmatchedUnderline,
+    #[error("expected {0}, got {1}")]
+    MismatchedVerseIndex(usize, usize),
 }
 
 impl DiagnosticKind {
@@ -67,6 +71,8 @@ impl DiagnosticKind {
             DiagnosticKind::MeasureColumnMismatch(_, _, _) => "E015",
             DiagnosticKind::MeasureCountMismatch(_, _, _) => "E016",
             DiagnosticKind::VoiceCountMismatch(_, _, _) => "E017",
+            DiagnosticKind::UnmatchedUnderline => "E018",
+            DiagnosticKind::MismatchedVerseIndex(_, _) => "E019",
         }
     }
 
