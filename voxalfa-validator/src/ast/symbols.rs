@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        lyrics::Lyric,
+        lyrics::LyricLine,
         solfa::SolfaLine,
         types::{Dynamic, DynamicKind, Key, TimeSignature, Voice},
     },
@@ -151,7 +151,7 @@ pub struct Section {
     pub params: SectionParams,
     pub dynamics: Dynamics,
     pub solfa: Vec<SolfaLine>,
-    pub lyrics: Vec<Lyric>,
+    pub lyrics: Vec<LyricLine>,
 }
 
 #[derive(Debug, Default)]

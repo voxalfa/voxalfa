@@ -1481,28 +1481,33 @@
       "value": "[ai]"
     },
     "lyric_chunk": {
-      "type": "REPEAT1",
-      "content": {
-        "type": "CHOICE",
-        "members": [
-          {
-            "type": "SYMBOL",
-            "name": "lyric_placeholder"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "lyric_string"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "lyric_group"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "underline_marker"
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "lyric_group"
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "lyric_placeholder"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "lyric_string"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "underline_marker"
+              }
+            ]
           }
-        ]
-      }
+        }
+      ]
     },
     "space_operator": {
       "type": "PATTERN",

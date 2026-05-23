@@ -166,12 +166,10 @@ export default grammar({
     note_variation: () => /[ai]/,
 
     lyric_chunk: ($) =>
-      repeat1(
-        choice(
-          $.lyric_placeholder,
-          $.lyric_string,
-          $.lyric_group,
-          $.underline_marker,
+      choice(
+        $.lyric_group,
+        repeat1(
+          choice($.lyric_placeholder, $.lyric_string, $.underline_marker),
         ),
       ),
 

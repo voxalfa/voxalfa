@@ -2,7 +2,7 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
     ast::{
-        lyrics::{Lyric, LyricAnchor, LyricToken},
+        lyrics::{LyricAnchor, LyricLine, LyricToken, LyricTokenKind},
         solfa::{Measure, MeasureState, MeasureToken, MeasureTokenKind, SolfaLine},
         symbols::{
             Assignment, AssignmentData, Document, Field, FieldAssign, Header, KeyData, Section,
@@ -117,6 +117,7 @@ impl<'a> DocumentValidator<'a> {
 
     fn handle_solfa_node(&mut self, node: Node<'_>, lines: &mut Vec<SolfaLine>) {
         if let Some(value) = self.resolve_solfa_line(node, lines.len()) {
+            self.validate_solfa_line(&value);
             lines.push(value);
         }
     }
@@ -138,18 +139,17 @@ impl<'a> DocumentValidator<'a> {
             range: node.range(),
         };
 
-        self.validate_solfa_line(&line);
-
         Some(line)
     }
 
     fn handle_lyric_node(&mut self, node: Node<'_>, section: &mut Section) {
         if let Some(line) = self.resolve_lyric_line(node, section) {
+            self.validate_lyric_line(&line);
             section.lyrics.push(line);
         }
     }
 
-    fn resolve_lyric_line(&mut self, node: Node<'_>, section: &Section) -> Option<Lyric> {
+    fn resolve_lyric_line(&mut self, node: Node<'_>, section: &Section) -> Option<LyricLine> {
         let verse_node = node.child_by_field_name("verse")?;
         let content_node = node.child_by_field_name("content")?;
         let anchor_node = node.child_by_field_name("anchor");
@@ -172,10 +172,11 @@ impl<'a> DocumentValidator<'a> {
             );
         }
 
-        Some(Lyric {
+        Some(LyricLine {
             id,
             verse: expected_verse,
             tokens: self.resolve_lyric_tokens(content_node),
+            range: node.range(),
             anchor,
         })
     }
@@ -184,12 +185,38 @@ impl<'a> DocumentValidator<'a> {
         let mut tokens = Vec::new();
 
         for child in node.named_children(&mut node.walk()) {
-            if let Some(token) = self.resolve_lyric_token(child) {
-                tokens.push(token);
+            if let Some(kind) = self.resolve_lyric_token(child) {
+                tokens.push(LyricToken {
+                    kind,
+                    range: child.range(),
+                });
             }
         }
 
         tokens
+    }
+
+    fn validate_lyric_line(&mut self, line: &LyricLine) {
+        let mut current_underline = None;
+
+        for token in &line.tokens {
+            if let LyricTokenKind::Chunk(tokens) | LyricTokenKind::Group(tokens) = &token.kind {
+                for token in tokens {
+                    if matches!(token.kind, LyricTokenKind::UnderlineMarker)
+                        && current_underline.take().is_none()
+                    {
+                        current_underline = Some(token);
+                    }
+                }
+            }
+        }
+
+        if let Some(token) = current_underline {
+            self.report_error(
+                token.range.merge(line.range),
+                DiagnosticKind::UnmatchedUnderline,
+            );
+        }
     }
 
     fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
@@ -330,16 +357,16 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
-    fn resolve_lyric_token(&mut self, node: Node<'_>) -> Option<LyricToken> {
+    fn resolve_lyric_token(&mut self, node: Node<'_>) -> Option<LyricTokenKind> {
         match node.kind() {
-            "space_operator" => Some(LyricToken::Space),
-            "concat_operator" => Some(LyricToken::Concat),
-            "newline_operator" => Some(LyricToken::Newline),
-            "underline_marker" => Some(LyricToken::UnderlineMarker),
-            "lyric_placeholder" => Some(LyricToken::Placeholder),
-            "lyric_group" => Some(LyricToken::Group(self.resolve_lyric_tokens(node))),
-            "lyric_string" => self.resolve_node_string(node).map(LyricToken::String),
-            "lyric_chunk" => node.child(0).and_then(|n| self.resolve_lyric_token(n)),
+            "space_operator" => Some(LyricTokenKind::Space),
+            "concat_operator" => Some(LyricTokenKind::Concat),
+            "newline_operator" => Some(LyricTokenKind::Newline),
+            "underline_marker" => Some(LyricTokenKind::UnderlineMarker),
+            "lyric_placeholder" => Some(LyricTokenKind::Placeholder),
+            "lyric_group" => Some(LyricTokenKind::Group(self.resolve_lyric_tokens(node))),
+            "lyric_string" => self.resolve_node_string(node).map(LyricTokenKind::String),
+            "lyric_chunk" => Some(LyricTokenKind::Chunk(self.resolve_lyric_tokens(node))),
             _ => None,
         }
     }
