@@ -3,7 +3,7 @@ Sample Partition
 =================================================
 ~~ @version 1.0
 
-~~ This is a sample voxalfa file (.solfa), it was designed to be a simple language for composing and storing Tonic-Solfa pieces.
+~~ This is a sample voxalfa file (.vfa), it was designed to be a simple language for composing and storing Tonic-Solfa pieces.
 ~~ It is a markup language with inline markers denoted with [<marker>]
 ~~ 
 ~~ We can divide the file into two parts:

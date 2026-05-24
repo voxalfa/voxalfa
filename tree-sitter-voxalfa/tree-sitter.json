@@ -5,8 +5,8 @@
       "name": "voxalfa",
       "camelcase": "voxalfa",
       "title": "Voxalfa",
-      "scope": "source.solfa",
-      "file-types": ["solfa"],
+      "scope": "source.vfa",
+      "file-types": ["vfa"],
       "injection-regex": "^voxalfa$",
       "class-name": "TreeSitterVoxalfa",
       "highlights": "queries/highlights.scm"
