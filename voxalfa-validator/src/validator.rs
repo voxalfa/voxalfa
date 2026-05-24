@@ -2,11 +2,14 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
     ast::{
+        body::{Body, Section},
         document::Document,
         header::Header,
         lyrics::{LyricAnchor, LyricLine, LyricToken, LyricTokenKind},
         solfa::{Measure, MeasureState, MeasureToken, MeasureTokenKind, SolfaLine},
-        symbols::{ScopeKind, SymbolTree},
+        symbols::{
+            Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree, Value,
+        },
         types::Voice,
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
@@ -48,7 +51,7 @@ impl<'a> DocumentValidator<'a> {
             let root = tree.root_node();
 
             self.handle_parser_errors(root, context);
-            // self.handle_root_node(root);
+            self.handle_root_node(root);
         }
 
         ValidatorOutput {
@@ -62,20 +65,20 @@ impl<'a> DocumentValidator<'a> {
         for child in root.named_children(&mut root.walk()) {
             match child.kind() {
                 "header" => self.handle_header_node(child),
-                // "body" => self.handle_body_node(child),
+                "body" => self.handle_body_node(child),
                 _ => {}
             }
         }
     }
-    //
+
     fn handle_header_node(&mut self, node: Node<'_>) {
         let sid = self.tree.add_scope(ScopeKind::Header, node.range(), None);
         let mut header = Header::new(sid);
 
         for child in node.named_children(&mut node.walk()) {
             match child.kind() {
-                // "metadata_line" => self.handle_assignment_node(child, &mut header.metadata),
-                // "parameter_line" => self.handle_assignment_node(child, &mut header.params),
+                "metadata_line" => self.handle_assignment_node(child, sid, &mut header.metadata),
+                "parameter_line" => self.handle_assignment_node(child, sid, &mut header.params),
                 _ => {}
             }
         }
@@ -83,64 +86,85 @@ impl<'a> DocumentValidator<'a> {
         self.document.header = header;
     }
 
-    // fn handle_assignment_node<T: FieldAssign>(&mut self, node: Node<'_>, params: &mut T) {
-    //     for child in node.named_children(&mut node.walk()) {
-    //         if let Some(source) = self.resolve_assignment_source(child) {
-    //             params.assign_field(source, self);
-    //         }
-    //     }
-    // }
+    fn handle_assignment_node<T: FieldAssign>(
+        &mut self,
+        node: Node<'_>,
+        parent_sid: ScopeId,
+        params: &mut T,
+    ) {
+        let root_sid =
+            self.tree
+                .add_scope(ScopeKind::AssignmentLine, node.range(), parent_sid.into());
 
-    fn resolve_assignment_source<'b>(&mut self, node: Node<'b>) -> Option<AssignmentData<'b>> {
-        let key_node = node.child_by_field_name("name")?;
-        let value_node = node.child_by_field_name("value")?;
-        let key_name = self.resolve_node_string(key_node)?;
+        for child in node.named_children(&mut node.walk()) {
+            let scope_id =
+                self.tree
+                    .add_scope(ScopeKind::Assignment, child.range(), root_sid.into());
 
-        Some(AssignmentData {
-            key_node,
-            key_name,
-            value_node,
-            key_range: key_node.range(),
-            value_range: value_node.range(),
-        })
+            if let Some(source) = self.resolve_assignment_data(child, scope_id) {
+                params.assign_field(source, self);
+            }
+        }
     }
 
-    // fn handle_body_node(&mut self, node: Node<'_>) {
-    //     for child in node.named_children(&mut node.walk()) {
-    //         if child.kind() == "section" {
-    //             let section = self.resolve_section(child);
-    //             self.output.body.sections.push(section);
-    //         }
-    //     }
-    // }
-    //
-    // fn handle_solfa_node(&mut self, node: Node<'_>, lines: &mut Vec<SolfaLine>) {
-    //     if let Some(value) = self.resolve_solfa_line(node, lines.len()) {
-    //         self.validate_solfa_line(&value);
-    //         lines.push(value);
-    //     }
-    // }
-    //
-    // fn resolve_solfa_line(&mut self, node: Node<'_>, id: usize) -> Option<SolfaLine> {
-    //     let voice = self.resolve_solfa_voice(node, id)?;
-    //     let mut measures = Vec::new();
-    //
-    //     for measure in node.children_by_field_name("measure", &mut node.walk()) {
-    //         if let Some(measure) = self.resolve_measure(measure) {
-    //             measures.push(measure);
-    //         }
-    //     }
-    //
-    //     let line = SolfaLine {
-    //         id,
-    //         voice,
-    //         measures,
-    //         range: node.range(),
-    //     };
-    //
-    //     Some(line)
-    // }
-    //
+    fn handle_body_node(&mut self, node: Node<'_>) {
+        let sid = self.tree.add_scope(ScopeKind::Header, node.range(), None);
+        let mut body = Body::new(sid);
+
+        for child in node.named_children(&mut node.walk()) {
+            if child.kind() == "section" {
+                let section = self.resolve_section(child, body.sid);
+                body.sections.push(section);
+            }
+        }
+
+        self.document.body = body;
+    }
+
+    fn handle_solfa_node(
+        &mut self,
+        node: Node<'_>,
+        parent_sid: ScopeId,
+        lines: &mut Vec<SolfaLine>,
+    ) {
+        let sid = self
+            .tree
+            .add_scope(ScopeKind::SolfaLine, node.range(), parent_sid.into());
+
+        if let Some(value) = self.resolve_solfa_line(node, sid, lines.len()) {
+            self.validate_solfa_line(&value);
+            lines.push(value);
+        }
+    }
+
+    fn resolve_solfa_line(
+        &mut self,
+        node: Node<'_>,
+        scope_id: ScopeId,
+        id: usize,
+    ) -> Option<SolfaLine> {
+        let voice = self.resolve_solfa_voice(node, id)?;
+        let mut measures = Vec::new();
+
+        for measure in node.children_by_field_name("measure", &mut node.walk()) {
+            let scope_id =
+                self.tree
+                    .add_scope(ScopeKind::Measure, measure.range(), scope_id.into());
+
+            if let Some(measure) = self.resolve_measure(measure, scope_id) {
+                measures.push(measure);
+            }
+        }
+
+        let line = SolfaLine {
+            sid: scope_id,
+            voice,
+            measures,
+        };
+
+        Some(line)
+    }
+
     // fn handle_lyric_node(&mut self, node: Node<'_>, section: &mut Section) {
     //     if let Some(line) = self.resolve_lyric_line(node, section) {
     //         self.validate_lyric_line(&line);
@@ -218,144 +242,149 @@ impl<'a> DocumentValidator<'a> {
     //     }
     // }
     //
-    // fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
-    //     let voice_node = node.child_by_field_name("voice")?;
-    //     let voice_str = self.resolve_node_string(voice_node)?;
-    //     let voice = Voice::try_from(voice_str.as_str());
-    //
-    //     if let Ok(value) = voice {
-    //         if let Some(expected) = self.output.get_voice(id) {
-    //             if value != expected {
-    //                 self.report_error(
-    //                     voice_node.range(),
-    //                     DiagnosticKind::VoiceMismatch(expected, value),
-    //                 );
-    //             }
-    //
-    //             return Some(expected);
-    //         }
-    //
-    //         self.report_error(
-    //             voice_node.range(),
-    //             DiagnosticKind::UndefinedVoice(voice_str),
-    //         );
-    //     } else {
-    //         self.report_error(voice_node.range(), DiagnosticKind::InvalidVoice(voice_str));
-    //     }
-    //
-    //     None
-    // }
-    //
-    // fn resolve_measure(&mut self, node: Node<'_>) -> Option<Measure> {
-    //     let mut measure = Measure::new(node.range());
-    //     let mut state = MeasureState::default();
-    //
-    //     for child in node.named_children(&mut node.walk()) {
-    //         let range = child.range();
-    //         let token = self.resolve_measure_token(child);
-    //
-    //         if state.col_start.is_none() {
-    //             state.col_start = Some(range);
-    //         }
-    //
-    //         match token {
-    //             Some(MeasureTokenKind::NormalDivision | MeasureTokenKind::MediumDivision) => {
-    //                 self.validate_measure_column(&state);
-    //                 state.col_acc = vec![0];
-    //                 state.col_start = None;
-    //                 state.col_count += 1;
-    //             }
-    //             Some(MeasureTokenKind::HalfDivision) => {
-    //                 state.col_acc.push(0);
-    //             }
-    //             Some(
-    //                 MeasureTokenKind::Note(_)
-    //                 | MeasureTokenKind::ProlongedNote
-    //                 | MeasureTokenKind::EmptyNote,
-    //             ) => {
-    //                 if let Some(last) = state.col_acc.last_mut() {
-    //                     *last += 1;
-    //                 }
-    //             } // note
-    //             _ => {}
-    //         }
-    //
-    //         state.col_end = Some(range);
-    //
-    //         if let Some(kind) = token {
-    //             measure.tokens.push(MeasureToken { range, kind });
-    //         }
-    //     }
-    //
-    //     state.col_count += 1;
-    //
-    //     self.validate_measure_column(&state);
-    //     self.validate_time_signature(&state, node);
-    //
-    //     Some(measure)
-    // }
-    //
-    // fn validate_time_signature(&mut self, state: &MeasureState, node: Node<'_>) {
-    //     if let Some(time) = &self.output.header.params.time
-    //         && state.col_count != time.value.top
-    //     {
-    //         self.report_error(
-    //             node.range(),
-    //             DiagnosticKind::MeasureColumnMismatch(
-    //                 time.value.top,
-    //                 state.col_count,
-    //                 time.data.range,
-    //             ),
-    //         );
-    //     }
-    // }
-    //
-    // fn validate_measure_column(&mut self, state: &MeasureState) {
-    //     if state.is_valid() {
-    //         return;
-    //     }
-    //
-    //     if let Some((start_range, end_range)) = state.col_start.zip(state.col_end) {
-    //         self.report_error(
-    //             start_range.merge(end_range),
-    //             DiagnosticKind::InvalidNoteDistribution,
-    //         );
-    //     }
-    // }
-    //
-    // fn validate_solfa_line(&mut self, line: &SolfaLine) {
-    //     let mut current_underline = None;
-    //
-    //     for measure in &line.measures {
-    //         for token in &measure.tokens {
-    //             if matches!(token.kind, MeasureTokenKind::UnderlineMarker)
-    //                 && current_underline.take().is_none()
-    //             {
-    //                 current_underline = Some(token);
-    //             }
-    //         }
-    //     }
-    //
-    //     if let Some(token) = current_underline {
-    //         self.report_error(
-    //             token.range.merge(line.range),
-    //             DiagnosticKind::UnmatchedUnderline,
-    //         );
-    //     }
-    // }
-    //
-    // fn resolve_measure_token(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
-    //     match node.kind() {
-    //         "half_division" => Some(MeasureTokenKind::HalfDivision),
-    //         "quarter_division" => Some(MeasureTokenKind::QuarterDivision),
-    //         "medium_division" => Some(MeasureTokenKind::MediumDivision),
-    //         "normal_division" => Some(MeasureTokenKind::NormalDivision),
-    //         "underline_marker" => Some(MeasureTokenKind::UnderlineMarker),
-    //         "pulse" => self.resolve_pulse_node(node),
-    //         _ => None,
-    //     }
-    // }
-    //
+    fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
+        let voice_node = node.child_by_field_name("voice")?;
+        let voice_str = self.resolve_node_string(voice_node)?;
+        let voice = Voice::try_from(voice_str.as_str());
+
+        if let Ok(value) = voice {
+            if let Some(expected) = self.document.get_voice(id) {
+                if value != expected {
+                    self.report_error(
+                        voice_node.range(),
+                        DiagnosticKind::VoiceMismatch(expected, value),
+                    );
+                }
+
+                return Some(expected);
+            }
+
+            self.report_error(
+                voice_node.range(),
+                DiagnosticKind::UndefinedVoice(voice_str),
+            );
+        } else {
+            self.report_error(voice_node.range(), DiagnosticKind::InvalidVoice(voice_str));
+        }
+
+        None
+    }
+
+    fn resolve_measure(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<Measure> {
+        let mut measure = Measure::new(scope_id);
+        let mut state = MeasureState::default();
+
+        for child in node.named_children(&mut node.walk()) {
+            let range = child.range();
+            let token = self.resolve_measure_token(child);
+
+            if state.col_start.is_none() {
+                state.col_start = Some(range);
+            }
+
+            match token {
+                Some(MeasureTokenKind::NormalDivision | MeasureTokenKind::MediumDivision) => {
+                    self.validate_measure_column(&state);
+                    state.col_acc = vec![0];
+                    state.col_start = None;
+                    state.col_count += 1;
+                }
+                Some(MeasureTokenKind::HalfDivision) => {
+                    state.col_acc.push(0);
+                }
+                Some(
+                    MeasureTokenKind::Note(_)
+                    | MeasureTokenKind::ProlongedNote
+                    | MeasureTokenKind::EmptyNote,
+                ) => {
+                    if let Some(last) = state.col_acc.last_mut() {
+                        *last += 1;
+                    }
+                } // note
+                _ => {}
+            }
+
+            state.col_end = Some(range);
+
+            let sid = self
+                .tree
+                .add_symbol(SymbolKind::Value(Value::Token), range, scope_id);
+
+            if let Some(kind) = token {
+                measure.tokens.push(MeasureToken { sid, kind });
+            }
+        }
+
+        state.col_count += 1;
+
+        self.validate_measure_column(&state);
+        self.validate_time_signature(&state, node);
+
+        Some(measure)
+    }
+
+    fn validate_time_signature(&mut self, state: &MeasureState, node: Node<'_>) {
+        if let Some(time) = &self.document.header.params.time
+            && state.col_count != time.value.top
+        {
+            let scope = self.tree.resolve_scope(time.sid);
+
+            self.report_error(
+                node.range(),
+                DiagnosticKind::MeasureColumnMismatch(time.value.top, state.col_count, scope.range),
+            );
+        }
+    }
+
+    fn validate_measure_column(&mut self, state: &MeasureState) {
+        if state.is_valid() {
+            return;
+        }
+
+        if let Some((start_range, end_range)) = state.col_start.zip(state.col_end) {
+            self.report_error(
+                start_range.merge(end_range),
+                DiagnosticKind::InvalidNoteDistribution,
+            );
+        }
+    }
+
+    fn validate_solfa_line(&mut self, line: &SolfaLine) {
+        let mut current_underline = None;
+
+        for measure in &line.measures {
+            for token in &measure.tokens {
+                if matches!(token.kind, MeasureTokenKind::UnderlineMarker)
+                    && current_underline.take().is_none()
+                {
+                    current_underline = Some(token);
+                }
+            }
+        }
+
+        if let Some(token) = current_underline {
+            let scope = self.tree.get_scope(line.sid);
+            let token_symbol = self.tree.get_symbol(token.sid);
+
+            self.report_error(
+                token_symbol.range.merge(scope.range),
+                DiagnosticKind::UnmatchedUnderline,
+            );
+        }
+    }
+
+    fn resolve_measure_token(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
+        match node.kind() {
+            "half_division" => Some(MeasureTokenKind::HalfDivision),
+            "quarter_division" => Some(MeasureTokenKind::QuarterDivision),
+            "medium_division" => Some(MeasureTokenKind::MediumDivision),
+            "normal_division" => Some(MeasureTokenKind::NormalDivision),
+            "underline_marker" => Some(MeasureTokenKind::UnderlineMarker),
+            "pulse" => self.resolve_pulse_node(node),
+            _ => None,
+        }
+    }
+
     // fn resolve_lyric_token(&mut self, node: Node<'_>) -> Option<LyricTokenKind> {
     //     match node.kind() {
     //         "space_operator" => Some(LyricTokenKind::Space),
@@ -369,37 +398,41 @@ impl<'a> DocumentValidator<'a> {
     //         _ => None,
     //     }
     // }
-    //
-    // fn resolve_pulse_node(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
-    //     let child = node.named_child(0)?;
-    //
-    //     match child.kind() {
-    //         "note" => self.parse_node(child).map(MeasureTokenKind::Note),
-    //         "empty_note" => Some(MeasureTokenKind::EmptyNote),
-    //         "prolonged_note" => Some(MeasureTokenKind::ProlongedNote),
-    //         _ => None,
-    //     }
-    // }
-    //
-    // fn resolve_section(&mut self, node: Node<'_>) -> Section {
-    //     let mut section = Section::default();
-    //
-    //     for child in node.named_children(&mut node.walk()) {
-    //         match child.kind() {
-    //             "parameter_line" => self.handle_assignment_node(child, &mut section.params),
-    //             "dynamics_line" => self.handle_assignment_node(child, &mut section.dynamics),
-    //             "solfa_line" => self.handle_solfa_node(child, &mut section.solfa),
-    //             "lyric_line" => self.handle_lyric_node(child, &mut section),
-    //             _ => {}
-    //         }
-    //     }
-    //
-    //     self.validate_voice_count(&section, node.range());
-    //     self.validate_masure_count(&section);
-    //
-    //     section
-    // }
-    //
+
+    fn resolve_pulse_node(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
+        let child = node.named_child(0)?;
+
+        match child.kind() {
+            "note" => self.parse_node(child).map(MeasureTokenKind::Note),
+            "empty_note" => Some(MeasureTokenKind::EmptyNote),
+            "prolonged_note" => Some(MeasureTokenKind::ProlongedNote),
+            _ => None,
+        }
+    }
+
+    fn resolve_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> Section {
+        let sid = self
+            .tree
+            .add_scope(ScopeKind::Section, node.range(), parent_sid.into());
+
+        let mut section = Section::new(sid);
+
+        for child in node.named_children(&mut node.walk()) {
+            match child.kind() {
+                "parameter_line" => self.handle_assignment_node(child, sid, &mut section.params),
+                "dynamics_line" => self.handle_assignment_node(child, sid, &mut section.dynamics),
+                "solfa_line" => self.handle_solfa_node(child, sid, &mut section.solfa),
+                // "lyric_line" => self.handle_lyric_node(child, &mut section),
+                _ => {}
+            }
+        }
+
+        // self.validate_voice_count(&section, node.range());
+        // self.validate_masure_count(&section);
+
+        section
+    }
+
     // fn validate_voice_count(&mut self, section: &Section, fallback_range: Range) {
     //     let Some(voices) = &self.output.header.params.voices else {
     //         return;
@@ -468,45 +501,60 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
-    // fn resolve_value_data(&mut self, node: Node<'_>) -> Option<ValueData> {
-    //     let kind = match node.kind() {
-    //         "string" => ValueKind::String,
-    //         "integer" => ValueKind::Integer,
-    //         "float" => ValueKind::Float,
-    //         "boolean" => ValueKind::Boolean,
-    //         "list" => ValueKind::List,
-    //         "token" => ValueKind::Token,
-    //         _ => return None,
-    //     };
-    //
-    //     Some(ValueData {
-    //         kind,
-    //         range: node.range(),
-    //     })
-    // }
+    fn resolve_assignment_data<'b>(
+        &mut self,
+        node: Node<'b>,
+        scope_id: ScopeId,
+    ) -> Option<AssignmentData<'b>> {
+        let key_node = node.child_by_field_name("name")?;
+        let value_node = node.child_by_field_name("value")?;
+        let key_name = self.resolve_node_string(key_node)?;
 
-    // #[inline]
-    // pub(crate) fn parse_node<T: ParseNode>(&mut self, node: Node<'_>) -> Option<T> {
-    //     T::parse_node(node, self)
-    // }
-    //
-    // pub(crate) fn assign_field<T: ParseNode>(
-    //     &mut self,
-    //     source: AssignmentDataSource,
-    //     field: &mut Field<T>,
-    // ) {
-    //     if let Some(value) = field {
-    //         self.report_warning(
-    //             source.data.range,
-    //             DiagnosticKind::KeyReassignment(source.data.key.name.clone(), value.data.range),
-    //         );
-    //     } else {
-    //         *field = self.parse_node(source.value_node).map(|value| Assignment {
-    //             value,
-    //             data: source.data,
-    //         });
-    //     }
-    // }
+        Some(AssignmentData {
+            scope_id,
+            value_node,
+            key_node,
+            key_name,
+            full_range: node.range(),
+            key_range: key_node.range(),
+            value_range: value_node.range(),
+        })
+    }
+
+    #[inline]
+    pub(crate) fn parse_node<T: ParseNode>(&mut self, node: Node<'_>) -> Option<T> {
+        T::parse_node(node, self)
+    }
+
+    pub(crate) fn assign_field<T: ParseNode>(
+        &mut self,
+        data: AssignmentData,
+        field: &mut Field<T>,
+    ) {
+        if let Some(value) = field {
+            let name = data.key_name.clone();
+            let scope = self.tree.resolve_scope(value.sid);
+
+            self.report_warning(
+                data.full_range,
+                DiagnosticKind::KeyReassignment(name, scope.range),
+            );
+        }
+
+        let _ = self.tree.add_symbol(
+            SymbolKind::Key(data.key_name.clone()),
+            data.key_range,
+            data.scope_id,
+        );
+
+        let sid = self
+            .tree
+            .add_symbol(T::symbol_kind(), data.value_range, data.scope_id);
+
+        *field = self
+            .parse_node(data.value_node)
+            .map(|value| SymbolRef { sid, value });
+    }
 
     pub(crate) fn resolve_node_string(&mut self, node: Node<'_>) -> Option<String> {
         node.utf8_text(self.source)

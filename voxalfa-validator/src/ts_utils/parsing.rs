@@ -3,6 +3,7 @@ use tree_sitter::Node;
 use crate::{
     ast::{
         solfa::{BaseNote, Note, NoteVariation},
+        symbols::{SymbolKind, Value},
         types::{Key, TimeSignature, Voice},
     },
     diagnostic::DiagnosticKind,
@@ -11,6 +12,7 @@ use crate::{
 
 pub trait ParseNode: Sized {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self>;
+    fn symbol_kind() -> SymbolKind;
 }
 
 impl ParseNode for usize {
@@ -33,6 +35,10 @@ impl ParseNode for usize {
 
         None
     }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::Integer)
+    }
 }
 
 impl ParseNode for String {
@@ -49,6 +55,10 @@ impl ParseNode for String {
             context.report_error(range, DiagnosticKind::ExpectedType("string", kind));
             None
         }
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::String)
     }
 }
 
@@ -68,6 +78,10 @@ impl ParseNode for bool {
             context.report_error(range, DiagnosticKind::ExpectedType("boolean", kind));
             None
         }
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::Boolean)
     }
 }
 
@@ -90,6 +104,10 @@ impl ParseNode for Key {
 
         None
     }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::Token)
+    }
 }
 
 impl ParseNode for Voice {
@@ -111,6 +129,10 @@ impl ParseNode for Voice {
 
         None
     }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::Token)
+    }
 }
 
 impl ParseNode for TimeSignature {
@@ -126,6 +148,10 @@ impl ParseNode for TimeSignature {
                 bottom: value[1],
             })
         }
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::List)
     }
 }
 
@@ -146,6 +172,10 @@ impl<T: ParseNode> ParseNode for Vec<T> {
         } else {
             context.parse_node(node).map(|v| vec![v])
         }
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::List)
     }
 }
 
@@ -173,5 +203,9 @@ impl ParseNode for Note {
             variation,
             octave,
         })
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::Token)
     }
 }

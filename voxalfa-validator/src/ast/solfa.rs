@@ -1,4 +1,10 @@
-use crate::{ast::types::Voice, ts_utils::range::Range};
+use crate::{
+    ast::{
+        symbols::{ScopeId, SymbolId},
+        types::Voice,
+    },
+    ts_utils::range::Range,
+};
 
 #[derive(Debug)]
 pub enum BaseNote {
@@ -57,22 +63,21 @@ pub struct Note {
 
 #[derive(Debug)]
 pub struct SolfaLine {
-    pub id: usize,
+    pub sid: ScopeId,
     pub voice: Voice,
     pub measures: Vec<Measure>,
-    pub range: Range,
 }
 
 #[derive(Debug)]
 pub struct Measure {
-    pub range: Range,
+    pub sid: ScopeId,
     pub tokens: Vec<MeasureToken>,
 }
 
 impl Measure {
-    pub fn new(range: Range) -> Self {
+    pub fn new(sid: ScopeId) -> Self {
         Self {
-            range,
+            sid,
             tokens: Vec::new(),
         }
     }
@@ -80,7 +85,7 @@ impl Measure {
 
 #[derive(Debug)]
 pub struct MeasureToken {
-    pub range: Range,
+    pub sid: SymbolId,
     pub kind: MeasureTokenKind,
 }
 

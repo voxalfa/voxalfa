@@ -1,10 +1,17 @@
-use crate::ast::symbols::{Field, ScopeId};
+use crate::{
+    ast::{
+        params::CompositionParams,
+        symbols::{Field, FieldAssign, ScopeId},
+    },
+    ts_utils::types::AssignmentData,
+    validator::DocumentValidator,
+};
 
 #[derive(Debug, Default)]
 pub struct Header {
     pub sid: ScopeId,
     pub metadata: HeaderMetadata,
-    // pub params: CompositionParams,
+    pub params: CompositionParams,
 }
 
 impl Header {
@@ -25,15 +32,15 @@ pub struct HeaderMetadata {
     pub description: Field<String>,
 }
 
-// impl FieldAssign for HeaderMetadata {
-//     fn assign_field(&mut self, source: AssignmentDataSource, context: &mut DocumentValidator) {
-//         match source.data.key.name.as_str() {
-//             "title" => context.assign_field(source, &mut self.title),
-//             "author" => context.assign_field(source, &mut self.author),
-//             "composer" => context.assign_field(source, &mut self.composer),
-//             "release" => context.assign_field(source, &mut self.release),
-//             "description" => context.assign_field(source, &mut self.description),
-//             _ => {}
-//         }
-//     }
-// }
+impl FieldAssign for HeaderMetadata {
+    fn assign_field(&mut self, source: AssignmentData, context: &mut DocumentValidator) {
+        match source.key_name.as_str() {
+            "title" => context.assign_field(source, &mut self.title),
+            "author" => context.assign_field(source, &mut self.author),
+            "composer" => context.assign_field(source, &mut self.composer),
+            "release" => context.assign_field(source, &mut self.release),
+            "description" => context.assign_field(source, &mut self.description),
+            _ => {}
+        }
+    }
+}
