@@ -35,12 +35,6 @@
     }
   },
   {
-    "type": "delimited_comment",
-    "named": true,
-    "extra": true,
-    "fields": {}
-  },
-  {
     "type": "dynamics_line",
     "named": true,
     "fields": {},
@@ -608,10 +602,6 @@
     "named": false
   },
   {
-    "type": "(~",
-    "named": false
-  },
-  {
     "type": ")",
     "named": false
   },
@@ -688,11 +678,6 @@
     "named": true
   },
   {
-    "type": "multiline_comment",
-    "named": true,
-    "extra": true
-  },
-  {
     "type": "newline_operator",
     "named": true
   },
@@ -750,10 +735,6 @@
   },
   {
     "type": "~",
-    "named": false
-  },
-  {
-    "type": "~)",
     "named": false
   },
   {

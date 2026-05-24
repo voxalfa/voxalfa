@@ -1636,11 +1636,15 @@
           "value": "~~"
         },
         {
+          "type": "PATTERN",
+          "value": "[ \\t]*"
+        },
+        {
           "type": "CHOICE",
           "members": [
             {
               "type": "PATTERN",
-              "value": "[ \\t]*[^@][^\\n]*"
+              "value": "[^@][^\\n]*"
             },
             {
               "type": "SYMBOL",
@@ -1649,41 +1653,12 @@
           ]
         }
       ]
-    },
-    "delimited_comment": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "(~"
-        },
-        {
-          "type": "PATTERN",
-          "value": "[^~\\n]*"
-        },
-        {
-          "type": "STRING",
-          "value": "~)"
-        }
-      ]
-    },
-    "multiline_comment": {
-      "type": "PATTERN",
-      "value": "~~~[^~]*~~~"
     }
   },
   "extras": [
     {
       "type": "SYMBOL",
       "name": "inline_comment"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "delimited_comment"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "multiline_comment"
     }
   ],
   "conflicts": [],

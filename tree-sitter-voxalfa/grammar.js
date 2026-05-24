@@ -10,7 +10,7 @@
 export default grammar({
   name: "voxalfa",
 
-  extras: ($) => [$.inline_comment, $.delimited_comment, $.multiline_comment],
+  extras: ($) => [$.inline_comment],
 
   rules: {
     source_file: ($) => seq(optional($.header), "---", optional($.body)),
@@ -202,10 +202,10 @@ export default grammar({
       ),
 
     inline_comment: ($) =>
-      seq("~~", choice(/[ \t]*[^@][^\n]*/, $.language_directive)),
+      seq("~~", /[ \t]*/, choice(/[^@][^\n]*/, $.language_directive)),
 
-    delimited_comment: () => seq("(~", /[^~\n]*/, "~)"),
-    multiline_comment: () => /~~~[^~]*~~~/,
+    // delimited_comment: () => seq("(~", /[^~\n]*/, "~)"),
+    // multiline_comment: () => /~~~[^~]*~~~/,
   },
 });
 

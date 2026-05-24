@@ -58,7 +58,7 @@
 
 [
  (inline_comment)
- (delimited_comment)
- (multiline_comment)
+ ; (delimited_comment)
+ ; (multiline_comment)
 ] @comment @spell
 
