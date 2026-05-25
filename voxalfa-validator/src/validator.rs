@@ -304,6 +304,7 @@ impl<'a> DocumentValidator<'a> {
         Some(SymbolRef { sid, value })
     }
 
+    // FIXME: Check column count against measures
     fn validate_lyric_line(&mut self, line: &LyricLine) {
         let mut current_underline = None;
 
