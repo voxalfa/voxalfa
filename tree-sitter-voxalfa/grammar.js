@@ -77,11 +77,11 @@ export default grammar({
 
     lyric_content: ($) =>
       seq(
-        $._lyric_chunk,
+        $.lyric_column,
         repeat(
           seq(
             choice($.concat_operator, $.space_operator, $.newline_operator),
-            choice($._lyric_chunk, blank()), // FIXME: blank() is used to allow trailing spaces and concat
+            choice($.lyric_column, blank()), // FIXME: blank() is used to allow trailing spaces and concat
           ),
         ),
       ),
@@ -161,26 +161,56 @@ export default grammar({
     note_base: () => /[drmfslt]/,
     note_variation: () => /[ai]/,
 
-    _lyric_chunk: ($) => choice($.lyric_group, $.lyric_chunk),
+    lyric_column: ($) =>
+      seq(
+        field("lyric", choice($.lyric_group, $.lyric_chunk)),
+        field("span", optional($.lyric_span)),
+      ),
 
     lyric_chunk: ($) =>
-      repeat1(choice($.lyric_placeholder, $.lyric_string, $.underline_marker)),
-
-    space_operator: () => / +/,
-    concat_operator: () => /_+/,
-    newline_operator: () => /\\+/,
-
-    lyric_string: () => /[^\s_/~``<>\\/\()]+/,
-    lyric_placeholder: () => "~",
+      seq(
+        optional($.underline_marker),
+        choice($._lyric_string, $.lyric_placeholder),
+        optional($.underline_marker),
+      ),
 
     lyric_group: ($) =>
       seq(
         "(",
         sep1(
           choice($.space_operator, $.newline_operator),
-          repeat1(choice($.lyric_string, $.underline_marker)),
+          seq(
+            optional($.underline_marker),
+            $._lyric_string,
+            optional($.underline_marker),
+          ),
         ),
         ")",
+      ),
+
+    _lyric_string: ($) => repeat1(choice($.lyric_string, $.lyric_special)),
+
+    lyric_span: () => /\++/,
+
+    space_operator: () => / +/,
+    concat_operator: () => /_+/,
+    newline_operator: () => /\\+/,
+
+    lyric_string: () => /[^\s_/~``<>\\/\()+&]+/,
+    lyric_placeholder: () => "~",
+
+    lyric_special: () =>
+      choice(
+        "&bls", // \
+        "&tld", // ~
+        "&btk", // `
+        "&lch", // <
+        "&rch", // >
+        "&sls", // /
+        "&lpr", // (
+        "&rpr", // )
+        "&pls", // +
+        "&amp", // &
       ),
 
     _space: () => /[ \t]+/,

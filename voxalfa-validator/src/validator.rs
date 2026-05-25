@@ -5,7 +5,10 @@ use crate::{
         body::{Body, Section},
         document::Document,
         header::Header,
-        lyrics::{LyricAnchor, LyricLine, LyricToken, LyricTokenKind},
+        lyrics::{
+            LyricAnchor, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind, LyricToken,
+            LyricTokenKind,
+        },
         solfa::{Measure, MeasureState, MeasureToken, MeasureTokenKind, SolfaLine},
         symbols::{Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree},
         types::Voice,
@@ -187,7 +190,7 @@ impl<'a> DocumentValidator<'a> {
         let group = section.solfa.len();
         let verse = self.parse_node(verse_node)?;
         let expected_verse = section.lyrics.iter().filter(|l| l.group == group).count() + 1;
-        let tokens = self.resolve_lyric_tokens(content_node, scope_id);
+        let (columns, operators) = self.resolve_lyric_tokens(content_node, scope_id);
         let anchor = anchor_node.and_then(|n| self.resolve_lyric_anchor(n, scope_id));
 
         if verse != expected_verse {
@@ -200,28 +203,78 @@ impl<'a> DocumentValidator<'a> {
         Some(LyricLine {
             sid: scope_id,
             verse: expected_verse,
-            anchor,
             group,
-            tokens,
+            anchor,
+            columns,
+            operators,
         })
     }
 
-    fn resolve_lyric_tokens(&mut self, node: Node<'_>, scope_id: ScopeId) -> Vec<Vec<LyricToken>> {
-        let mut tokens = Vec::new();
+    fn resolve_lyric_tokens(
+        &mut self,
+        node: Node<'_>,
+        scope_id: ScopeId,
+    ) -> (Vec<LyricColumn>, Vec<LyricOperator>) {
+        let mut columns = Vec::new();
+        let mut operators = Vec::new();
 
         for child in node.named_children(&mut node.walk()) {
-            let chunk = match child.kind() {
-                "lyric_chunk" => self.resolve_lyric_atoms(child, scope_id).into(),
-                "lyric_group" => self.resolve_lyric_atoms(child, scope_id).into(),
-                _ => self.resolve_lyric_atom(child, scope_id).map(|a| vec![a]),
-            };
-
-            if let Some(value) = chunk {
-                tokens.push(value);
+            match child.kind() {
+                "lyric_column" => {
+                    let column = self.resolve_lyric_column(child, scope_id);
+                    columns.push(column);
+                }
+                _ => {
+                    if let Some(operator) = self.resolve_lyric_operator(child, scope_id) {
+                        operators.push(operator);
+                    }
+                }
             }
         }
 
-        tokens
+        (columns, operators)
+    }
+
+    fn resolve_lyric_operator(
+        &mut self,
+        node: Node<'_>,
+        scope_id: ScopeId,
+    ) -> Option<LyricOperator> {
+        let value = match node.kind() {
+            "space_operator" => LyricOperatorKind::Space,
+            "concat_operator" => LyricOperatorKind::Concat,
+            "newline_operator" => LyricOperatorKind::Newline,
+            _ => return None,
+        };
+
+        let sid = self
+            .tree
+            .add_symbol(SymbolKind::Token, node.range(), scope_id);
+
+        Some(LyricOperator { sid, value })
+    }
+
+    fn resolve_lyric_column(&mut self, node: Node<'_>, scope_id: ScopeId) -> LyricColumn {
+        let mut chunks = Vec::new();
+
+        if let Some(lyric_node) = node.child_by_field_name("lyric") {
+            for child in lyric_node.named_children(&mut node.walk()) {
+                if let Some(value) = self.resolve_lyric_atom(child, scope_id) {
+                    chunks.push(value);
+                }
+            }
+        }
+
+        let extra_span = node
+            .child_by_field_name("span")
+            .and_then(|s| self.resolve_node_string(s))
+            .map(|s| s.len())
+            .unwrap_or_default();
+
+        LyricColumn {
+            span: extra_span + 1,
+            chunks,
+        }
     }
 
     fn resolve_lyric_atom(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricToken> {
@@ -242,18 +295,6 @@ impl<'a> DocumentValidator<'a> {
         Some(LyricToken { sid, value })
     }
 
-    fn resolve_lyric_atoms(&mut self, node: Node<'_>, scope_id: ScopeId) -> Vec<LyricToken> {
-        let mut chunks = Vec::new();
-
-        for child in node.named_children(&mut node.walk()) {
-            if let Some(value) = self.resolve_lyric_atom(child, scope_id) {
-                chunks.push(value);
-            }
-        }
-
-        chunks
-    }
-
     fn resolve_lyric_anchor(&mut self, node: Node<'_>, scope_id: ScopeId) -> Field<LyricAnchor> {
         let value = match node.kind() {
             "space_anchor" => LyricAnchor::Space,
@@ -272,7 +313,7 @@ impl<'a> DocumentValidator<'a> {
     fn validate_lyric_line(&mut self, line: &LyricLine) {
         let mut current_underline = None;
 
-        for token in line.tokens.iter().flatten() {
+        for token in line.columns.iter().map(|c| &c.chunks).flatten() {
             if matches!(token.value, LyricTokenKind::UnderlineMarker)
                 && current_underline.take().is_none()
             {

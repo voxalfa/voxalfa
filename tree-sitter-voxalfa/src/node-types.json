@@ -179,6 +179,10 @@
           "named": true
         },
         {
+          "type": "lyric_special",
+          "named": true
+        },
+        {
           "type": "lyric_string",
           "named": true
         },
@@ -187,6 +191,36 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "lyric_column",
+    "named": true,
+    "fields": {
+      "lyric": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "lyric_chunk",
+            "named": true
+          },
+          {
+            "type": "lyric_group",
+            "named": true
+          }
+        ]
+      },
+      "span": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "lyric_span",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -202,11 +236,7 @@
           "named": true
         },
         {
-          "type": "lyric_chunk",
-          "named": true
-        },
-        {
-          "type": "lyric_group",
+          "type": "lyric_column",
           "named": true
         },
         {
@@ -229,7 +259,15 @@
       "required": true,
       "types": [
         {
+          "type": "lyric_special",
+          "named": true
+        },
+        {
           "type": "lyric_string",
+          "named": true
+        },
+        {
+          "type": "newline_operator",
           "named": true
         },
         {
@@ -289,6 +327,11 @@
   },
   {
     "type": "lyric_placeholder",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "lyric_special",
     "named": true,
     "fields": {}
   },
@@ -598,6 +641,46 @@
     "named": false
   },
   {
+    "type": "&amp",
+    "named": false
+  },
+  {
+    "type": "&bls",
+    "named": false
+  },
+  {
+    "type": "&btk",
+    "named": false
+  },
+  {
+    "type": "&lch",
+    "named": false
+  },
+  {
+    "type": "&lpr",
+    "named": false
+  },
+  {
+    "type": "&pls",
+    "named": false
+  },
+  {
+    "type": "&rch",
+    "named": false
+  },
+  {
+    "type": "&rpr",
+    "named": false
+  },
+  {
+    "type": "&sls",
+    "named": false
+  },
+  {
+    "type": "&tld",
+    "named": false
+  },
+  {
     "type": "(",
     "named": false
   },
@@ -671,6 +754,10 @@
   },
   {
     "type": "integer",
+    "named": true
+  },
+  {
+    "type": "lyric_span",
     "named": true
   },
   {

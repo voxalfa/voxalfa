@@ -340,90 +340,114 @@ Sample Partition
       (lyric_line
         verse: (integer)
         content: (lyric_content
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (underline_marker)
-            (lyric_string)
-            (underline_marker))
+          (lyric_column
+            lyric: (lyric_chunk
+              (underline_marker)
+              (lyric_string)
+              (underline_marker)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (newline_operator)
-          (lyric_group
-            (lyric_string)
-            (space_operator)
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_group
+              (lyric_string)
+              (space_operator)
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (concat_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (concat_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_placeholder))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_placeholder)))
           (space_operator)
-          (lyric_chunk
-            (lyric_placeholder))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_placeholder)))
           (space_operator))
         anchor: (newline_anchor
           (newline_operator)))
       (lyric_line
         verse: (integer)
         content: (lyric_content
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (underline_marker)
-            (lyric_string)
-            (underline_marker))
+          (lyric_column
+            lyric: (lyric_chunk
+              (underline_marker)
+              (lyric_string)
+              (underline_marker)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (newline_operator)
-          (lyric_group
-            (lyric_string)
-            (space_operator)
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_group
+              (lyric_string)
+              (space_operator)
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (concat_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (concat_operator)
-          (lyric_chunk
-            (lyric_string))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
           (space_operator)
-          (lyric_chunk
-            (lyric_placeholder))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_placeholder)))
           (space_operator)
-          (lyric_chunk
-            (lyric_placeholder))
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_placeholder)))
           (space_operator))
         anchor: (newline_anchor
           (newline_operator)))

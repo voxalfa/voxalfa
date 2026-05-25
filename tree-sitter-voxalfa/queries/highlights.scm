@@ -26,6 +26,8 @@
   (lyric_placeholder)
 ] @constant.builtin
 
+(lyric_special) @character.special
+
 (note
   variation: (note_variation)? @type.qualifier
   octave: (note_octave)? @number)
@@ -54,11 +56,10 @@
   (quarter_division)
   (concat_operator)
   (newline_operator)
+  (lyric_span)
 ] @operator
 
 [
  (inline_comment)
- ; (delimited_comment)
- ; (multiline_comment)
 ] @comment @spell
 

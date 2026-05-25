@@ -1,22 +1,30 @@
-use crate::ast::symbols::{Field, SymbolRef};
+use crate::ast::symbols::{Field, ScopeId, SymbolRef};
 
 #[derive(Debug)]
 pub struct LyricLine {
-    pub sid: usize,
+    pub sid: ScopeId,
     pub group: usize,
     pub verse: usize,
-    pub tokens: Vec<Vec<LyricToken>>,
+    pub columns: Vec<LyricColumn>,
+    pub operators: Vec<LyricOperator>,
     pub anchor: Field<LyricAnchor>,
 }
 
+pub type LyricToken = SymbolRef<LyricTokenKind>;
+pub type LyricOperator = SymbolRef<LyricOperatorKind>;
+
 #[derive(Debug)]
-pub enum LyricAnchor {
-    Newline,
+pub enum LyricOperatorKind {
     Space,
     Concat,
+    Newline,
 }
 
-pub type LyricToken = SymbolRef<LyricTokenKind>;
+#[derive(Debug)]
+pub struct LyricColumn {
+    pub span: usize,
+    pub chunks: Vec<LyricToken>,
+}
 
 #[derive(Debug)]
 pub enum LyricTokenKind {
@@ -26,4 +34,11 @@ pub enum LyricTokenKind {
     Placeholder,
     UnderlineMarker,
     String(String),
+}
+
+#[derive(Debug)]
+pub enum LyricAnchor {
+    Newline,
+    Space,
+    Concat,
 }
