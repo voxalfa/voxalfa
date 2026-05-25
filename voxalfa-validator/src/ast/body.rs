@@ -1,4 +1,7 @@
-use crate::ast::{dynamics::Dynamics, params::SectionParams, solfa::SolfaLine, symbols::ScopeId};
+use crate::ast::{
+    dynamics::Dynamics, lyrics::LyricLine, params::SectionParams, solfa::SolfaLine,
+    symbols::ScopeId,
+};
 
 #[derive(Debug, Default)]
 pub struct Body {
@@ -21,7 +24,7 @@ pub struct Section {
     pub params: SectionParams,
     pub dynamics: Dynamics,
     pub solfa: Vec<SolfaLine>,
-    // pub lyrics: Vec<LyricLine>,
+    pub lyrics: Vec<LyricLine>,
 }
 
 impl Section {

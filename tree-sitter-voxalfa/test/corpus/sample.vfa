@@ -351,11 +351,10 @@ Sample Partition
           (lyric_chunk
             (lyric_string))
           (newline_operator)
-          (lyric_chunk
-            (lyric_group
-              (lyric_string)
-              (space_operator)
-              (lyric_string)))
+          (lyric_group
+            (lyric_string)
+            (space_operator)
+            (lyric_string))
           (space_operator)
           (lyric_chunk
             (lyric_string))
@@ -397,11 +396,10 @@ Sample Partition
           (lyric_chunk
             (lyric_string))
           (newline_operator)
-          (lyric_chunk
-            (lyric_group
-              (lyric_string)
-              (space_operator)
-              (lyric_string)))
+          (lyric_group
+            (lyric_string)
+            (space_operator)
+            (lyric_string))
           (space_operator)
           (lyric_chunk
             (lyric_string))

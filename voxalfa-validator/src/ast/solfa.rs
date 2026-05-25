@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        symbols::{ScopeId, SymbolId},
+        symbols::{ScopeId, SymbolRef},
         types::Voice,
     },
     ts_utils::range::Range,
@@ -83,11 +83,7 @@ impl Measure {
     }
 }
 
-#[derive(Debug)]
-pub struct MeasureToken {
-    pub sid: SymbolId,
-    pub kind: MeasureTokenKind,
-}
+pub type MeasureToken = SymbolRef<MeasureTokenKind>;
 
 #[derive(Debug)]
 pub enum MeasureTokenKind {

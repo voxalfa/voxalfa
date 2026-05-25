@@ -77,11 +77,11 @@ export default grammar({
 
     lyric_content: ($) =>
       seq(
-        $.lyric_chunk,
+        $._lyric_chunk,
         repeat(
           seq(
             choice($.concat_operator, $.space_operator, $.newline_operator),
-            choice($.lyric_chunk, blank()), // FIXME: blank() is used to allow trailing spaces and concat
+            choice($._lyric_chunk, blank()), // FIXME: blank() is used to allow trailing spaces and concat
           ),
         ),
       ),
@@ -161,13 +161,10 @@ export default grammar({
     note_base: () => /[drmfslt]/,
     note_variation: () => /[ai]/,
 
+    _lyric_chunk: ($) => choice($.lyric_group, $.lyric_chunk),
+
     lyric_chunk: ($) =>
-      choice(
-        $.lyric_group,
-        repeat1(
-          choice($.lyric_placeholder, $.lyric_string, $.underline_marker),
-        ),
-      ),
+      repeat1(choice($.lyric_placeholder, $.lyric_string, $.underline_marker)),
 
     space_operator: () => / +/,
     concat_operator: () => /_+/,
@@ -180,7 +177,7 @@ export default grammar({
       seq(
         "(",
         sep1(
-          $.space_operator,
+          choice($.space_operator, $.newline_operator),
           repeat1(choice($.lyric_string, $.underline_marker)),
         ),
         ")",
@@ -199,9 +196,6 @@ export default grammar({
 
     inline_comment: ($) =>
       seq(";", /[ \t]*/, choice(/[^@][^\n]*/, $.language_directive)),
-
-    // delimited_comment: () => seq("(~", /[^~\n]*/, "~)"),
-    // multiline_comment: () => /~~~[^~]*~~~/,
   },
 });
 

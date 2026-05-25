@@ -593,7 +593,7 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "lyric_chunk"
+          "name": "_lyric_chunk"
         },
         {
           "type": "REPEAT",
@@ -622,7 +622,7 @@
                 "members": [
                   {
                     "type": "SYMBOL",
-                    "name": "lyric_chunk"
+                    "name": "_lyric_chunk"
                   },
                   {
                     "type": "BLANK"
@@ -1108,7 +1108,7 @@
       "type": "PATTERN",
       "value": "[ai]"
     },
-    "lyric_chunk": {
+    "_lyric_chunk": {
       "type": "CHOICE",
       "members": [
         {
@@ -1116,26 +1116,30 @@
           "name": "lyric_group"
         },
         {
-          "type": "REPEAT1",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "lyric_placeholder"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "lyric_string"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "underline_marker"
-              }
-            ]
-          }
+          "type": "SYMBOL",
+          "name": "lyric_chunk"
         }
       ]
+    },
+    "lyric_chunk": {
+      "type": "REPEAT1",
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "lyric_placeholder"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "lyric_string"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "underline_marker"
+          }
+        ]
+      }
     },
     "space_operator": {
       "type": "PATTERN",

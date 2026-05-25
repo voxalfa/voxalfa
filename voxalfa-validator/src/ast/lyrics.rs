@@ -1,12 +1,12 @@
-use crate::ts_utils::range::Range;
+use crate::ast::symbols::{Field, SymbolRef};
 
 #[derive(Debug)]
 pub struct LyricLine {
-    pub id: usize,
+    pub sid: usize,
+    pub group: usize,
     pub verse: usize,
-    pub tokens: Vec<LyricToken>,
-    pub anchor: Option<LyricAnchor>,
-    pub range: Range,
+    pub tokens: Vec<Vec<LyricToken>>,
+    pub anchor: Field<LyricAnchor>,
 }
 
 #[derive(Debug)]
@@ -16,21 +16,14 @@ pub enum LyricAnchor {
     Concat,
 }
 
-#[derive(Debug)]
-pub struct LyricToken {
-    pub kind: LyricTokenKind,
-    pub range: Range,
-}
+pub type LyricToken = SymbolRef<LyricTokenKind>;
 
-// FIXME: better abstraction
 #[derive(Debug)]
 pub enum LyricTokenKind {
     Space,
     Concat,
     Newline,
-    UnderlineMarker,
     Placeholder,
+    UnderlineMarker,
     String(String),
-    Chunk(Vec<LyricToken>),
-    Group(Vec<LyricToken>),
 }

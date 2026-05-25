@@ -175,10 +175,6 @@
       "required": true,
       "types": [
         {
-          "type": "lyric_group",
-          "named": true
-        },
-        {
           "type": "lyric_placeholder",
           "named": true
         },
@@ -207,6 +203,10 @@
         },
         {
           "type": "lyric_chunk",
+          "named": true
+        },
+        {
+          "type": "lyric_group",
           "named": true
         },
         {

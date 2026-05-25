@@ -27,14 +27,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         [A] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
         [B] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
 
-        [1] do `re` mi\ fa so la ti do_o_o. ~ ~ ~~ scream
+        [1] do `re` mi\(f a) so la ti do_o_o. ~ ~ ; scream
     "#;
 
     let mut context = TSContext::new()?;
     let validator = DocumentValidator::new(source);
     let output = validator.validate(&mut context);
 
-    // println!("{:?}", output);
+    // println!("{:?}", output.document.body.sections[0].lyrics);
 
     let mut cli_reporter = CliReporter::default();
 
