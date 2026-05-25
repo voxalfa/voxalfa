@@ -34,11 +34,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let validator = DocumentValidator::new(source);
     let output = validator.validate(&mut context);
 
-    println!("{:?}", output.document.body.sections[0].lyrics);
+    // println!("{:?}", output.document.body.sections[0].lyrics);
 
     let mut cli_reporter = CliReporter::default();
 
-    cli_reporter.register("hello.solfa", source, output.diagnostics);
+    cli_reporter.register("hello.vfa", source, output.diagnostics);
     cli_reporter.display_report();
 
     Ok(())

@@ -6,61 +6,6 @@ use crate::{
     ts_utils::range::Range,
 };
 
-#[derive(Debug, Clone, Copy)]
-pub enum BaseNote {
-    D,
-    R,
-    M,
-    F,
-    S,
-    L,
-    T,
-}
-
-impl TryFrom<&str> for BaseNote {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "d" => Ok(Self::D),
-            "r" => Ok(Self::R),
-            "m" => Ok(Self::M),
-            "f" => Ok(Self::F),
-            "s" => Ok(Self::S),
-            "l" => Ok(Self::L),
-            "t" => Ok(Self::T),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-pub enum NoteVariation {
-    #[default]
-    Base,
-    Raised,
-    Lowered,
-}
-
-impl TryFrom<&str> for NoteVariation {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "a" => Ok(Self::Raised),
-            "i" => Ok(Self::Raised),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Note {
-    pub base: BaseNote,
-    pub variation: NoteVariation,
-    pub octave: i8,
-}
-
 #[derive(Debug)]
 pub struct SolfaLine {
     pub sid: ScopeId,
@@ -180,4 +125,59 @@ impl MeasureState {
     pub fn is_empty(&self) -> bool {
         self.col_acc.len() == 1 && self.col_acc[0] == 0
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BaseNote {
+    D,
+    R,
+    M,
+    F,
+    S,
+    L,
+    T,
+}
+
+impl TryFrom<&str> for BaseNote {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "d" => Ok(Self::D),
+            "r" => Ok(Self::R),
+            "m" => Ok(Self::M),
+            "f" => Ok(Self::F),
+            "s" => Ok(Self::S),
+            "l" => Ok(Self::L),
+            "t" => Ok(Self::T),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub enum NoteVariation {
+    #[default]
+    Base,
+    Raised,
+    Lowered,
+}
+
+impl TryFrom<&str> for NoteVariation {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "a" => Ok(Self::Raised),
+            "i" => Ok(Self::Raised),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Note {
+    pub base: BaseNote,
+    pub variation: NoteVariation,
+    pub octave: i8,
 }

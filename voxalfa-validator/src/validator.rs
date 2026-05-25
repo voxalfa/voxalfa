@@ -6,8 +6,8 @@ use crate::{
         document::Document,
         header::Header,
         lyrics::{
-            LyricAnchor, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind, LyricToken,
-            LyricTokenKind,
+            LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
+            LyricOperatorKind, LyricToken,
         },
         solfa::{Measure, MeasureState, MeasureToken, MeasureTokenKind, SolfaLine},
         symbols::{Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree},
@@ -190,7 +190,7 @@ impl<'a> DocumentValidator<'a> {
         let group = section.solfa.len();
         let verse = self.parse_node(verse_node)?;
         let expected_verse = section.lyrics.iter().filter(|l| l.group == group).count() + 1;
-        let (columns, operators) = self.resolve_lyric_tokens(content_node, scope_id);
+        let tokens = self.resolve_lyric_tokens(content_node, scope_id);
         let anchor = anchor_node.and_then(|n| self.resolve_lyric_anchor(n, scope_id));
 
         if verse != expected_verse {
@@ -205,34 +205,28 @@ impl<'a> DocumentValidator<'a> {
             verse: expected_verse,
             group,
             anchor,
-            columns,
-            operators,
+            tokens,
         })
     }
 
-    fn resolve_lyric_tokens(
-        &mut self,
-        node: Node<'_>,
-        scope_id: ScopeId,
-    ) -> (Vec<LyricColumn>, Vec<LyricOperator>) {
-        let mut columns = Vec::new();
-        let mut operators = Vec::new();
+    fn resolve_lyric_tokens(&mut self, node: Node<'_>, scope_id: ScopeId) -> Vec<LyricToken> {
+        let mut tokens = Vec::new();
 
         for child in node.named_children(&mut node.walk()) {
             match child.kind() {
                 "lyric_column" => {
                     let column = self.resolve_lyric_column(child, scope_id);
-                    columns.push(column);
+                    tokens.push(LyricToken::Column(column));
                 }
                 _ => {
                     if let Some(operator) = self.resolve_lyric_operator(child, scope_id) {
-                        operators.push(operator);
+                        tokens.push(LyricToken::Operator(operator));
                     }
                 }
             }
         }
 
-        (columns, operators)
+        tokens
     }
 
     fn resolve_lyric_operator(
@@ -277,14 +271,14 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
-    fn resolve_lyric_atom(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricToken> {
+    fn resolve_lyric_atom(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricChunk> {
         let value = match node.kind() {
-            "space_operator" => LyricTokenKind::Space,
-            "concat_operator" => LyricTokenKind::Concat,
-            "newline_operator" => LyricTokenKind::Newline,
-            "underline_marker" => LyricTokenKind::UnderlineMarker,
-            "lyric_placeholder" => LyricTokenKind::Placeholder,
-            "lyric_string" => LyricTokenKind::String(self.resolve_node_string(node)?),
+            "space_operator" => LyricChunkKind::Space,
+            "concat_operator" => LyricChunkKind::Concat,
+            "newline_operator" => LyricChunkKind::Newline,
+            "underline_marker" => LyricChunkKind::UnderlineMarker,
+            "lyric_placeholder" => LyricChunkKind::Placeholder,
+            "lyric_string" => LyricChunkKind::String(self.resolve_node_string(node)?),
             _ => return None,
         };
 
@@ -292,7 +286,7 @@ impl<'a> DocumentValidator<'a> {
             .tree
             .add_symbol(SymbolKind::Token, node.range(), scope_id);
 
-        Some(LyricToken { sid, value })
+        Some(LyricChunk { sid, value })
     }
 
     fn resolve_lyric_anchor(&mut self, node: Node<'_>, scope_id: ScopeId) -> Field<LyricAnchor> {
@@ -313,11 +307,16 @@ impl<'a> DocumentValidator<'a> {
     fn validate_lyric_line(&mut self, line: &LyricLine) {
         let mut current_underline = None;
 
-        for token in line.columns.iter().map(|c| &c.chunks).flatten() {
-            if matches!(token.value, LyricTokenKind::UnderlineMarker)
+        let columns = line.tokens.iter().filter_map(|t| match t {
+            LyricToken::Column(value) => Some(value),
+            LyricToken::Operator(_) => None,
+        });
+
+        for column in columns.flat_map(|c| &c.chunks) {
+            if matches!(column.value, LyricChunkKind::UnderlineMarker)
                 && current_underline.take().is_none()
             {
-                current_underline = Some(token);
+                current_underline = Some(column);
             }
         }
 
@@ -398,10 +397,10 @@ impl<'a> DocumentValidator<'a> {
         state.update_range(range);
 
         // insert virtual empty notes
-        if kind.is_beat_boundary() {
-            if prev_token.is_some_and(|t| t.value.is_beat_boundary()) || state.is_empty() {
-                state.append_note();
-            }
+        if kind.is_beat_boundary()
+            && (prev_token.is_some_and(|t| t.value.is_beat_boundary()) || state.is_empty())
+        {
+            state.append_note();
         }
 
         if matches!(kind, MeasureTokenKind::HalfDivision) {
