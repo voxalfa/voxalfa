@@ -126,19 +126,15 @@ export default grammar({
     _number: ($) => prec.right(choice($.float, $.integer)),
 
     measure: ($) =>
-      sep1(
-        choice($.medium_division, $.normal_division),
-        sep1(
-          repeat1(choice($.half_division, $.quarter_division)),
-          seq(
-            optional($._space),
-            optional($.underline_marker),
-            optional($._space),
-            $.pulse,
-            optional($._space),
-            optional($.underline_marker),
-            optional($._space),
-          ),
+      repeat1(
+        choice(
+          $._space,
+          $.medium_division,
+          $.normal_division,
+          $.half_division,
+          $.quarter_division,
+          $.underline_marker,
+          $.pulse,
         ),
       ),
 
@@ -202,7 +198,7 @@ export default grammar({
       ),
 
     inline_comment: ($) =>
-      seq("~~", /[ \t]*/, choice(/[^@][^\n]*/, $.language_directive)),
+      seq(";", /[ \t]*/, choice(/[^@][^\n]*/, $.language_directive)),
 
     // delimited_comment: () => seq("(~", /[^~\n]*/, "~)"),
     // multiline_comment: () => /~~~[^~]*~~~/,

@@ -6,7 +6,7 @@ use voxalfa_validator::{
 
 fn main() -> Result<(), Box<dyn Error>> {
     let source = r#"
-        ~~ @version 1.0
+        ; @version 1.0
 
         [#] title="Hello World"
         [#] author={"Foo Bar", "Jane Doe"}
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         [^] p={1} | cre={3,6}
 
-        [S] d : r ! m : f | s : l ! t : `da+1 | - : - ! ~ : ~
+        [S] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
         [T] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
         [A] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
         [B] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~

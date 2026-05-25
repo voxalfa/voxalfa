@@ -1,25 +1,25 @@
 =================================================
 Sample Partition
 =================================================
-~~ @version 1.0
+; @version 1.0
 
-~~ This is a sample voxalfa file (.vfa), it was designed to be a simple language for composing and storing Tonic-Solfa pieces.
-~~ It is a markup language with inline markers denoted with [<marker>]
-~~ 
-~~ We can divide the file into two parts:
-~~ - Header: contains metadata and the initial parameters for the song
-~~ - Body: contains the actual Solfa composition and lyrics, it can be divided into multiple sections with their own parameters
-~~ 
-~~ There are two kinds of markers:
-~~ - K/V: they define a key/value pair ([#], [$], [^])
-~~ - Formatters: they are immediately followed by tokens that follows a specific syntax rule ([<voice>], [<verse>])
-~~ 
-~~ The language supports simple data types, types without delimiters needs curly brackets {...}.
-~~ - Strings: delimited by double quotes "..."
-~~ - Numbers: signed integer or float
-~~ - Boolean: true or false
-~~ - List: a simple one dimensional list of scalar values delimited by {...}, we can think of any scalar value as a list of 1 item
-~~ - Tokens: they represent built-in values or identifiers (notes, voices, ...)
+; This is a sample voxalfa file (.vfa), it was designed to be a simple language for composing and storing Tonic-Solfa pieces.
+; It is a markup language with inline markers denoted with [<marker>]
+; 
+; We can divide the file into two parts:
+; - Header: contains metadata and the initial parameters for the song
+; - Body: contains the actual Solfa composition and lyrics, it can be divided into multiple sections with their own parameters
+; 
+; There are two kinds of markers:
+; - K/V: they define a key/value pair ([#], [$], [^])
+; - Formatters: they are immediately followed by tokens that follows a specific syntax rule ([<voice>], [<verse>])
+; 
+; The language supports simple data types, types without delimiters needs curly brackets {...}.
+; - Strings: delimited by double quotes "..."
+; - Numbers: signed integer or float
+; - Boolean: true or false
+; - List: a simple one dimensional list of scalar values delimited by {...}, we can think of any scalar value as a list of 1 item
+; - Tokens: they represent built-in values or identifiers (notes, voices, ...)
 
 [#] title="Hello World"
 [#] author={"Foo Bar", "Jane Doe"}
@@ -31,10 +31,10 @@ Sample Partition
 
 ---
 
-~~ we can override the global parameters inside sections
-~~ [$] bpm={80}
+; we can override the global parameters inside sections
+; [$] bpm={80}
 
-~~ there are also section-only parameters
+; there are also section-only parameters
 [$] repeat={true}
 
 [^] p={1} | cre={3,6}
@@ -45,11 +45,11 @@ Sample Partition
 [B] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
 
 [1] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\>
-[2] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\> ~~ scream
+[2] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\> ; scream
 
 --
 
-~~ more sections...
+; more sections...
 
 ----
 

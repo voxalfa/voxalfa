@@ -11,6 +11,7 @@ pub enum SymbolKind {
     Key(String),
     Value(Value),
     Comment(Comment),
+    Token,
 }
 
 #[derive(Debug)]
@@ -19,7 +20,7 @@ pub enum Value {
     Integer,
     Float,
     Boolean,
-    Token,
+    Builtin,
     List,
 }
 
@@ -88,6 +89,10 @@ impl SymbolTree {
         &self.symbols[id]
     }
 
+    pub fn get_symbol_range(&self, id: SymbolId) -> Range {
+        self.symbols[id].range
+    }
+
     pub fn add_scope(&mut self, kind: ScopeKind, range: Range, parent: Option<ScopeId>) -> ScopeId {
         let id = self.scopes.len();
 
@@ -110,6 +115,10 @@ impl SymbolTree {
 
     pub fn get_scope(&self, id: ScopeId) -> &Scope {
         &self.scopes[id]
+    }
+
+    pub fn get_scope_range(&self, id: ScopeId) -> Range {
+        self.scopes[id].range
     }
 
     pub fn resolve_scope(&self, symbol_id: SymbolId) -> &Scope {

@@ -1,21 +1,21 @@
-~~ @version 1.0
-~~ ^keyword
+; @version 1.0
+; ^keyword
 
 [#] title="Hello World"
-~~  ^property
-~~               ^string
+;   ^property
+;               ^string
 [#] author={"Foo Bar", "Jane Doe"}
-~~         ^punctuation.bracket
+;          ^punctuation.bracket
 [#] composer="Bob"
 [#] description="Lorem Ipsum."
 [#] release={2026}
-~~           ^number
+;            ^number
 
 [$] key={C} | bpm={100} | time={4,4} | voices={S,T,A,B}
-~~       ^identifier
+;        ^identifier
 
 ---
-~~^punctuation.delimiter
+; ^punctuation.delimiter
 
 [$] repeat={true}
 
@@ -25,21 +25,21 @@
 [T] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
 [A] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
 [B] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
-~~                                ^type.qualifier
-~~                                  ^number
-~~    ^operator
-~~        ^operator
-~~                                      ^constant.builtin
-~~                                               ^constant.builtin
+;                                 ^type.qualifier
+;                                   ^number
+;     ^operator
+;         ^operator
+;                                       ^constant.builtin
+;                                                ^constant.builtin
 
 [1] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\>
-[2] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\> ~~ scream
-~~     ^punctuation.bracket
-~~             ^punctuation.bracket
-~~                                        ^punctuation.bracket
-~~                                    ^constant.builtin
-~~                              ^operator        ^comment
+[2] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\> ; scream
+;      ^punctuation.bracket
+;              ^punctuation.bracket
+;                                         ^punctuation.bracket
+;                                     ^constant.builtin
+;                               ^operator        ^comment
 
 --
 
-~~ ...
+; ...

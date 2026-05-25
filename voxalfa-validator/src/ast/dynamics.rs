@@ -40,7 +40,7 @@ impl FieldAssign for Dynamics {
                 );
 
                 let sid = context.tree.add_symbol(
-                    SymbolKind::Value(Value::Token),
+                    SymbolKind::Value(Value::Builtin),
                     data.value_range,
                     data.scope_id,
                 );

@@ -106,7 +106,7 @@ impl ParseNode for Key {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Token)
+        SymbolKind::Value(Value::Builtin)
     }
 }
 
@@ -131,7 +131,7 @@ impl ParseNode for Voice {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Token)
+        SymbolKind::Value(Value::Builtin)
     }
 }
 
@@ -206,6 +206,6 @@ impl ParseNode for Note {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Token)
+        SymbolKind::Value(Value::Builtin)
     }
 }

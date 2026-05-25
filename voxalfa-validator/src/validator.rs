@@ -241,7 +241,7 @@ impl<'a> DocumentValidator<'a> {
     //         );
     //     }
     // }
-    //
+
     fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
         let voice_node = node.child_by_field_name("voice")?;
         let voice_str = self.resolve_node_string(voice_node)?;
@@ -272,55 +272,58 @@ impl<'a> DocumentValidator<'a> {
 
     fn resolve_measure(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<Measure> {
         let mut measure = Measure::new(scope_id);
-        let mut state = MeasureState::default();
+        let mut state = MeasureState::new();
 
         for child in node.named_children(&mut node.walk()) {
-            let range = child.range();
-            let token = self.resolve_measure_token(child);
+            let prev_token = measure.tokens.last();
+            let token = self.resolve_measure_token(child, scope_id, prev_token, &mut state);
 
-            if state.col_start.is_none() {
-                state.col_start = Some(range);
-            }
-
-            match token {
-                Some(MeasureTokenKind::NormalDivision | MeasureTokenKind::MediumDivision) => {
+            if let Some(value) = token {
+                if value.kind.is_beat_separator() {
                     self.validate_measure_column(&state);
-                    state.col_acc = vec![0];
-                    state.col_start = None;
-                    state.col_count += 1;
                 }
-                Some(MeasureTokenKind::HalfDivision) => {
-                    state.col_acc.push(0);
-                }
-                Some(
-                    MeasureTokenKind::Note(_)
-                    | MeasureTokenKind::ProlongedNote
-                    | MeasureTokenKind::EmptyNote,
-                ) => {
-                    if let Some(last) = state.col_acc.last_mut() {
-                        *last += 1;
-                    }
-                } // note
-                _ => {}
-            }
 
-            state.col_end = Some(range);
-
-            let sid = self
-                .tree
-                .add_symbol(SymbolKind::Value(Value::Token), range, scope_id);
-
-            if let Some(kind) = token {
-                measure.tokens.push(MeasureToken { sid, kind });
+                measure.tokens.push(value);
             }
         }
 
-        state.col_count += 1;
+        state.finalize();
 
         self.validate_measure_column(&state);
         self.validate_time_signature(&state, node);
 
         Some(measure)
+    }
+
+    fn resolve_measure_token(
+        &mut self,
+        node: Node<'_>,
+        scope_id: ScopeId,
+        prev_token: Option<&MeasureToken>,
+        state: &mut MeasureState,
+    ) -> Option<MeasureToken> {
+        let range = node.range();
+        let kind = self.resolve_measure_token_kind(node)?;
+        let sid = self.tree.add_symbol(SymbolKind::Token, range, scope_id);
+
+        state.update_range(range);
+
+        // insert virtual empty notes
+        if kind.is_beat_boundary() {
+            if prev_token.is_some_and(|t| t.kind.is_beat_boundary()) || state.is_empty() {
+                state.append_note();
+            }
+        }
+
+        if matches!(kind, MeasureTokenKind::HalfDivision) {
+            state.divide();
+        } else if kind.is_beat_separator() {
+            state.next_column();
+        } else if kind.is_note() {
+            state.append_note();
+        }
+
+        Some(MeasureToken { sid, kind })
     }
 
     fn validate_time_signature(&mut self, state: &MeasureState, node: Node<'_>) {
@@ -363,17 +366,17 @@ impl<'a> DocumentValidator<'a> {
         }
 
         if let Some(token) = current_underline {
-            let scope = self.tree.get_scope(line.sid);
-            let token_symbol = self.tree.get_symbol(token.sid);
+            let scope_range = self.tree.get_scope_range(line.sid);
+            let token_range = self.tree.get_symbol_range(token.sid);
 
             self.report_error(
-                token_symbol.range.merge(scope.range),
+                token_range.merge(scope_range),
                 DiagnosticKind::UnmatchedUnderline,
             );
         }
     }
 
-    fn resolve_measure_token(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
+    fn resolve_measure_token_kind(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
         match node.kind() {
             "half_division" => Some(MeasureTokenKind::HalfDivision),
             "quarter_division" => Some(MeasureTokenKind::QuarterDivision),
@@ -427,51 +430,49 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        // self.validate_voice_count(&section, node.range());
-        // self.validate_masure_count(&section);
+        self.validate_voice_count(&section, node.range());
+        self.validate_masure_count(&section);
 
         section
     }
 
-    // fn validate_voice_count(&mut self, section: &Section, fallback_range: Range) {
-    //     let Some(voices) = &self.output.header.params.voices else {
-    //         return;
-    //     };
-    //
-    //     let count = section.solfa.len();
-    //     let expected = voices.value.len();
-    //
-    //     if count != expected {
-    //         let start_range = section.solfa.first().map(|line| line.range);
-    //         let end_range = section.solfa.last().map(|line| line.range);
-    //
-    //         let range = start_range
-    //             .zip(end_range)
-    //             .map(|(start, end)| start.merge(end))
-    //             .unwrap_or(fallback_range);
-    //
-    //         self.report_error(
-    //             range,
-    //             DiagnosticKind::VoiceCountMismatch(expected, count, voices.data.range),
-    //         );
-    //     }
-    // }
-    //
-    // fn validate_masure_count(&mut self, section: &Section) {
-    //     if let Some(first) = section.solfa.first() {
-    //         for line in section.solfa.iter().skip(1) {
-    //             let expected = first.measures.len();
-    //             let count = line.measures.len();
-    //
-    //             if expected != count {
-    //                 self.report_error(
-    //                     line.range,
-    //                     DiagnosticKind::MeasureCountMismatch(expected, count, first.range),
-    //                 );
-    //             }
-    //         }
-    //     }
-    // }
+    fn validate_voice_count(&mut self, section: &Section, range: Range) {
+        let Some(voices) = &self.document.header.params.voices else {
+            return;
+        };
+
+        let count = section.solfa.len();
+        let expected = voices.value.len();
+
+        if count != expected {
+            self.report_error(
+                range,
+                DiagnosticKind::VoiceCountMismatch(
+                    expected,
+                    count,
+                    self.tree.get_symbol_range(voices.sid),
+                ),
+            );
+        }
+    }
+
+    fn validate_masure_count(&mut self, section: &Section) {
+        if let Some(first) = section.solfa.first() {
+            for line in section.solfa.iter().skip(1) {
+                let expected = first.measures.len();
+                let count = line.measures.len();
+                let first_range = self.tree.get_scope_range(first.sid);
+                let current_range = self.tree.get_scope_range(line.sid);
+
+                if expected != count {
+                    self.report_error(
+                        current_range,
+                        DiagnosticKind::MeasureCountMismatch(expected, count, first_range),
+                    );
+                }
+            }
+        }
+    }
 
     fn handle_parser_errors(&mut self, root: Node<'_>, context: &mut TSContext) {
         let capture_names = context.error_query.capture_names();
