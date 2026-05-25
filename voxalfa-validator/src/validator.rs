@@ -7,7 +7,7 @@ use crate::{
         header::Header,
         lyrics::{
             LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
-            LyricOperatorKind, LyricToken,
+            LyricOperatorKind, LyricSpecialChar, LyricToken,
         },
         solfa::{Measure, MeasureState, MeasureToken, MeasureTokenKind, SolfaLine},
         symbols::{Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree},
@@ -279,7 +279,11 @@ impl<'a> DocumentValidator<'a> {
             "underline_marker" => LyricChunkKind::UnderlineMarker,
             "lyric_placeholder" => LyricChunkKind::Placeholder,
             "lyric_string" => LyricChunkKind::String(self.resolve_node_string(node)?),
-            _ => return None,
+            _ => {
+                let s = self.resolve_node_string(node)?;
+                let char = LyricSpecialChar::try_from(s.as_str()).ok()?;
+                LyricChunkKind::SpecialChar(char)
+            }
         };
 
         let sid = self
