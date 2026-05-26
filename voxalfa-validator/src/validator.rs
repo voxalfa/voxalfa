@@ -16,6 +16,7 @@ use crate::{
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ts_utils::{
         context::TSContext,
+        generated::node_types,
         parsing::ParseNode,
         range::{Range, RangeMerge},
         types::AssignmentData,
@@ -64,9 +65,9 @@ impl<'a> DocumentValidator<'a> {
 
     fn handle_root_node(&mut self, root: Node<'_>) {
         for child in root.named_children(&mut root.walk()) {
-            match child.kind() {
-                "header" => self.handle_header_node(child),
-                "body" => self.handle_body_node(child),
+            match child.kind_id() {
+                node_types::HEADER => self.handle_header_node(child),
+                node_types::BODY => self.handle_body_node(child),
                 _ => {}
             }
         }
@@ -77,9 +78,13 @@ impl<'a> DocumentValidator<'a> {
         let mut header = Header::new(sid);
 
         for child in node.named_children(&mut node.walk()) {
-            match child.kind() {
-                "metadata_line" => self.handle_assignment_node(child, sid, &mut header.metadata),
-                "parameter_line" => self.handle_assignment_node(child, sid, &mut header.params),
+            match child.kind_id() {
+                node_types::METADATA_LINE => {
+                    self.handle_assignment_node(child, sid, &mut header.metadata)
+                }
+                node_types::PARAMETER_LINE => {
+                    self.handle_assignment_node(child, sid, &mut header.params)
+                }
                 _ => {}
             }
         }
@@ -113,7 +118,7 @@ impl<'a> DocumentValidator<'a> {
         let mut body = Body::new(sid);
 
         for child in node.named_children(&mut node.walk()) {
-            if child.kind() == "section" {
+            if child.kind_id() == node_types::SECTION {
                 let section = self.resolve_section(child, body.sid);
                 body.sections.push(section);
             }
@@ -213,8 +218,8 @@ impl<'a> DocumentValidator<'a> {
         let mut tokens = Vec::new();
 
         for child in node.named_children(&mut node.walk()) {
-            match child.kind() {
-                "lyric_column" => {
+            match child.kind_id() {
+                node_types::LYRIC_COLUMN => {
                     let column = self.resolve_lyric_column(child, scope_id);
                     tokens.push(LyricToken::Column(column));
                 }
@@ -272,13 +277,13 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn resolve_lyric_atom(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricChunk> {
-        let value = match node.kind() {
-            "space_operator" => LyricChunkKind::Space,
-            "concat_operator" => LyricChunkKind::Concat,
-            "newline_operator" => LyricChunkKind::Newline,
-            "underline_marker" => LyricChunkKind::UnderlineMarker,
-            "lyric_placeholder" => LyricChunkKind::Placeholder,
-            "lyric_string" => LyricChunkKind::String(self.resolve_node_string(node)?),
+        let value = match node.kind_id() {
+            node_types::SPACE_OPERATOR => LyricChunkKind::Space,
+            node_types::CONCAT_OPERATOR => LyricChunkKind::Concat,
+            node_types::NEWLINE_OPERATOR => LyricChunkKind::Newline,
+            node_types::UNDERLINE_MARKER => LyricChunkKind::UnderlineMarker,
+            node_types::LYRIC_PLACEHOLDER => LyricChunkKind::Placeholder,
+            node_types::LYRIC_STRING => LyricChunkKind::String(self.resolve_node_string(node)?),
             _ => {
                 let s = self.resolve_node_string(node)?;
                 let char = LyricSpecialChar::try_from(s.as_str()).ok()?;
@@ -294,10 +299,10 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn resolve_lyric_anchor(&mut self, node: Node<'_>, scope_id: ScopeId) -> Field<LyricAnchor> {
-        let value = match node.kind() {
-            "space_anchor" => LyricAnchor::Space,
-            "concat_anchor" => LyricAnchor::Concat,
-            "newline_anchor" => LyricAnchor::Newline,
+        let value = match node.kind_id() {
+            node_types::SPACE_ANCHOR => LyricAnchor::Space,
+            node_types::CONCAT_ANCHOR => LyricAnchor::Concat,
+            node_types::NEWLINE_ANCHOR => LyricAnchor::Newline,
             _ => return None,
         };
 
@@ -470,13 +475,13 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn resolve_measure_token_kind(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
-        match node.kind() {
-            "half_division" => Some(MeasureTokenKind::HalfDivision),
-            "quarter_division" => Some(MeasureTokenKind::QuarterDivision),
-            "medium_division" => Some(MeasureTokenKind::MediumDivision),
-            "normal_division" => Some(MeasureTokenKind::NormalDivision),
-            "underline_marker" => Some(MeasureTokenKind::UnderlineMarker),
-            "pulse" => self.resolve_pulse_node(node),
+        match node.kind_id() {
+            node_types::HALF_DIVISION => Some(MeasureTokenKind::HalfDivision),
+            node_types::QUARTER_DIVISION => Some(MeasureTokenKind::QuarterDivision),
+            node_types::MEDIUM_DIVISION => Some(MeasureTokenKind::MediumDivision),
+            node_types::NORMAL_DIVISION => Some(MeasureTokenKind::NormalDivision),
+            node_types::UNDERLINE_MARKER => Some(MeasureTokenKind::UnderlineMarker),
+            node_types::PULSE => self.resolve_pulse_node(node),
             _ => None,
         }
     }
@@ -484,10 +489,10 @@ impl<'a> DocumentValidator<'a> {
     fn resolve_pulse_node(&mut self, node: Node<'_>) -> Option<MeasureTokenKind> {
         let child = node.named_child(0)?;
 
-        match child.kind() {
-            "note" => self.parse_node(child).map(MeasureTokenKind::Note),
-            "empty_note" => Some(MeasureTokenKind::EmptyNote),
-            "prolonged_note" => Some(MeasureTokenKind::ProlongedNote),
+        match child.kind_id() {
+            node_types::NOTE => self.parse_node(child).map(MeasureTokenKind::Note),
+            node_types::EMPTY_NOTE => Some(MeasureTokenKind::EmptyNote),
+            node_types::PROLONGED_NOTE => Some(MeasureTokenKind::ProlongedNote),
             _ => None,
         }
     }
@@ -500,11 +505,15 @@ impl<'a> DocumentValidator<'a> {
         let mut section = Section::new(sid);
 
         for child in node.named_children(&mut node.walk()) {
-            match child.kind() {
-                "parameter_line" => self.handle_assignment_node(child, sid, &mut section.params),
-                "dynamics_line" => self.handle_assignment_node(child, sid, &mut section.dynamics),
-                "solfa_line" => self.handle_solfa_node(child, sid, &mut section.solfa),
-                "lyric_line" => self.handle_lyric_node(child, sid, &mut section),
+            match child.kind_id() {
+                node_types::PARAMETER_LINE => {
+                    self.handle_assignment_node(child, sid, &mut section.params)
+                }
+                node_types::DYNAMICS_LINE => {
+                    self.handle_assignment_node(child, sid, &mut section.dynamics)
+                }
+                node_types::SOLFA_LINE => self.handle_solfa_node(child, sid, &mut section.solfa),
+                node_types::LYRIC_LINE => self.handle_lyric_node(child, sid, &mut section),
                 _ => {}
             }
         }

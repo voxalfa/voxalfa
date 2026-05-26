@@ -7,6 +7,7 @@ use crate::{
         types::{Key, TimeSignature, Voice},
     },
     diagnostic::DiagnosticKind,
+    ts_utils::generated::node_types,
     validator::DocumentValidator,
 };
 
@@ -17,10 +18,9 @@ pub trait ParseNode: Sized {
 
 impl ParseNode for usize {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let kind = node.kind();
         let range = node.range();
 
-        if kind == "integer" {
+        if node.kind_id() == node_types::INTEGER {
             let text = context.resolve_node_string(node)?;
             let parsed = text.parse::<usize>();
 
@@ -30,7 +30,7 @@ impl ParseNode for usize {
 
             context.report_error(range, DiagnosticKind::InvalidType("integer"));
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("integer", kind));
+            context.report_error(range, DiagnosticKind::ExpectedType("integer", node.kind()));
         }
 
         None
@@ -43,16 +43,15 @@ impl ParseNode for usize {
 
 impl ParseNode for String {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let kind = node.kind();
         let range = node.range();
 
-        if kind == "string" {
+        if node.kind_id() == node_types::STRING {
             let value_node = node.named_child(0)?;
             let value = context.resolve_node_string(value_node)?;
 
             Some(value)
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("string", kind));
+            context.report_error(range, DiagnosticKind::ExpectedType("string", node.kind()));
             None
         }
     }
@@ -64,10 +63,9 @@ impl ParseNode for String {
 
 impl ParseNode for bool {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let kind = node.kind();
         let range = node.range();
 
-        if kind == "boolean" {
+        if node.kind_id() == node_types::BOOLEAN {
             let text = context.resolve_node_string(node)?;
 
             match text.as_str() {
@@ -75,7 +73,7 @@ impl ParseNode for bool {
                 _ => Some(false),
             }
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("boolean", kind));
+            context.report_error(range, DiagnosticKind::ExpectedType("boolean", node.kind()));
             None
         }
     }
@@ -87,10 +85,9 @@ impl ParseNode for bool {
 
 impl ParseNode for Key {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let kind = node.kind();
         let range = node.range();
 
-        if kind == "token" {
+        if node.kind_id() == node_types::TOKEN {
             let text = context.resolve_node_string(node)?;
 
             if let Ok(res) = Key::try_from(text.as_str()) {
@@ -99,7 +96,7 @@ impl ParseNode for Key {
 
             context.report_error(range, DiagnosticKind::InvalidType("key"));
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("key", kind));
+            context.report_error(range, DiagnosticKind::ExpectedType("key", node.kind()));
         }
 
         None
@@ -112,10 +109,9 @@ impl ParseNode for Key {
 
 impl ParseNode for Voice {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let kind = node.kind();
         let range = node.range();
 
-        if kind == "token" {
+        if node.kind_id() == node_types::TOKEN {
             let text = context.resolve_node_string(node)?;
 
             if let Ok(res) = Voice::try_from(text.as_str()) {
@@ -124,7 +120,7 @@ impl ParseNode for Voice {
 
             context.report_error(range, DiagnosticKind::InvalidType("voice"));
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("voice", kind));
+            context.report_error(range, DiagnosticKind::ExpectedType("voice", node.kind()));
         }
 
         None
@@ -157,9 +153,7 @@ impl ParseNode for TimeSignature {
 
 impl<T: ParseNode> ParseNode for Vec<T> {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let kind = node.kind();
-
-        if kind == "list" {
+        if node.kind_id() == node_types::LIST {
             let mut result = Vec::new();
 
             for child in node.named_children(&mut node.walk()) {

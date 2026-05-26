@@ -29,7 +29,7 @@ pub enum DiagnosticKind {
     InvalidTimeSignature,
     #[error("invalid dynamic identifier '{0}'")]
     InvalidDynamic(String),
-    #[error("invalid dynamic parameters, expected {0}")]
+    #[error("invalid dynamic parameters, expected {0} numbers")]
     InvalidDynamicParams(usize),
     #[error("invalid voice '{0}'")]
     InvalidVoice(String),
