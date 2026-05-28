@@ -39,13 +39,13 @@ Sample Partition
 
 [^] p={1} | cre={3,6}
 
-[S] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
-[T] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
-[A] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
-[B] d : r ! m : f | s : l ! t : `da+1 | - : -` ! ~ : ~
+[S] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
+[T] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
+[A] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
+[B] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
 
-[1] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\>
-[2] do `re` mi\(f a) so la ti do_o_o. ~ ~ <\> ; scream
+[1] do `re` mi\(f a) so la ti_i do_o. ~ ~ <\>
+[2] do `re` mi\(f a) so la ti_i do_o. ~ ~ <\> ; scream
 
 --
 
@@ -156,6 +156,7 @@ Sample Partition
             (note
               base: (note_base))))
         measure: (measure
+          (underline_marker)
           (pulse
             (note
               base: (note_base)))
@@ -163,24 +164,23 @@ Sample Partition
           (pulse
             (note
               base: (note_base)))
+          (underline_marker)
           (medium_division)
           (pulse
             (note
               base: (note_base)))
           (normal_division)
-          (underline_marker)
+          (pulse
+            (prolonged_note)))
+        measure: (measure
           (pulse
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave))))
-        measure: (measure
-          (pulse
-            (prolonged_note))
+              octave: (note_octave)))
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -206,6 +206,7 @@ Sample Partition
             (note
               base: (note_base))))
         measure: (measure
+          (underline_marker)
           (pulse
             (note
               base: (note_base)))
@@ -213,24 +214,23 @@ Sample Partition
           (pulse
             (note
               base: (note_base)))
+          (underline_marker)
           (medium_division)
           (pulse
             (note
               base: (note_base)))
           (normal_division)
-          (underline_marker)
+          (pulse
+            (prolonged_note)))
+        measure: (measure
           (pulse
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave))))
-        measure: (measure
-          (pulse
-            (prolonged_note))
+              octave: (note_octave)))
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -256,6 +256,7 @@ Sample Partition
             (note
               base: (note_base))))
         measure: (measure
+          (underline_marker)
           (pulse
             (note
               base: (note_base)))
@@ -263,24 +264,23 @@ Sample Partition
           (pulse
             (note
               base: (note_base)))
+          (underline_marker)
           (medium_division)
           (pulse
             (note
               base: (note_base)))
           (normal_division)
-          (underline_marker)
+          (pulse
+            (prolonged_note)))
+        measure: (measure
           (pulse
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave))))
-        measure: (measure
-          (pulse
-            (prolonged_note))
+              octave: (note_octave)))
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -306,6 +306,7 @@ Sample Partition
             (note
               base: (note_base))))
         measure: (measure
+          (underline_marker)
           (pulse
             (note
               base: (note_base)))
@@ -313,24 +314,23 @@ Sample Partition
           (pulse
             (note
               base: (note_base)))
+          (underline_marker)
           (medium_division)
           (pulse
             (note
               base: (note_base)))
           (normal_division)
-          (underline_marker)
+          (pulse
+            (prolonged_note)))
+        measure: (measure
           (pulse
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave))))
-        measure: (measure
-          (pulse
-            (prolonged_note))
+              octave: (note_octave)))
           (normal_division)
           (pulse
             (prolonged_note))
-          (underline_marker)
           (medium_division)
           (pulse
             (empty_note))
@@ -371,11 +371,11 @@ Sample Partition
           (lyric_column
             lyric: (lyric_chunk
               (lyric_string)))
-          (space_operator)
+          (concat_operator)
           (lyric_column
             lyric: (lyric_chunk
               (lyric_string)))
-          (concat_operator)
+          (space_operator)
           (lyric_column
             lyric: (lyric_chunk
               (lyric_string)))
@@ -428,11 +428,11 @@ Sample Partition
           (lyric_column
             lyric: (lyric_chunk
               (lyric_string)))
-          (space_operator)
+          (concat_operator)
           (lyric_column
             lyric: (lyric_chunk
               (lyric_string)))
-          (concat_operator)
+          (space_operator)
           (lyric_column
             lyric: (lyric_chunk
               (lyric_string)))
