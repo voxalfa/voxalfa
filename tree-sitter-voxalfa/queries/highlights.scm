@@ -39,8 +39,6 @@
  "}"
  "("
  ")"
- "<"
- ">"
  (underline_marker)
 ] @punctuation.bracket
 
@@ -50,8 +48,6 @@
 ] @punctuation.delimiter
 
 [
-  (medium_division)
-  (normal_division)
   (half_division)
   (quarter_division)
   (concat_operator)

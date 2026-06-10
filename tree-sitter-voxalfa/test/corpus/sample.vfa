@@ -39,13 +39,13 @@ Sample Partition
 
 [^] p={1} | cre={3,6}
 
-[S] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
-[T] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
-[A] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
-[B] d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~
+[S] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
+[T] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
+[A] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
+[B] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
 
-[1] do `re` mi\(f a) so la ti_i do_o. ~ ~ <\>
-[2] do `re` mi\(f a) so la ti_i do_o. ~ ~ <\> ; scream
+[1] > do `re` mi\(f a) so la ti_i do_o. ~ ~
+[2] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ; scream
 
 --
 
@@ -139,206 +139,310 @@ Sample Partition
             (integer))))
       (solfa_line
         voice: (token)
-        measure: (measure
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (medium_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base))))
-        measure: (measure
-          (underline_marker)
-          (pulse
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (underline_marker)
-          (medium_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
+            (underline_marker)
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))
+            (underline_marker)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (prolonged_note)))
-        measure: (measure
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave)))
-          (normal_division)
-          (pulse
-            (prolonged_note))
-          (medium_division)
-          (pulse
-            (empty_note))
-          (normal_division)
-          (pulse
+              octave: (note_octave))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (prolonged_note)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (empty_note)))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (empty_note))))
       (solfa_line
         voice: (token)
-        measure: (measure
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (medium_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base))))
-        measure: (measure
-          (underline_marker)
-          (pulse
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (underline_marker)
-          (medium_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
+            (underline_marker)
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))
+            (underline_marker)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (prolonged_note)))
-        measure: (measure
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave)))
-          (normal_division)
-          (pulse
-            (prolonged_note))
-          (medium_division)
-          (pulse
-            (empty_note))
-          (normal_division)
-          (pulse
+              octave: (note_octave))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (prolonged_note)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (empty_note)))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (empty_note))))
       (solfa_line
         voice: (token)
-        measure: (measure
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (medium_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base))))
-        measure: (measure
-          (underline_marker)
-          (pulse
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (underline_marker)
-          (medium_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
+            (underline_marker)
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))
+            (underline_marker)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (prolonged_note)))
-        measure: (measure
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave)))
-          (normal_division)
-          (pulse
-            (prolonged_note))
-          (medium_division)
-          (pulse
-            (empty_note))
-          (normal_division)
-          (pulse
+              octave: (note_octave))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (prolonged_note)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (empty_note)))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (empty_note))))
       (solfa_line
         voice: (token)
-        measure: (measure
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (medium_division)
-          (pulse
-            (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base))))
-        measure: (measure
-          (underline_marker)
-          (pulse
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (underline_marker)
-          (medium_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (note
-              base: (note_base)))
-          (normal_division)
-          (pulse
+              base: (note_base))))
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
+            (underline_marker)
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))
+            (underline_marker)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (note
+              base: (note_base))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (prolonged_note)))
-        measure: (measure
-          (pulse
+        (pulse
+          accent: (strong_accent)
+          tokens: (pulse_tokens
             (note
               base: (note_base)
               variation: (note_variation)
-              octave: (note_octave)))
-          (normal_division)
-          (pulse
-            (prolonged_note))
-          (medium_division)
-          (pulse
-            (empty_note))
-          (normal_division)
-          (pulse
+              octave: (note_octave))))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
+            (prolonged_note)))
+        (pulse
+          accent: (medium_accent)
+          tokens: (pulse_tokens
+            (empty_note)))
+        (pulse
+          accent: (weak_accent)
+          tokens: (pulse_tokens
             (empty_note))))
       (lyric_line
         verse: (integer)
+        prefix: (newline_prefix)
+        content: (lyric_content
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (underline_marker)
+              (lyric_string)
+              (underline_marker)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (newline_operator)
+          (lyric_column
+            lyric: (lyric_group
+              (lyric_string)
+              (space_operator)
+              (lyric_string)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (concat_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (concat_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_string)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_placeholder)))
+          (space_operator)
+          (lyric_column
+            lyric: (lyric_chunk
+              (lyric_placeholder)))))
+      (lyric_line
+        verse: (integer)
+        prefix: (newline_prefix)
         content: (lyric_content
           (lyric_column
             lyric: (lyric_chunk
@@ -391,66 +495,7 @@ Sample Partition
           (lyric_column
             lyric: (lyric_chunk
               (lyric_placeholder)))
-          (space_operator))
-        anchor: (newline_anchor
-          (newline_operator)))
-      (lyric_line
-        verse: (integer)
-        content: (lyric_content
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (underline_marker)
-              (lyric_string)
-              (underline_marker)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (newline_operator)
-          (lyric_column
-            lyric: (lyric_group
-              (lyric_string)
-              (space_operator)
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (concat_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (concat_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_placeholder)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_placeholder)))
-          (space_operator))
-        anchor: (newline_anchor
-          (newline_operator)))
+          (space_operator)))
       (inline_comment))
     (section
       (inline_comment))))

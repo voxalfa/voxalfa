@@ -62,36 +62,22 @@ export default grammar({
 
     solfa_line: ($) =>
       seq(
-        seq("[", field("voice", $.token), "]"),
-        sep1("|", field("measure", $.measure)),
+        "[",
+        field("voice", $.token),
+        "]",
+        optional($._space),
+        repeat1($.pulse),
+        "||",
       ),
 
     lyric_line: ($) =>
       seq(
         seq("[", field("verse", $.integer), "]"),
         optional($._space),
-        field("content", $.lyric_content),
-        field("anchor", optional($._lyric_anchor)),
+        field("prefix", $._lyric_prefix),
         optional($._space),
+        field("content", $.lyric_content),
       ),
-
-    lyric_content: ($) =>
-      seq(
-        $.lyric_column,
-        repeat(
-          seq(
-            choice($.concat_operator, $.space_operator, $.newline_operator),
-            choice($.lyric_column, blank()), // FIXME: blank() is used to allow trailing spaces and concat
-          ),
-        ),
-      ),
-
-    _lyric_anchor: ($) =>
-      choice($.space_anchor, $.concat_anchor, $.newline_anchor),
-
-    space_anchor: ($) => seq("<", $.space_operator, ">"),
-    concat_anchor: ($) => seq("<", $.concat_operator, ">"),
-    newline_anchor: ($) => seq("<", $.newline_operator, ">"),
 
     parameter_assignment: ($) =>
       seq(
@@ -125,28 +111,31 @@ export default grammar({
     float: ($) => seq(optional($.integer), ".", $.integer),
     _number: ($) => prec.right(choice($.float, $.integer)),
 
-    measure: ($) =>
+    _accent: ($) => choice($.strong_accent, $.medium_accent, $.weak_accent),
+
+    strong_accent: () => "|",
+    medium_accent: () => "!",
+    weak_accent: () => ":",
+
+    pulse: ($) =>
+      seq(field("accent", $._accent), field("tokens", $.pulse_tokens)),
+
+    pulse_tokens: ($) =>
       repeat1(
         choice(
           $._space,
-          $.medium_division,
-          $.normal_division,
           $.half_division,
           $.quarter_division,
           $.underline_marker,
-          $.pulse,
+          $.empty_note,
+          $.prolonged_note,
+          $.note,
         ),
       ),
 
-    medium_division: () => "!",
-    normal_division: () => ":",
     half_division: () => ".",
     quarter_division: () => ",",
-
     underline_marker: () => "`",
-
-    pulse: ($) => choice($.empty_note, $.prolonged_note, $.note),
-
     empty_note: () => "~",
     prolonged_note: () => "-",
 
@@ -160,6 +149,24 @@ export default grammar({
     note_octave: () => /[+-][\d]/,
     note_base: () => /[drmfslt]/,
     note_variation: () => /[ai]/,
+
+    lyric_content: ($) =>
+      seq(
+        $.lyric_column,
+        repeat(
+          seq(
+            choice($.concat_operator, $.space_operator, $.newline_operator),
+            choice($.lyric_column), // FIXME: blank() is used to allow trailing spaces and concat
+          ),
+        ),
+      ),
+
+    _lyric_prefix: ($) =>
+      choice($.space_prefix, $.concat_prefix, $.newline_prefix),
+
+    space_prefix: () => "=",
+    concat_prefix: () => "<",
+    newline_prefix: () => ">",
 
     lyric_column: ($) =>
       seq(
@@ -196,7 +203,7 @@ export default grammar({
     concat_operator: () => /_+/,
     newline_operator: () => /\\+/,
 
-    lyric_string: () => /[^\s_/~``<>\\/\()+&]+/,
+    lyric_string: () => /[^\s_/~``<>\\/\()+&;]+/,
     lyric_placeholder: () => "~",
 
     lyric_special: () =>
@@ -211,6 +218,7 @@ export default grammar({
         "&rpr", // )
         "&pls", // +
         "&amp", // &
+        "&scl", // ;
       ),
 
     _space: () => /[ \t]+/,
