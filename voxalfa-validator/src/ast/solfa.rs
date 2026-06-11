@@ -10,63 +10,47 @@ use crate::{
 pub struct SolfaLine {
     pub sid: ScopeId,
     pub voice: Voice,
-    pub measures: Vec<Measure>,
+    pub pulses: Vec<Pulse>,
 }
 
 #[derive(Debug)]
-pub struct Measure {
+pub struct Pulse {
     pub sid: ScopeId,
-    pub tokens: Vec<MeasureToken>,
+    pub accent: PulseAccent,
+    pub tokens: Vec<PulseToken>,
 }
 
-impl Measure {
-    pub fn new(sid: ScopeId) -> Self {
-        Self {
-            sid,
-            tokens: Vec::new(),
-        }
-    }
+#[derive(Debug, Clone, Copy)]
+pub enum PulseAccent {
+    Strong, // |
+    Medium, // !
+    Weak,   // :
 }
 
-pub type MeasureToken = SymbolRef<MeasureTokenKind>;
+pub type PulseToken = SymbolRef<PulseTokenKind>;
 
 #[derive(Debug)]
-pub enum MeasureTokenKind {
+pub enum PulseTokenKind {
     Note(Note),
     EmptyNote,
     ProlongedNote,
-    NormalDivision,
-    MediumDivision,
     HalfDivision,
     QuarterDivision,
     UnderlineMarker,
 }
 
-impl MeasureTokenKind {
-    pub fn is_beat_separator(&self) -> bool {
-        matches!(
-            self,
-            MeasureTokenKind::NormalDivision | MeasureTokenKind::MediumDivision
-        )
-    }
-
+impl PulseTokenKind {
     pub fn is_beat_divider(&self) -> bool {
         matches!(
             self,
-            MeasureTokenKind::QuarterDivision | MeasureTokenKind::HalfDivision
+            PulseTokenKind::QuarterDivision | PulseTokenKind::HalfDivision
         )
-    }
-
-    pub fn is_beat_boundary(&self) -> bool {
-        self.is_beat_separator() || self.is_beat_divider()
     }
 
     pub fn is_note(&self) -> bool {
         matches!(
             self,
-            MeasureTokenKind::Note(_)
-                | MeasureTokenKind::ProlongedNote
-                | MeasureTokenKind::EmptyNote
+            PulseTokenKind::Note(_) | PulseTokenKind::ProlongedNote | PulseTokenKind::EmptyNote
         )
     }
 }
@@ -77,7 +61,7 @@ pub struct MeasureState {
     pub col_start: Option<Range>,
     pub col_end: Option<Range>,
     pub col_count: usize,
-    pub last_token_kind: Option<MeasureTokenKind>,
+    pub last_token_kind: Option<PulseTokenKind>,
 }
 
 impl MeasureState {

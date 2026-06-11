@@ -52,10 +52,13 @@
   (quarter_division)
   (concat_operator)
   (newline_operator)
-  (lyric_span)
 ] @operator
+
+(lyric_span
+  "@" @operator)
 
 [
  (inline_comment)
+ (language_directive)
 ] @comment @spell
 

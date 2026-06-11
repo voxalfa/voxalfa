@@ -10,54 +10,42 @@
 export default grammar({
   name: "voxalfa",
 
-  extras: ($) => [$.inline_comment],
+  extras: ($) => [
+    $.inline_comment,
+    $.language_directive,
+    $._space,
+    $._linebreak,
+  ],
 
   rules: {
     source_file: ($) => seq(optional($.header), "---", optional($.body)),
 
     header: ($) => repeat1($._header_line),
 
-    _header_line: ($) =>
-      choice($.metadata_line, $.parameter_line, $._multispace),
+    _header_line: ($) => choice($.metadata_line, $.parameter_line),
 
     body: ($) => sep1("--", $.section),
 
     section: ($) => repeat1($._section_line),
 
     _section_line: ($) =>
-      choice(
-        $._multispace,
-        $.parameter_line,
-        $.dynamics_line,
-        $.solfa_line,
-        $.lyric_line,
-      ),
+      choice($.parameter_line, $.dynamics_line, $.solfa_line, $.lyric_line),
+
+    _kv_separator: () => "|",
 
     metadata_line: ($) =>
-      seq(
-        seq("[", "#", "]"),
-        sep(
-          "|",
-          seq(optional($._space), $.parameter_assignment, optional($._space)),
-        ),
+      prec.right(
+        seq(seq("[", "#", "]"), sep1($._kv_separator, $.parameter_assignment)),
       ),
 
     parameter_line: ($) =>
-      seq(
-        seq("[", "$", "]"),
-        sep(
-          "|",
-          seq(optional($._space), $.parameter_assignment, optional($._space)),
-        ),
+      prec.right(
+        seq(seq("[", "$", "]"), sep1($._kv_separator, $.parameter_assignment)),
       ),
 
     dynamics_line: ($) =>
-      seq(
-        seq("[", "^", "]"),
-        sep(
-          "|",
-          seq(optional($._space), $.parameter_assignment, optional($._space)),
-        ),
+      prec.right(
+        seq(seq("[", "^", "]"), sep1($._kv_separator, $.parameter_assignment)),
       ),
 
     solfa_line: ($) =>
@@ -65,26 +53,22 @@ export default grammar({
         "[",
         field("voice", $.token),
         "]",
-        optional($._space),
-        repeat1($.pulse),
+        field("content", $.solfa_content),
         "||",
       ),
 
     lyric_line: ($) =>
       seq(
         seq("[", field("verse", $.integer), "]"),
-        optional($._space),
-        field("prefix", $._lyric_prefix),
-        optional($._space),
+        field("prefix", optional($._lyric_prefix)),
         field("content", $.lyric_content),
+        field("anchor", optional($.lyric_anchor)),
       ),
 
     parameter_assignment: ($) =>
       seq(
         field("name", $.identifier),
-        optional($._space),
         "=",
-        optional($._space),
         choice(field("value", $.string), $._delimited_value),
       ),
 
@@ -92,12 +76,7 @@ export default grammar({
 
     _delimited_value: ($) =>
       seq("{", field("value", choice($._value_atom, $.list)), "}"),
-    _value_atom: ($) =>
-      seq(
-        optional($._space),
-        choice($._number, $.token, $.string, $.boolean),
-        optional($._space),
-      ),
+    _value_atom: ($) => seq(choice($._number, $.token, $.string, $.boolean)),
 
     list: ($) => seq($._value_atom, ",", sep1(",", $._value_atom)),
 
@@ -117,13 +96,17 @@ export default grammar({
     medium_accent: () => "!",
     weak_accent: () => ":",
 
+    solfa_content: ($) => repeat1($.pulse),
+
     pulse: ($) =>
-      seq(field("accent", $._accent), field("tokens", $.pulse_tokens)),
+      seq(
+        field("accent", $._accent),
+        field("tokens", optional($.pulse_tokens)),
+      ),
 
     pulse_tokens: ($) =>
       repeat1(
         choice(
-          $._space,
           $.half_division,
           $.quarter_division,
           $.underline_marker,
@@ -150,23 +133,23 @@ export default grammar({
     note_base: () => /[drmfslt]/,
     note_variation: () => /[ai]/,
 
+    _lyric_prefix: (_) => ">",
+
     lyric_content: ($) =>
       seq(
         $.lyric_column,
         repeat(
           seq(
-            choice($.concat_operator, $.space_operator, $.newline_operator),
-            choice($.lyric_column), // FIXME: blank() is used to allow trailing spaces and concat
+            $._lyric_operator,
+            choice($.lyric_column, blank()), // FIXME: blank() is used to allow trailing spaces and concat
           ),
         ),
       ),
 
-    _lyric_prefix: ($) =>
-      choice($.space_prefix, $.concat_prefix, $.newline_prefix),
+    lyric_anchor: () => "...",
 
-    space_prefix: () => "=",
-    concat_prefix: () => "<",
-    newline_prefix: () => ">",
+    _lyric_operator: ($) =>
+      choice($.concat_operator, $.space_operator, $.newline_operator),
 
     lyric_column: ($) =>
       seq(
@@ -197,13 +180,14 @@ export default grammar({
 
     _lyric_string: ($) => repeat1(choice($.lyric_string, $.lyric_special)),
 
-    lyric_span: () => /\++/,
+    lyric_span: ($) => seq("@", field("count", $.integer)),
 
     space_operator: () => / +/,
     concat_operator: () => /_+/,
     newline_operator: () => /\\+/,
 
-    lyric_string: () => /[^\s_/~``<>\\/\()+&;]+/,
+    lyric_string: () =>
+      /[^\s_/~``<>\\/\()@&;]+(\.\.?[^\s_/~``<>\\/\()@&;\.]+)?/,
     lyric_placeholder: () => "~",
 
     lyric_special: () =>
@@ -216,34 +200,26 @@ export default grammar({
         "&sls", // /
         "&lpr", // (
         "&rpr", // )
-        "&pls", // +
+        "&atr", // @
         "&amp", // &
         "&scl", // ;
+        "&dot", // .
       ),
 
     _space: () => /[ \t]+/,
-    _multispace: () => /[ \t]*[\n]+[ \t]*/,
+    _linebreak: () => /[\n]+/,
 
     language_directive: ($) =>
       seq(
+        ";;",
         "@",
         field("type", $.identifier),
-        $._space,
         field("value", $.inline_string),
       ),
 
-    inline_comment: ($) =>
-      seq(";", /[ \t]*/, choice(/[^@][^\n]*/, $.language_directive)),
+    inline_comment: (_) => seq(";", /[^\n]*/),
   },
 });
-
-/**
- * @param {RuleOrLiteral} separator
- * @param {RuleOrLiteral} node
- */
-function sep(separator, node) {
-  return optional(sep1(separator, node));
-}
 
 /**
  * @param {RuleOrLiteral} separator

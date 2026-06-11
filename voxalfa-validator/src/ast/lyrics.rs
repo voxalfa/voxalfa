@@ -6,7 +6,7 @@ pub struct LyricLine {
     pub group: usize,
     pub verse: usize,
     pub tokens: Vec<LyricToken>,
-    pub anchor: Field<LyricAnchor>,
+    pub anchor: Option<LyricAnchor>,
 }
 
 #[derive(Debug)]
@@ -17,6 +17,7 @@ pub enum LyricToken {
 
 pub type LyricChunk = SymbolRef<LyricChunkKind>;
 pub type LyricOperator = SymbolRef<LyricOperatorKind>;
+pub type LyricAnchor = SymbolRef<LyricAnchorKind>;
 
 #[derive(Debug)]
 pub enum LyricOperatorKind {
@@ -43,7 +44,7 @@ pub enum LyricChunkKind {
 }
 
 #[derive(Debug)]
-pub enum LyricAnchor {
+pub enum LyricAnchorKind {
     Newline,
     Space,
     Concat,

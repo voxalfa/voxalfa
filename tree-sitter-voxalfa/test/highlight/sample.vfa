@@ -1,5 +1,5 @@
-; @version 1.0
-; ^keyword
+;; @version 1.0
+;  ^keyword
 
 [#] title="Hello World"
 ;   ^property
@@ -30,14 +30,12 @@
 ;                                   ^constant.builtin
 ;                                                  ^constant.builtin
 
-[1] > do `re` mi\(f a) so la ti_i do_o. ~ ~
-[2] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ; scream
+[1] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ...
+[2] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ... ; scream
 ;        ^punctuation.bracket
 ;                ^punctuation.bracket
-;                                           ^punctuation.bracket
 ;                                       ^constant.builtin
 ;                              ^operator          ^comment
 
---
-
+; --
 ; ...

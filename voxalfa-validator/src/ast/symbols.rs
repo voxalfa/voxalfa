@@ -50,7 +50,7 @@ pub enum ScopeKind {
     Body,
     Section,
     SolfaLine,
-    Measure,
+    Pulse,
     LyricLine,
 }
 
