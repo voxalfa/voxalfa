@@ -10,26 +10,28 @@
 export default grammar({
   name: "voxalfa",
 
-  extras: ($) => [
-    $.inline_comment,
-    $.language_directive,
-    $._space,
-    $._linebreak,
-  ],
+  extras: ($) => [$.inline_comment, $.language_directive, $._space],
 
   rules: {
     source_file: ($) => seq(optional($.header), "---", optional($.body)),
 
     header: ($) => repeat1($._header_line),
 
-    _header_line: ($) => choice($.metadata_line, $.parameter_line),
+    _header_line: ($) =>
+      choice($.metadata_line, $.parameter_line, $._linebreak),
 
     body: ($) => sep1("--", $.section),
 
     section: ($) => repeat1($._section_line),
 
     _section_line: ($) =>
-      choice($.parameter_line, $.dynamics_line, $.solfa_line, $.lyric_line),
+      choice(
+        $.parameter_line,
+        $.dynamics_line,
+        $.solfa_line,
+        $.lyric_line,
+        $._linebreak,
+      ),
 
     _kv_separator: () => "|",
 
@@ -60,7 +62,6 @@ export default grammar({
     lyric_line: ($) =>
       seq(
         seq("[", field("verse", $.integer), "]"),
-        field("prefix", optional($._lyric_prefix)),
         field("content", $.lyric_content),
         field("anchor", optional($.lyric_anchor)),
       ),
@@ -110,7 +111,6 @@ export default grammar({
           $.half_division,
           $.quarter_division,
           $.underline_marker,
-          $.empty_note,
           $.prolonged_note,
           $.note,
         ),
@@ -119,7 +119,6 @@ export default grammar({
     half_division: () => ".",
     quarter_division: () => ",",
     underline_marker: () => "`",
-    empty_note: () => "~",
     prolonged_note: () => "-",
 
     note: ($) =>
@@ -132,8 +131,6 @@ export default grammar({
     note_octave: () => /[+-][\d]/,
     note_base: () => /[drmfslt]/,
     note_variation: () => /[ai]/,
-
-    _lyric_prefix: (_) => ">",
 
     lyric_content: ($) =>
       seq(

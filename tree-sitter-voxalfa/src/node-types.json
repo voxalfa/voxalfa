@@ -35,11 +35,6 @@
     }
   },
   {
-    "type": "empty_note",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "float",
     "named": true,
     "fields": {},
@@ -65,7 +60,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "metadata_line",
@@ -281,16 +276,6 @@
           }
         ]
       },
-      "prefix": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": ">",
-            "named": false
-          }
-        ]
-      },
       "verse": {
         "multiple": false,
         "required": true,
@@ -302,11 +287,6 @@
         ]
       }
     }
-  },
-  {
-    "type": "lyric_placeholder",
-    "named": true,
-    "fields": {}
   },
   {
     "type": "lyric_span",
@@ -484,10 +464,6 @@
       "required": true,
       "types": [
         {
-          "type": "empty_note",
-          "named": true
-        },
-        {
           "type": "half_division",
           "named": true
         },
@@ -521,7 +497,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "dynamics_line",
@@ -652,6 +628,10 @@
     "named": false
   },
   {
+    "type": "&dot",
+    "named": false
+  },
+  {
     "type": "&lch",
     "named": false
   },
@@ -716,10 +696,6 @@
     "named": false
   },
   {
-    "type": ">",
-    "named": false
-  },
-  {
     "type": "@",
     "named": false
   },
@@ -757,6 +733,10 @@
   },
   {
     "type": "lyric_anchor",
+    "named": true
+  },
+  {
+    "type": "lyric_placeholder",
     "named": true
   },
   {
@@ -825,10 +805,6 @@
   },
   {
     "type": "}",
-    "named": false
-  },
-  {
-    "type": "~",
     "named": false
   }
 ]

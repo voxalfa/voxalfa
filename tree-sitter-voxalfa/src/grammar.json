@@ -52,6 +52,10 @@
         {
           "type": "SYMBOL",
           "name": "parameter_line"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_linebreak"
         }
       ]
     },
@@ -105,6 +109,10 @@
         {
           "type": "SYMBOL",
           "name": "lyric_line"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_linebreak"
         }
       ]
     },
@@ -321,22 +329,6 @@
               "value": "]"
             }
           ]
-        },
-        {
-          "type": "FIELD",
-          "name": "prefix",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_lyric_prefix"
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
-          }
         },
         {
           "type": "FIELD",
@@ -668,10 +660,6 @@
           },
           {
             "type": "SYMBOL",
-            "name": "empty_note"
-          },
-          {
-            "type": "SYMBOL",
             "name": "prolonged_note"
           },
           {
@@ -692,10 +680,6 @@
     "underline_marker": {
       "type": "STRING",
       "value": "`"
-    },
-    "empty_note": {
-      "type": "STRING",
-      "value": "~"
     },
     "prolonged_note": {
       "type": "STRING",
@@ -757,10 +741,6 @@
     "note_variation": {
       "type": "PATTERN",
       "value": "[ai]"
-    },
-    "_lyric_prefix": {
-      "type": "STRING",
-      "value": ">"
     },
     "lyric_content": {
       "type": "SEQ",
@@ -1100,6 +1080,10 @@
         {
           "type": "STRING",
           "value": "&scl"
+        },
+        {
+          "type": "STRING",
+          "value": "&dot"
         }
       ]
     },
@@ -1166,10 +1150,6 @@
     {
       "type": "SYMBOL",
       "name": "_space"
-    },
-    {
-      "type": "SYMBOL",
-      "name": "_linebreak"
     }
   ],
   "conflicts": [],

@@ -49,6 +49,8 @@ pub enum DiagnosticKind {
     UnmatchedUnderline,
     #[error("expected {0}, got {1}")]
     MismatchedVerseIndex(usize, usize),
+    #[error("trailing operator, missing '...'")]
+    ExpectedLyricAnchor,
 }
 
 impl DiagnosticKind {
@@ -73,6 +75,7 @@ impl DiagnosticKind {
             DiagnosticKind::VoiceCountMismatch(_, _, _) => "E017",
             DiagnosticKind::UnmatchedUnderline => "E018",
             DiagnosticKind::MismatchedVerseIndex(_, _) => "E019",
+            DiagnosticKind::ExpectedLyricAnchor => "E020",
         }
     }
 

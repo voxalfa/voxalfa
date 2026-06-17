@@ -1,4 +1,4 @@
-use crate::ast::symbols::{Field, ScopeId, SymbolRef};
+use crate::ast::symbols::{ScopeId, SymbolRef};
 
 #[derive(Debug)]
 pub struct LyricLine {
@@ -17,9 +17,9 @@ pub enum LyricToken {
 
 pub type LyricChunk = SymbolRef<LyricChunkKind>;
 pub type LyricOperator = SymbolRef<LyricOperatorKind>;
-pub type LyricAnchor = SymbolRef<LyricAnchorKind>;
+pub type LyricAnchor = SymbolRef<LyricOperatorKind>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum LyricOperatorKind {
     Space,
     Concat,
@@ -44,13 +44,6 @@ pub enum LyricChunkKind {
 }
 
 #[derive(Debug)]
-pub enum LyricAnchorKind {
-    Newline,
-    Space,
-    Concat,
-}
-
-#[derive(Debug)]
 pub enum LyricSpecialChar {
     Backslash,
     Tilde,
@@ -60,8 +53,10 @@ pub enum LyricSpecialChar {
     Slash,
     LeftParen,
     RightParen,
-    Plus,
+    At,
     Ampersand,
+    Semicolumn,
+    Dot,
 }
 
 impl TryFrom<&str> for LyricSpecialChar {
@@ -77,8 +72,10 @@ impl TryFrom<&str> for LyricSpecialChar {
             "&sls" => Ok(Self::Slash),
             "&lpr" => Ok(Self::LeftParen),
             "&rpr" => Ok(Self::RightParen),
-            "&pls" => Ok(Self::Plus),
+            "&atr" => Ok(Self::At),
             "&amp" => Ok(Self::Ampersand),
+            "&scl" => Ok(Self::Semicolumn),
+            "&dot" => Ok(Self::Dot),
             _ => Err(()),
         }
     }
@@ -95,8 +92,10 @@ impl std::fmt::Display for LyricSpecialChar {
             LyricSpecialChar::Slash => '/',
             LyricSpecialChar::LeftParen => '(',
             LyricSpecialChar::RightParen => ')',
-            LyricSpecialChar::Plus => '+',
+            LyricSpecialChar::At => '@',
             LyricSpecialChar::Ampersand => '&',
+            LyricSpecialChar::Semicolumn => ';',
+            LyricSpecialChar::Dot => '.',
         };
 
         write!(f, "{char}")

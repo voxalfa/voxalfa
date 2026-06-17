@@ -21,21 +21,20 @@
 
 [^] p={1} | cre={3,6}
 
-[S] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-[T] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-[A] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-[B] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-;                                        ^type.qualifier
-;                                          ^number
-;                                   ^constant.builtin
-;                                                  ^constant.builtin
+[S] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+[T] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+[A] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+[B] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+;                               ^type.qualifier
+;                                 ^number
+;                                    ^constant.builtin
 
-[1] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ...
-[2] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ... ; scream
-;        ^punctuation.bracket
-;                ^punctuation.bracket
-;                                       ^constant.builtin
-;                              ^operator          ^comment
+[1] do `re` mi\(f a) so la ti_i do_o. ~ ~ ...
+[2] do `re` mi\(f a) so la ti_i do_o. ~ ~ ... ; scream
+;      ^punctuation.bracket
+;              ^punctuation.bracket
+;                                     ^constant.builtin
+;                            ^operator          ^comment
 
 ; --
 ; ...

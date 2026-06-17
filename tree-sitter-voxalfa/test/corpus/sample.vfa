@@ -39,13 +39,13 @@ Sample Partition
 
 [^] p={1} | cre={3,6}
 
-[S] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-[T] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-[A] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-[B] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
+[S] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+[T] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+[A] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+[B] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
 
-[1] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ...
-[2] > do `re` mi\(f a) so la ti_i do_o. ~ ~ ... ; scream
+[1] do `re` mi\(f a) so la ti_i do_o. ~ ~ ...
+[2] do `re` mi\(f a) so la ti_i do_o. ~ ~ ... ; scream
 
 ; --
 ; more sections...
@@ -56,21 +56,24 @@ Sample Partition
   (language_directive
     type: (identifier)
     value: (inline_string))
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
   (header
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
+    (inline_comment)
     (metadata_line
       (parameter_assignment
         name: (identifier)
@@ -117,11 +120,11 @@ Sample Partition
           (token)
           (token)
           (token)))))
-  (inline_comment)
-  (inline_comment)
-  (inline_comment)
   (body
     (section
+      (inline_comment)
+      (inline_comment)
+      (inline_comment)
       (parameter_line
         (parameter_assignment
           name: (identifier)
@@ -191,13 +194,9 @@ Sample Partition
             tokens: (pulse_tokens
               (prolonged_note)))
           (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (empty_note)))
+            accent: (medium_accent))
           (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (empty_note)))))
+            accent: (weak_accent))))
       (solfa_line
         voice: (token)
         content: (solfa_content
@@ -254,13 +253,9 @@ Sample Partition
             tokens: (pulse_tokens
               (prolonged_note)))
           (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (empty_note)))
+            accent: (medium_accent))
           (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (empty_note)))))
+            accent: (weak_accent))))
       (solfa_line
         voice: (token)
         content: (solfa_content
@@ -317,13 +312,9 @@ Sample Partition
             tokens: (pulse_tokens
               (prolonged_note)))
           (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (empty_note)))
+            accent: (medium_accent))
           (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (empty_note)))))
+            accent: (weak_accent))))
       (solfa_line
         voice: (token)
         content: (solfa_content
@@ -380,13 +371,9 @@ Sample Partition
             tokens: (pulse_tokens
               (prolonged_note)))
           (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (empty_note)))
+            accent: (medium_accent))
           (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (empty_note)))))
+            accent: (weak_accent))))
       (lyric_line
         verse: (integer)
         content: (lyric_content
@@ -498,7 +485,7 @@ Sample Partition
             lyric: (lyric_chunk
               (lyric_placeholder)))
           (space_operator))
-        anchor: (lyric_anchor))))
-  (inline_comment)
-  (inline_comment)
-  (inline_comment))
+        anchor: (lyric_anchor))
+      (inline_comment)
+      (inline_comment)
+      (inline_comment))))

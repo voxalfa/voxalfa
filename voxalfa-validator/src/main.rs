@@ -22,19 +22,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         [^] p={1} | cre={3,6}
 
-        [S] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-        [T] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-        [A] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
-        [B] | d : r ! m : f | `s : l` ! t : - | da+1 : - ! ~ : ~ ||
+        [S] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+        [T] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+        [A] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+        [B] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
 
-        [1] > do `re` mi\fa so la ti_i do_o. ~ ~ ; (scream)
-    "#;
+        [1] do `re` mi\fa so la ti_i do_o. ~ ~
+"#;
 
     let mut context = TSContext::new()?;
     let validator = DocumentValidator::new(source);
     let output = validator.validate(&mut context);
 
-    println!("{:?}", output.document.body.sections);
+    // println!("{:?}", output.document.body.sections);
 
     let mut cli_reporter = CliReporter::default();
 

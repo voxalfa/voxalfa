@@ -6,10 +6,10 @@ use crate::{
         document::Document,
         header::Header,
         lyrics::{
-            LyricAnchorKind, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
+            LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
             LyricOperatorKind, LyricSpecialChar, LyricToken,
         },
-        solfa::{MeasureState, Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
+        solfa::{Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
         symbols::{Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree},
         types::Voice,
     },
@@ -251,7 +251,6 @@ impl<'a> DocumentValidator<'a> {
             node_types::QUARTER_DIVISION => PulseTokenKind::QuarterDivision,
             node_types::UNDERLINE_MARKER => PulseTokenKind::UnderlineMarker,
             node_types::NOTE => self.parse_node(node).map(PulseTokenKind::Note)?,
-            node_types::EMPTY_NOTE => PulseTokenKind::EmptyNote,
             node_types::PROLONGED_NOTE => PulseTokenKind::ProlongedNote,
             _ => return None,
         };
@@ -390,16 +389,13 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        let extra_span = node
+        let span = node
             .child_by_field_name("span")
-            .and_then(|s| self.resolve_node_string(s))
-            .map(|s| s.len())
-            .unwrap_or_default();
+            .and_then(|s| s.child_by_field_name("count"))
+            .and_then(|c| self.parse_node(c))
+            .unwrap_or(1);
 
-        LyricColumn {
-            span: extra_span + 1,
-            chunks,
-        }
+        LyricColumn { span, chunks }
     }
 
     fn resolve_lyric_atom(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricChunk> {
@@ -429,22 +425,29 @@ impl<'a> DocumentValidator<'a> {
         node: Option<Node<'_>>,
         tokens: &[LyricToken],
         scope_id: ScopeId,
-    ) -> Option<SymbolRef<LyricAnchorKind>> {
+    ) -> Option<LyricAnchor> {
         let last_token = tokens.last();
 
+        if let Some(LyricToken::Operator(operator)) = last_token {
+            if let Some(node) = node {
+                let sid = self
+                    .tree
+                    .add_symbol(SymbolKind::Token, node.range(), scope_id);
+
+                return Some(LyricAnchor {
+                    sid,
+                    value: operator.value,
+                });
+            } else {
+                let range = self.tree.get_symbol_range(operator.sid);
+
+                if !matches!(operator.value, LyricOperatorKind::Space) {
+                    self.report_error(range, DiagnosticKind::ExpectedLyricAnchor);
+                }
+            }
+        }
+
         None
-        // let value = match node.kind_id() {
-        //     node_types::SPACE_ANCHOR => LyricAnchor::Space,
-        //     node_types::CONCAT_ANCHOR => LyricAnchor::Concat,
-        //     node_types::NEWLINE_ANCHOR => LyricAnchor::Newline,
-        //     _ => return None,
-        // };
-        //
-        // let sid = self
-        //     .tree
-        //     .add_symbol(SymbolKind::Token, node.range(), scope_id);
-        //
-        // Some(SymbolRef { sid, value })
     }
 
     fn validate_lyric_line(&mut self, line: &LyricLine) {

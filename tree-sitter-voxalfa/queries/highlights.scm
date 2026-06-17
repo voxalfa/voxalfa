@@ -21,7 +21,6 @@
 ] @keyword
 
 [
-  (empty_note) 
   (prolonged_note)
   (lyric_placeholder)
 ] @constant.builtin
