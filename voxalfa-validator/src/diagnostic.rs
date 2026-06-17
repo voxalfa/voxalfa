@@ -1,6 +1,9 @@
 use thiserror::Error;
 
-use crate::{ast::types::Voice, ts_utils::range::Range};
+use crate::{
+    ast::{solfa::PulseAccent, types::Voice},
+    ts_utils::range::Range,
+};
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -25,7 +28,7 @@ pub enum DiagnosticKind {
     ExpectedType(&'static str, &'static str),
     #[error("invalid {0}")]
     InvalidType(&'static str),
-    #[error("invalid time signature, expected two integers")]
+    #[error("invalid time signature, expected two non-null integers")]
     InvalidTimeSignature,
     #[error("invalid dynamic identifier '{0}'")]
     InvalidDynamic(String),
@@ -39,10 +42,10 @@ pub enum DiagnosticKind {
     VoiceMismatch(Voice, Voice),
     #[error("invalid note distribution")]
     InvalidNoteDistribution,
-    #[error("expected {0} columns, got {1}")]
+    #[error("expected {0} pulses, got {1}")]
     MeasureColumnMismatch(usize, usize, Range),
-    #[error("expected {0} measures, got {1}")]
-    MeasureCountMismatch(usize, usize, Range),
+    #[error("expected {0} pulses, got {1}")]
+    PulseCountMismatch(usize, usize, Range),
     #[error("expected {0} voices, got {1}")]
     VoiceCountMismatch(usize, usize, Range),
     #[error("unmatched underline delimiter '`'")]
@@ -53,6 +56,8 @@ pub enum DiagnosticKind {
     ExpectedLyricAnchor,
     #[error("invalid note prolongation")]
     InvalidNoteProlongation,
+    #[error("expected '{0}', got '{1}'")]
+    MismatchedPulseAccent(PulseAccent, PulseAccent, Range),
 }
 
 impl DiagnosticKind {
@@ -73,12 +78,13 @@ impl DiagnosticKind {
             DiagnosticKind::VoiceMismatch(_, _) => "E013",
             DiagnosticKind::InvalidNoteDistribution => "E014",
             DiagnosticKind::MeasureColumnMismatch(_, _, _) => "E015",
-            DiagnosticKind::MeasureCountMismatch(_, _, _) => "E016",
+            DiagnosticKind::PulseCountMismatch(_, _, _) => "E016",
             DiagnosticKind::VoiceCountMismatch(_, _, _) => "E017",
             DiagnosticKind::UnmatchedUnderline => "E018",
             DiagnosticKind::MismatchedVerseIndex(_, _) => "E019",
             DiagnosticKind::ExpectedLyricAnchor => "E020",
             DiagnosticKind::InvalidNoteProlongation => "E021",
+            DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E022",
         }
     }
 
@@ -97,13 +103,14 @@ impl DiagnosticKind {
                 message: format!("'{name}' has been assigned here"),
                 range: *range,
             }],
-            DiagnosticKind::MeasureColumnMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::MeasureColumnMismatch(_, _, range)
+            | DiagnosticKind::MismatchedPulseAccent(_, _, range) => vec![DiagnosticRelatedInfo {
                 message: "time signature defined here".to_string(),
                 range: *range,
             }],
-            DiagnosticKind::MeasureCountMismatch(expected, _, range) => {
+            DiagnosticKind::PulseCountMismatch(expected, _, range) => {
                 vec![DiagnosticRelatedInfo {
-                    message: format!("first line has {expected} measures"),
+                    message: format!("first line has {expected} pulses"),
                     range: *range,
                 }]
             }

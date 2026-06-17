@@ -13,15 +13,25 @@ pub struct SolfaLine {
 #[derive(Debug)]
 pub struct Pulse {
     pub sid: ScopeId,
-    pub accent: PulseAccent,
+    pub accent: SymbolRef<PulseAccent>,
     pub tokens: Vec<PulseToken>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PulseAccent {
     Strong, // |
     Medium, // !
     Weak,   // :
+}
+
+impl std::fmt::Display for PulseAccent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PulseAccent::Strong => write!(f, "|"),
+            PulseAccent::Medium => write!(f, "!"),
+            PulseAccent::Weak => write!(f, ":"),
+        }
+    }
 }
 
 pub type PulseToken = SymbolRef<PulseTokenKind>;
@@ -104,4 +114,20 @@ pub struct Note {
     pub base: BaseNote,
     pub variation: NoteVariation,
     pub octave: i8,
+}
+
+impl Note {
+    pub fn text_size(&self) -> usize {
+        let mut res = 1;
+
+        if !matches!(self.variation, NoteVariation::Base) {
+            res += 1;
+        }
+
+        if self.octave != 0 {
+            res += 2;
+        }
+
+        res
+    }
 }

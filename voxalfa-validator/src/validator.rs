@@ -3,7 +3,7 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 use crate::{
     ast::{
         body::{Body, Section},
-        document::Document,
+        document::{Comment, Document},
         header::Header,
         lyrics::{
             LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
@@ -59,8 +59,8 @@ impl<'a> DocumentValidator<'a> {
         if let Some(tree) = context.parse(self.source) {
             let root = tree.root_node();
 
-            self.handle_parser_errors(root, context);
             self.handle_root_node(root);
+            self.handle_query(root, context);
         }
 
         ValidatorOutput {
@@ -129,6 +129,7 @@ impl<'a> DocumentValidator<'a> {
             if child.kind_id() == node_types::SECTION {
                 let section = self.resolve_section(child, body.sid);
                 let section_ir = self.resolve_section_ir(&section);
+
                 body.sections.push(section);
                 self.ir.sections.push(section_ir);
             }
@@ -142,6 +143,7 @@ impl<'a> DocumentValidator<'a> {
 
         for line in &section.solfa {
             let line_ir = self.resolve_line_ir(line);
+
             section_ir.lines.push(line_ir);
         }
 
@@ -155,7 +157,7 @@ impl<'a> DocumentValidator<'a> {
         let mut column_offset = 0;
 
         for pulse in &line.pulses {
-            let mut pulse_ir = PulseIR::new(pulse.accent);
+            let mut pulse_ir = PulseIR::new(pulse.accent.value);
             let mut prev_notes = Vec::new();
             let mut stream = pulse.tokens.iter().peekable();
             let mut current_acc = 1.;
@@ -355,7 +357,7 @@ impl<'a> DocumentValidator<'a> {
         let accent_node = node.child_by_field_name("accent")?;
         let tokens_node = node.child_by_field_name("tokens");
 
-        let accent = self.resovle_pulse_accent(accent_node)?;
+        let accent = self.resovle_pulse_accent(accent_node, scope_id)?;
         let tokens = tokens_node
             .map(|n| self.resolve_pulse_tokens(n, scope_id))
             .unwrap_or_default();
@@ -379,13 +381,22 @@ impl<'a> DocumentValidator<'a> {
         tokens
     }
 
-    fn resovle_pulse_accent(&mut self, node: Node<'_>) -> Option<PulseAccent> {
-        match node.kind_id() {
-            node_types::STRONG_ACCENT => Some(PulseAccent::Strong),
-            node_types::MEDIUM_ACCENT => Some(PulseAccent::Medium),
-            node_types::WEAK_ACCENT => Some(PulseAccent::Weak),
-            _ => None,
-        }
+    fn resovle_pulse_accent(
+        &mut self,
+        node: Node<'_>,
+        scope_id: ScopeId,
+    ) -> Option<SymbolRef<PulseAccent>> {
+        let value = match node.kind_id() {
+            node_types::STRONG_ACCENT => PulseAccent::Strong,
+            node_types::MEDIUM_ACCENT => PulseAccent::Medium,
+            node_types::WEAK_ACCENT => PulseAccent::Weak,
+            _ => return None,
+        };
+        let sid = self
+            .tree
+            .add_symbol(SymbolKind::Token, node.range(), scope_id);
+
+        Some(SymbolRef { sid, value })
     }
 
     fn resolve_pulse_token(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<PulseToken> {
@@ -426,16 +437,93 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        self.validate_voice_count(&section, node.range());
+        self.valdiate_pulses(&section);
+        self.validate_voice_count(&section);
 
         section
     }
 
-    fn validate_voice_count(&mut self, section: &Section, range: Range) {
+    fn valdiate_pulses(&mut self, section: &Section) {
+        let time_signature = self.document.time_signature().cloned();
+
+        for line in &section.solfa {
+            if let Some(first) = section.solfa.first() {
+                let first_len = first.pulses.len();
+                let current_len = line.pulses.len();
+
+                if current_len != first_len {
+                    let range = self.tree.get_scope_range(line.sid);
+                    let context_range = self.tree.get_scope_range(first.sid);
+
+                    self.report_error(
+                        range,
+                        DiagnosticKind::PulseCountMismatch(first_len, current_len, context_range),
+                    );
+                }
+            }
+
+            if let Some(time_signature) = &time_signature {
+                let pulse_len = line.pulses.len();
+                let mut count = 0;
+                let mut offset = 0;
+
+                while count < pulse_len {
+                    let pulse = &line.pulses[offset % pulse_len];
+
+                    offset += 1;
+
+                    if count == 0 && pulse.accent.value != PulseAccent::Strong {
+                        continue;
+                    }
+
+                    let position = count % time_signature.value.top;
+                    let expected = time_signature.value.get_accent(position);
+
+                    if pulse.accent.value != expected {
+                        let range = self.tree.get_symbol_range(pulse.accent.sid);
+                        let context_range = self.tree.get_symbol_range(time_signature.sid);
+
+                        self.report_error(
+                            range,
+                            DiagnosticKind::MismatchedPulseAccent(
+                                expected,
+                                pulse.accent.value,
+                                context_range,
+                            ),
+                        );
+                    }
+
+                    count += 1;
+                }
+
+                let measure_columns = count % time_signature.value.top;
+
+                if measure_columns != 0 {
+                    let measure_start = &line.pulses[pulse_len - measure_columns];
+                    let measure_end = &line.pulses[pulse_len - 1];
+                    let start_range = self.tree.get_scope_range(measure_start.sid);
+                    let end_range = self.tree.get_scope_range(measure_end.sid);
+                    let context_range = self.tree.get_symbol_range(time_signature.sid);
+
+                    self.report_error(
+                        start_range.merge(end_range),
+                        DiagnosticKind::MeasureColumnMismatch(
+                            time_signature.value.top,
+                            measure_columns,
+                            context_range,
+                        ),
+                    );
+                }
+            }
+        }
+    }
+
+    fn validate_voice_count(&mut self, section: &Section) {
         let Some(voices) = &self.document.header.params.voices else {
             return;
         };
 
+        let range = self.tree.get_scope_range(section.sid);
         let count = section.solfa.len();
         let expected = voices.value.len();
 
@@ -620,11 +708,11 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
-    fn handle_parser_errors(&mut self, root: Node<'_>, context: &mut TSContext) {
-        let capture_names = context.error_query.capture_names();
+    fn handle_query(&mut self, root: Node<'_>, context: &mut TSContext) {
+        let capture_names = context.query.capture_names();
 
         let mut cursor = QueryCursor::new();
-        let mut matches = cursor.matches(&context.error_query, root, self.source);
+        let mut matches = cursor.matches(&context.query, root, self.source);
 
         while let Some(m) = matches.next() {
             for capture in m.captures.iter() {
@@ -638,6 +726,9 @@ impl<'a> DocumentValidator<'a> {
 
     fn handle_capture(&mut self, name: &str, node: Node<'_>) {
         match name {
+            "comment" | "directive" => {
+                self.handle_comment_node(node);
+            }
             "error.syntax" => {
                 self.report_error(node.range(), DiagnosticKind::SyntaxError);
             }
@@ -645,6 +736,15 @@ impl<'a> DocumentValidator<'a> {
                 self.report_error(node.range(), DiagnosticKind::Missing(node.kind().into()));
             }
             _ => {}
+        }
+    }
+
+    fn handle_comment_node(&mut self, node: Node<'_>) {
+        if let Some(comment) = self.resolve_node_string(node) {
+            let sid = self.tree.add_symbol(SymbolKind::Comment, node.range(), 0);
+            let value = comment.trim().to_string();
+
+            self.document.comments.push(Comment { sid, value });
         }
     }
 

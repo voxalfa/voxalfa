@@ -1,10 +1,18 @@
-use crate::ast::{body::Body, header::Header, types::Voice};
+use crate::ast::{
+    body::Body,
+    header::Header,
+    symbols::SymbolRef,
+    types::{TimeSignature, Voice},
+};
 
 #[derive(Debug, Default)]
 pub struct Document {
     pub header: Header,
     pub body: Body,
+    pub comments: Vec<Comment>,
 }
+
+pub type Comment = SymbolRef<String>;
 
 impl Document {
     pub fn get_voice(&self, id: usize) -> Option<Voice> {
@@ -14,5 +22,9 @@ impl Document {
             .as_ref()
             .and_then(|v| v.value.get(id))
             .copied()
+    }
+
+    pub fn time_signature(&self) -> Option<&SymbolRef<TimeSignature>> {
+        self.header.params.time.as_ref()
     }
 }

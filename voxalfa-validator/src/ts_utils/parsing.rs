@@ -135,7 +135,7 @@ impl ParseNode for TimeSignature {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
         let value = context.parse_node::<Vec<_>>(node)?;
 
-        if value.len() != 2 {
+        if value.len() != 2 || value[0] == 0 || value[1] == 0 {
             context.report_error(node.range(), DiagnosticKind::InvalidTimeSignature);
             None
         } else {

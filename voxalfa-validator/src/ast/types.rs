@@ -1,7 +1,23 @@
-#[derive(Debug)]
+use crate::ast::solfa::PulseAccent;
+
+#[derive(Debug, Default, Clone)]
 pub struct TimeSignature {
     pub top: usize,
     pub bottom: usize,
+}
+
+impl TimeSignature {
+    pub fn get_accent(&self, position: usize) -> PulseAccent {
+        if position == 0 {
+            PulseAccent::Strong
+        } else if (self.top % 3 == 0 && position % 3 == 0)
+            || (self.top % 2 == 0 && position % 2 == 0)
+        {
+            PulseAccent::Medium
+        } else {
+            PulseAccent::Weak
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -10,7 +10,7 @@ pub type ScopeId = usize;
 pub enum SymbolKind {
     Key(String),
     Value(Value),
-    Comment(Comment),
+    Comment,
     Token,
 }
 
@@ -25,18 +25,13 @@ pub enum Value {
 }
 
 #[derive(Debug)]
-pub enum Comment {
-    Inline,
-}
-
-#[derive(Debug)]
 pub struct Symbol {
     pub range: Range,
     pub kind: SymbolKind,
     pub scope: ScopeId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SymbolRef<T> {
     pub sid: SymbolId,
     pub value: T,
