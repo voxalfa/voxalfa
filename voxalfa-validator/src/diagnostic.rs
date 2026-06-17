@@ -51,6 +51,8 @@ pub enum DiagnosticKind {
     MismatchedVerseIndex(usize, usize),
     #[error("trailing operator, missing '...'")]
     ExpectedLyricAnchor,
+    #[error("invalid note prolongation")]
+    InvalidNoteProlongation,
 }
 
 impl DiagnosticKind {
@@ -76,6 +78,7 @@ impl DiagnosticKind {
             DiagnosticKind::UnmatchedUnderline => "E018",
             DiagnosticKind::MismatchedVerseIndex(_, _) => "E019",
             DiagnosticKind::ExpectedLyricAnchor => "E020",
+            DiagnosticKind::InvalidNoteProlongation => "E021",
         }
     }
 

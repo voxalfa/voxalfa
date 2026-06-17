@@ -29,7 +29,6 @@ pub type PulseToken = SymbolRef<PulseTokenKind>;
 #[derive(Debug)]
 pub enum PulseTokenKind {
     Note(Note),
-    EmptyNote,
     ProlongedNote,
     HalfDivision,
     QuarterDivision,
@@ -47,7 +46,7 @@ impl PulseTokenKind {
     pub fn is_note(&self) -> bool {
         matches!(
             self,
-            PulseTokenKind::Note(_) | PulseTokenKind::ProlongedNote | PulseTokenKind::EmptyNote
+            PulseTokenKind::Note(_) | PulseTokenKind::ProlongedNote
         )
     }
 }
@@ -100,7 +99,7 @@ impl TryFrom<&str> for NoteVariation {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Note {
     pub base: BaseNote,
     pub variation: NoteVariation,

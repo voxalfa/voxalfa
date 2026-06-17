@@ -9,11 +9,15 @@ use crate::{
             LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
             LyricOperatorKind, LyricSpecialChar, LyricToken,
         },
-        solfa::{Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
+        solfa::{Note, Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
         symbols::{Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree},
         types::Voice,
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
+    ir::{
+        DocumentIR, SectionIR,
+        solfa::{PulseColumnKind, PulseIR, SolfaLineIR, UnderlineRange},
+    },
     ts_utils::{
         context::TSContext,
         generated::node_types,
@@ -27,6 +31,7 @@ use crate::{
 pub struct ValidatorOutput {
     pub tree: SymbolTree,
     pub document: Document,
+    pub ir: DocumentIR,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -35,6 +40,7 @@ pub struct DocumentValidator<'a> {
     pub source: &'a [u8],
     pub tree: SymbolTree,
     pub document: Document,
+    pub ir: DocumentIR,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -42,9 +48,10 @@ impl<'a> DocumentValidator<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source: source.as_bytes(),
-            diagnostics: Vec::default(),
             document: Document::default(),
             tree: SymbolTree::default(),
+            ir: DocumentIR::default(),
+            diagnostics: Vec::default(),
         }
     }
 
@@ -59,6 +66,7 @@ impl<'a> DocumentValidator<'a> {
         ValidatorOutput {
             tree: self.tree,
             document: self.document,
+            ir: self.ir,
             diagnostics: self.diagnostics,
         }
     }
@@ -120,11 +128,146 @@ impl<'a> DocumentValidator<'a> {
         for child in node.named_children(&mut node.walk()) {
             if child.kind_id() == node_types::SECTION {
                 let section = self.resolve_section(child, body.sid);
+                let section_ir = self.resolve_section_ir(&section);
                 body.sections.push(section);
+                self.ir.sections.push(section_ir);
             }
         }
 
         self.document.body = body;
+    }
+
+    fn resolve_section_ir(&mut self, section: &Section) -> SectionIR {
+        let mut section_ir = SectionIR::default();
+
+        for line in &section.solfa {
+            let line_ir = self.resolve_line_ir(line);
+            section_ir.lines.push(line_ir);
+        }
+
+        section_ir
+    }
+
+    fn resolve_line_ir(&mut self, line: &SolfaLine) -> SolfaLineIR {
+        let mut line_ir = SolfaLineIR::default();
+        let mut underline_pos = None;
+        let mut underline_sid = None;
+        let mut column_offset = 0;
+
+        for pulse in &line.pulses {
+            let mut pulse_ir = PulseIR::new(pulse.accent);
+            let mut prev_notes = Vec::new();
+            let mut stream = pulse.tokens.iter().peekable();
+            let mut current_acc = 1.;
+            let mut last_acc = 0.;
+
+            while let Some(token) = stream.next() {
+                match &token.value {
+                    PulseTokenKind::Note(note) => {
+                        prev_notes.push(*note);
+
+                        if let Some(next_token) = stream.peek() {
+                            match next_token.value {
+                                PulseTokenKind::Note(_) => continue,
+                                PulseTokenKind::ProlongedNote => {
+                                    let range = self.tree.get_symbol_range(next_token.sid);
+                                    self.report_error(range, DiagnosticKind::SyntaxError);
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        let notes = std::mem::take(&mut prev_notes);
+                        pulse_ir.add_column(PulseColumnKind::Notes(notes));
+                    }
+                    PulseTokenKind::ProlongedNote => {
+                        if let Some(last_note) = self.resolve_last_note(&line_ir) {
+                            pulse_ir.add_column(PulseColumnKind::ProlongedNote(last_note));
+                        } else {
+                            let range = self.tree.get_symbol_range(token.sid);
+                            self.report_error(range, DiagnosticKind::InvalidNoteProlongation);
+                        }
+                    }
+                    PulseTokenKind::HalfDivision => {
+                        last_acc = current_acc;
+                        current_acc = 0.5;
+                    }
+                    PulseTokenKind::QuarterDivision => {
+                        last_acc = current_acc;
+                        current_acc = 0.25;
+                    }
+                    PulseTokenKind::UnderlineMarker => {
+                        underline_sid = Some(token.sid);
+
+                        match underline_pos.take() {
+                            Some(pos) => line_ir
+                                .underlines
+                                .push(UnderlineRange { start: pos, end: 0 }),
+                            None => underline_pos = Some(column_offset + pulse_ir.columns.len()),
+                        }
+                    }
+                }
+
+                if token.value.is_beat_divider() {
+                    if let Some(last) = pulse_ir.columns.last_mut() {
+                        last.duration += current_acc;
+
+                        if last_acc < current_acc {
+                            last.duration -= last_acc;
+                        }
+                    }
+
+                    if current_acc == 1. || stream.peek().is_none() {
+                        pulse_ir.add_column(PulseColumnKind::EmptyNote);
+                    }
+                }
+            }
+
+            if pulse.tokens.is_empty() {
+                pulse_ir.add_column(PulseColumnKind::EmptyNote);
+            }
+
+            if let Some(last) = pulse_ir.columns.last_mut() {
+                last.duration = current_acc;
+            }
+
+            let duration = pulse_ir.columns.iter().map(|c| c.duration).sum::<f32>();
+
+            if duration != 1. {
+                let range = self.tree.get_scope_range(pulse.sid);
+                self.report_error(range, DiagnosticKind::InvalidNoteDistribution);
+            }
+
+            column_offset += pulse_ir.columns.len();
+            line_ir.pulses.push(pulse_ir);
+        }
+
+        if let Some(sid) = underline_sid
+            && underline_pos.is_some()
+        {
+            let underline_range = self.tree.get_symbol_range(sid);
+            let line_range = self.tree.get_scope_range(line.sid);
+
+            self.report_error(
+                underline_range.merge(line_range),
+                DiagnosticKind::UnmatchedUnderline,
+            );
+        }
+
+        line_ir
+    }
+
+    fn resolve_last_note(&self, line_ir: &SolfaLineIR) -> Option<Note> {
+        line_ir
+            .pulses
+            .iter()
+            .rev()
+            .find_map(|pulse| pulse.columns.last())
+            .and_then(|column| match &column.kind {
+                PulseColumnKind::Notes(notes) => notes.last().copied(),
+                PulseColumnKind::ProlongedNote(note) => Some(*note),
+                PulseColumnKind::EmptyNote => None,
+            })
     }
 
     fn handle_solfa_node(
@@ -255,10 +398,11 @@ impl<'a> DocumentValidator<'a> {
             _ => return None,
         };
 
-        Some(PulseToken {
-            sid: scope_id,
-            value: kind,
-        })
+        let sid = self
+            .tree
+            .add_symbol(SymbolKind::Token, node.range(), scope_id);
+
+        Some(PulseToken { sid, value: kind })
     }
 
     fn resolve_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> Section {
