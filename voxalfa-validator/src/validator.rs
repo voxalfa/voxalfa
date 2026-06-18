@@ -468,6 +468,10 @@ impl<'a> DocumentValidator<'a> {
                 let mut offset = 0;
 
                 while count < pulse_len {
+                    if count == 0 && offset == pulse_len {
+                        break;
+                    }
+
                     let pulse = &line.pulses[offset % pulse_len];
 
                     offset += 1;

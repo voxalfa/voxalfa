@@ -10,8 +10,8 @@ impl TimeSignature {
     pub fn get_accent(&self, position: usize) -> PulseAccent {
         if position == 0 {
             PulseAccent::Strong
-        } else if (self.top % 3 == 0 && position % 3 == 0)
-            || (self.top % 2 == 0 && position % 2 == 0)
+        } else if (self.top.is_multiple_of(3) && position.is_multiple_of(3))
+            || (self.top.is_multiple_of(2) && position.is_multiple_of(2))
         {
             PulseAccent::Medium
         } else {
