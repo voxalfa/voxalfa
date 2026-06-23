@@ -5,6 +5,8 @@ use crate::{
 
 pub type SymbolId = usize;
 pub type ScopeId = usize;
+pub type LyricStringId = usize;
+pub type Comment = SymbolRef<String>;
 
 #[derive(Debug)]
 pub enum SymbolKind {
@@ -62,6 +64,8 @@ pub struct Scope {
 pub struct SymbolTree {
     pub symbols: Vec<Symbol>,
     pub scopes: Vec<Scope>,
+    pub comments: Vec<Comment>,
+    pub lyrics: Vec<String>,
 }
 
 impl SymbolTree {
@@ -119,6 +123,15 @@ impl SymbolTree {
     pub fn resolve_scope(&self, symbol_id: SymbolId) -> &Scope {
         let scope_id = self.symbols[symbol_id].scope;
         &self.scopes[scope_id]
+    }
+
+    pub fn store_lyric_chunk(&mut self, chunk: String) -> LyricStringId {
+        self.lyrics.push(chunk);
+        self.lyrics.len().saturating_sub(1)
+    }
+
+    pub fn get_lyric_chunk(&self, id: LyricStringId) -> &str {
+        &self.lyrics[id]
     }
 }
 

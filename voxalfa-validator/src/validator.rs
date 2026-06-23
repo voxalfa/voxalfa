@@ -3,20 +3,24 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 use crate::{
     ast::{
         body::{Body, Section},
-        document::{Comment, Document},
+        document::Document,
         header::Header,
         lyrics::{
             LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
             LyricOperatorKind, LyricSpecialChar, LyricToken,
         },
         solfa::{Note, Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
-        symbols::{Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree},
+        symbols::{
+            Comment, Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree,
+        },
         types::Voice,
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ir::{
         DocumentIR, SectionIR,
-        solfa::{BeatBuffer, PulseColumnKind, PulseIR, SolfaLineIR, UnderlineRange},
+        lyrics::LyricLineIR,
+        solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
+        utils::{BeatBuffer, UnderlineRange},
     },
     ts_utils::{
         context::TSContext,
@@ -128,7 +132,7 @@ impl<'a> DocumentValidator<'a> {
         for child in node.named_children(&mut node.walk()) {
             if child.kind_id() == node_types::SECTION {
                 let section = self.resolve_section(child, body.sid);
-                let section_ir = self.resolve_section_ir(&section);
+                let section_ir = self.build_section_ir(&section);
 
                 body.sections.push(section);
                 self.ir.sections.push(section_ir);
@@ -138,20 +142,24 @@ impl<'a> DocumentValidator<'a> {
         self.document.body = body;
     }
 
-    fn resolve_section_ir(&mut self, section: &Section) -> SectionIR {
+    fn build_section_ir(&mut self, section: &Section) -> SectionIR {
         let mut section_ir = SectionIR::default();
 
         for line in &section.solfa {
-            let line_ir = self.resolve_line_ir(line);
+            let line_ir = self.build_solfa_line_ir(line);
+            section_ir.solfa.push(line_ir);
+        }
 
-            section_ir.lines.push(line_ir);
+        for line in &section.lyrics {
+            let line_ir = self.build_lyric_line_ir(line, section, &section_ir);
+            section_ir.lyrics.push(line_ir);
         }
 
         section_ir
     }
 
-    fn resolve_line_ir(&mut self, line: &SolfaLine) -> SolfaLineIR {
-        let mut line_ir = SolfaLineIR::default();
+    fn build_solfa_line_ir(&mut self, line: &SolfaLine) -> SolfaLineIR {
+        let mut line_ir = SolfaLineIR::new(line.voice);
         let mut underline_pos = None;
         let mut underline_sid = None;
         let mut column_offset = 0;
@@ -250,6 +258,21 @@ impl<'a> DocumentValidator<'a> {
                 PulseColumnKind::ProlongedNote(note) => Some(*note),
                 PulseColumnKind::EmptyNote => None,
             })
+    }
+
+    fn build_lyric_line_ir(
+        &self,
+        _line: &LyricLine,
+        _section: &Section,
+        _section_ir: &SectionIR,
+    ) -> LyricLineIR {
+        todo!()
+        // let mut line_ir = LyricLineIR::default();
+        //
+        // for token in &line.tokens {
+        // }
+        //
+        // line_ir
     }
 
     fn handle_solfa_node(
@@ -417,13 +440,13 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        self.valdiate_pulses(&section);
+        self.validate_pulses(&section);
         self.validate_voice_count(&section);
 
         section
     }
 
-    fn valdiate_pulses(&mut self, section: &Section) {
+    fn validate_pulses(&mut self, section: &Section) {
         let time_signature = self.document.time_signature().cloned();
 
         for line in &section.solfa {
@@ -533,7 +556,7 @@ impl<'a> DocumentValidator<'a> {
         let content_node = node.child_by_field_name("content")?;
         let anchor_node = node.child_by_field_name("anchor");
 
-        let group = section.solfa.len();
+        let group = section.solfa.len().saturating_sub(1);
         let verse = self.parse_node(verse_node)?;
         let expected_verse = section.lyrics.iter().filter(|l| l.group == group).count() + 1;
         let tokens = self.resolve_lyric_tokens(content_node, scope_id);
@@ -621,7 +644,12 @@ impl<'a> DocumentValidator<'a> {
             node_types::NEWLINE_OPERATOR => LyricChunkKind::Newline,
             node_types::UNDERLINE_MARKER => LyricChunkKind::UnderlineMarker,
             node_types::LYRIC_PLACEHOLDER => LyricChunkKind::Placeholder,
-            node_types::LYRIC_STRING => LyricChunkKind::String(self.resolve_node_string(node)?),
+
+            node_types::LYRIC_STRING => {
+                let chunk = self.resolve_node_string(node)?;
+                let id = self.tree.store_lyric_chunk(chunk);
+                LyricChunkKind::String(id)
+            }
             _ => {
                 let s = self.resolve_node_string(node)?;
                 let char = LyricSpecialChar::try_from(s.as_str()).ok()?;
@@ -728,7 +756,7 @@ impl<'a> DocumentValidator<'a> {
             let sid = self.tree.add_symbol(SymbolKind::Comment, node.range(), 0);
             let value = comment.trim().to_string();
 
-            self.document.comments.push(Comment { sid, value });
+            self.tree.comments.push(Comment { sid, value });
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::ast::symbols::{ScopeId, SymbolRef};
+use crate::ast::symbols::{LyricStringId, ScopeId, SymbolRef};
 
 #[derive(Debug)]
 pub struct LyricLine {
@@ -39,7 +39,7 @@ pub enum LyricChunkKind {
     Newline,
     Placeholder,
     UnderlineMarker,
-    String(String),
+    String(LyricStringId),
     SpecialChar(LyricSpecialChar),
 }
 

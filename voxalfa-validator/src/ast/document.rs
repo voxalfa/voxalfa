@@ -9,10 +9,7 @@ use crate::ast::{
 pub struct Document {
     pub header: Header,
     pub body: Body,
-    pub comments: Vec<Comment>,
 }
-
-pub type Comment = SymbolRef<String>;
 
 impl Document {
     pub fn get_voice(&self, id: usize) -> Option<Voice> {
