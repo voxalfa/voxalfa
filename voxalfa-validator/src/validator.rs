@@ -16,7 +16,7 @@ use crate::{
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ir::{
         DocumentIR, SectionIR,
-        solfa::{PulseColumnKind, PulseIR, SolfaLineIR, UnderlineRange},
+        solfa::{BeatBuffer, PulseColumnKind, PulseIR, SolfaLineIR, UnderlineRange},
     },
     ts_utils::{
         context::TSContext,
@@ -157,31 +157,26 @@ impl<'a> DocumentValidator<'a> {
         let mut column_offset = 0;
 
         for pulse in &line.pulses {
-            let mut pulse_ir = PulseIR::new(pulse.accent.value);
-            let mut prev_notes = Vec::new();
             let mut stream = pulse.tokens.iter().peekable();
-            let mut current_acc = 1.;
-            let mut last_acc = 0.;
+            let mut pulse_ir = PulseIR::new(pulse.accent.value);
+            let mut buffer = BeatBuffer::default();
+
+            if stream.peek().is_none() {
+                pulse_ir.add_column(PulseColumnKind::EmptyNote);
+                buffer.append_note();
+            }
 
             while let Some(token) = stream.next() {
+                if token.value.is_beat_divider()
+                    && (pulse_ir.columns.is_empty() || stream.peek().is_none())
+                {
+                    pulse_ir.add_column(PulseColumnKind::EmptyNote);
+                    buffer.append_note();
+                } else if token.value.is_note() {
+                    buffer.append_note();
+                }
+
                 match &token.value {
-                    PulseTokenKind::Note(note) => {
-                        prev_notes.push(*note);
-
-                        if let Some(next_token) = stream.peek() {
-                            match next_token.value {
-                                PulseTokenKind::Note(_) => continue,
-                                PulseTokenKind::ProlongedNote => {
-                                    let range = self.tree.get_symbol_range(next_token.sid);
-                                    self.report_error(range, DiagnosticKind::SyntaxError);
-                                }
-                                _ => {}
-                            }
-                        }
-
-                        let notes = std::mem::take(&mut prev_notes);
-                        pulse_ir.add_column(PulseColumnKind::Notes(notes));
-                    }
                     PulseTokenKind::ProlongedNote => {
                         if let Some(last_note) = self.resolve_last_note(&line_ir) {
                             pulse_ir.add_column(PulseColumnKind::ProlongedNote(last_note));
@@ -190,13 +185,14 @@ impl<'a> DocumentValidator<'a> {
                             self.report_error(range, DiagnosticKind::InvalidNoteProlongation);
                         }
                     }
+                    PulseTokenKind::Note(note) => {
+                        pulse_ir.add_column(PulseColumnKind::Note(*note));
+                    }
                     PulseTokenKind::HalfDivision => {
-                        last_acc = current_acc;
-                        current_acc = 0.5;
+                        buffer.divide();
                     }
                     PulseTokenKind::QuarterDivision => {
-                        last_acc = current_acc;
-                        current_acc = 0.25;
+                        buffer.divide_sub();
                     }
                     PulseTokenKind::UnderlineMarker => {
                         underline_sid = Some(token.sid);
@@ -209,38 +205,22 @@ impl<'a> DocumentValidator<'a> {
                         }
                     }
                 }
-
-                if token.value.is_beat_divider() {
-                    if let Some(last) = pulse_ir.columns.last_mut() {
-                        last.duration += current_acc;
-
-                        if last_acc < current_acc {
-                            last.duration -= last_acc;
-                        }
-                    }
-
-                    if current_acc == 1. || stream.peek().is_none() {
-                        pulse_ir.add_column(PulseColumnKind::EmptyNote);
-                    }
-                }
             }
 
-            if pulse.tokens.is_empty() {
-                pulse_ir.add_column(PulseColumnKind::EmptyNote);
-            }
+            let (durations, length) = buffer.get_durations();
 
-            if let Some(last) = pulse_ir.columns.last_mut() {
-                last.duration = current_acc;
-            }
-
-            let duration = pulse_ir.columns.iter().map(|c| c.duration).sum::<f32>();
-
-            if duration != 1. {
+            if !buffer.is_valid() {
                 let range = self.tree.get_scope_range(pulse.sid);
                 self.report_error(range, DiagnosticKind::InvalidNoteDistribution);
             }
 
+            for (i, duration) in durations.into_iter().enumerate() {
+                pulse_ir.columns[i].duration = duration;
+            }
+
+            pulse_ir.length = length;
             column_offset += pulse_ir.columns.len();
+
             line_ir.pulses.push(pulse_ir);
         }
 
@@ -266,7 +246,7 @@ impl<'a> DocumentValidator<'a> {
             .rev()
             .find_map(|pulse| pulse.columns.last())
             .and_then(|column| match &column.kind {
-                PulseColumnKind::Notes(notes) => notes.last().copied(),
+                PulseColumnKind::Note(note) => Some(*note),
                 PulseColumnKind::ProlongedNote(note) => Some(*note),
                 PulseColumnKind::EmptyNote => None,
             })

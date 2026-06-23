@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let validator = DocumentValidator::new(source);
     let output = validator.validate(&mut context);
 
-    println!("{:?}", output.document.comments);
+    // println!("{:?}", output.document.comments);
 
     let mut cli_reporter = CliReporter::default();
 
