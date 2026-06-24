@@ -7,20 +7,21 @@ use crate::{
         header::Header,
         lyrics::{
             LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
-            LyricOperatorKind, LyricSpecialChar, LyricToken,
+            LyricOperatorKind, LyricSpecialChar, LyricString, LyricStringKind, LyricToken,
         },
         solfa::{Note, Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
         symbols::{
-            Comment, Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree,
+            Comment, Field, FieldAssign, ScopeId, ScopeKind, SymbolId, SymbolKind, SymbolRef,
+            SymbolTree,
         },
         types::Voice,
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ir::{
-        DocumentIR, SectionIR,
-        lyrics::LyricLineIR,
+        DocumentIR, SectionGroup, SectionIR,
+        lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
-        utils::{BeatBuffer, UnderlineRange},
+        utils::{BeatBuffer, UnderlineBuffer},
     },
     ts_utils::{
         context::TSContext,
@@ -160,18 +161,16 @@ impl<'a> DocumentValidator<'a> {
 
     fn build_solfa_line_ir(&mut self, line: &SolfaLine) -> SolfaLineIR {
         let mut line_ir = SolfaLineIR::new(line.voice);
-        let mut underline_pos = None;
-        let mut underline_sid = None;
-        let mut column_offset = 0;
+        let mut underline_buffer = UnderlineBuffer::default();
 
         for pulse in &line.pulses {
             let mut stream = pulse.tokens.iter().peekable();
             let mut pulse_ir = PulseIR::new(pulse.accent.value);
-            let mut buffer = BeatBuffer::default();
+            let mut beat_buffer = BeatBuffer::default();
 
             if stream.peek().is_none() {
                 pulse_ir.add_column(PulseColumnKind::EmptyNote);
-                buffer.append_note();
+                beat_buffer.append_note();
             }
 
             while let Some(token) = stream.next() {
@@ -179,9 +178,9 @@ impl<'a> DocumentValidator<'a> {
                     && (pulse_ir.columns.is_empty() || stream.peek().is_none())
                 {
                     pulse_ir.add_column(PulseColumnKind::EmptyNote);
-                    buffer.append_note();
+                    beat_buffer.append_note();
                 } else if token.value.is_note() {
-                    buffer.append_note();
+                    beat_buffer.append_note();
                 }
 
                 match &token.value {
@@ -197,52 +196,36 @@ impl<'a> DocumentValidator<'a> {
                         pulse_ir.add_column(PulseColumnKind::Note(*note));
                     }
                     PulseTokenKind::HalfDivision => {
-                        buffer.divide();
+                        beat_buffer.divide();
                     }
                     PulseTokenKind::QuarterDivision => {
-                        buffer.divide_sub();
+                        beat_buffer.divide_sub();
                     }
                     PulseTokenKind::UnderlineMarker => {
-                        underline_sid = Some(token.sid);
-
-                        match underline_pos.take() {
-                            Some(pos) => line_ir
-                                .underlines
-                                .push(UnderlineRange { start: pos, end: 0 }),
-                            None => underline_pos = Some(column_offset + pulse_ir.columns.len()),
-                        }
+                        underline_buffer.mark(token.sid, pulse_ir.columns.len());
                     }
                 }
             }
 
-            let (durations, length) = buffer.get_durations();
+            let (durations, length) = beat_buffer.get_durations();
 
-            if !buffer.is_valid() {
+            if !beat_buffer.is_valid() {
                 let range = self.tree.get_scope_range(pulse.sid);
                 self.report_error(range, DiagnosticKind::InvalidNoteDistribution);
             }
 
-            for (i, duration) in durations.into_iter().enumerate() {
-                pulse_ir.columns[i].duration = duration;
-            }
-
-            pulse_ir.length = length;
-            column_offset += pulse_ir.columns.len();
+            pulse_ir.set_length(length);
+            pulse_ir.fit_durations(&durations);
+            underline_buffer.add_offset(pulse_ir.columns.len());
 
             line_ir.pulses.push(pulse_ir);
         }
 
-        if let Some(sid) = underline_sid
-            && underline_pos.is_some()
-        {
-            let underline_range = self.tree.get_symbol_range(sid);
-            let line_range = self.tree.get_scope_range(line.sid);
-
-            self.report_error(
-                underline_range.merge(line_range),
-                DiagnosticKind::UnmatchedUnderline,
-            );
+        if let Some(sid) = underline_buffer.get_trailing() {
+            self.report_trailing_underline(sid, line.sid);
         }
+
+        line_ir.underlines = underline_buffer.into_results_vec();
 
         line_ir
     }
@@ -261,18 +244,77 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn build_lyric_line_ir(
-        &self,
-        _line: &LyricLine,
+        &mut self,
+        line: &LyricLine,
         _section: &Section,
         _section_ir: &SectionIR,
     ) -> LyricLineIR {
-        todo!()
-        // let mut line_ir = LyricLineIR::default();
-        //
-        // for token in &line.tokens {
-        // }
-        //
-        // line_ir
+        let mut line_ir = LyricLineIR::new(line.group);
+        let mut underline_buffer = UnderlineBuffer::default();
+
+        for token in &line.tokens {
+            match token {
+                LyricToken::Column(column) => {
+                    let column_ir = self.build_lyric_column_ir(column, &mut underline_buffer);
+                    line_ir.columns.push(column_ir);
+                }
+                LyricToken::Operator(operator) => {
+                    line_ir.operators.push(operator.value);
+                }
+            };
+        }
+
+        if let Some(sid) = underline_buffer.get_trailing() {
+            self.report_trailing_underline(sid, line.sid);
+        }
+
+        line_ir.underlines = underline_buffer.into_results_vec();
+
+        line_ir
+    }
+
+    fn build_lyric_column_ir(
+        &mut self,
+        column: &LyricColumn,
+        underline_buffer: &mut UnderlineBuffer,
+    ) -> LyricColumnIR {
+        let mut column_ir = LyricColumnIR::new(column.span);
+
+        for chunk in &column.chunks {
+            match &chunk.value {
+                LyricChunkKind::Space => column_ir.operators.push(LyricOperatorKind::Space),
+                LyricChunkKind::Newline => column_ir.operators.push(LyricOperatorKind::Newline),
+                LyricChunkKind::Placeholder => column_ir.add_chunk(Vec::new()), // placehodler
+                LyricChunkKind::String(tokens) => {
+                    let lyric_ir = self.build_lyric_string_ir(tokens, underline_buffer);
+                    column_ir.add_chunk(lyric_ir);
+                }
+            }
+        }
+
+        column_ir
+    }
+
+    fn build_lyric_string_ir(
+        &mut self,
+        chunks: &[LyricString],
+        underline_buffer: &mut UnderlineBuffer,
+    ) -> Vec<LyricStringIR> {
+        let mut partials = Vec::new();
+
+        for token in chunks {
+            match token.value {
+                LyricStringKind::UnderlineMarker => {
+                    underline_buffer.mark(token.sid, partials.len());
+                }
+                LyricStringKind::Reference(id) => partials.push(LyricStringIR::Reference(id)),
+                LyricStringKind::SpecialChar(ch) => partials.push(LyricStringIR::Special(ch)),
+            }
+        }
+
+        underline_buffer.add_offset(partials.len());
+
+        partials
     }
 
     fn handle_solfa_node(
@@ -296,7 +338,6 @@ impl<'a> DocumentValidator<'a> {
             .add_scope(ScopeKind::LyricLine, node.range(), parent_sid.into());
 
         if let Some(line) = self.resolve_lyric_line(node, sid, section) {
-            self.validate_lyric_line(&line);
             section.lyrics.push(line);
         }
     }
@@ -584,11 +625,17 @@ impl<'a> DocumentValidator<'a> {
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::LYRIC_COLUMN => {
-                    let column = self.resolve_lyric_column(child, scope_id);
-                    tokens.push(LyricToken::Column(column));
+                    if let Some(column) = self.resolve_lyric_column(child, scope_id) {
+                        tokens.push(LyricToken::Column(column));
+                    }
                 }
                 _ => {
                     if let Some(operator) = self.resolve_lyric_operator(child, scope_id) {
+                        if tokens.last().is_some_and(|t| t.is_operator()) {
+                            let range = self.tree.get_symbol_range(operator.sid);
+                            self.report_error(range, DiagnosticKind::SyntaxError);
+                        }
+
                         tokens.push(LyricToken::Operator(operator));
                     }
                 }
@@ -603,10 +650,10 @@ impl<'a> DocumentValidator<'a> {
         node: Node<'_>,
         scope_id: ScopeId,
     ) -> Option<LyricOperator> {
-        let value = match node.kind() {
-            "space_operator" => LyricOperatorKind::Space,
-            "concat_operator" => LyricOperatorKind::Concat,
-            "newline_operator" => LyricOperatorKind::Newline,
+        let value = match node.kind_id() {
+            node_types::SPACE_OPERATOR => LyricOperatorKind::Space,
+            node_types::CONCAT_OPERATOR => LyricOperatorKind::Concat,
+            node_types::NEWLINE_OPERATOR => LyricOperatorKind::Newline,
             _ => return None,
         };
 
@@ -617,16 +664,18 @@ impl<'a> DocumentValidator<'a> {
         Some(LyricOperator { sid, value })
     }
 
-    fn resolve_lyric_column(&mut self, node: Node<'_>, scope_id: ScopeId) -> LyricColumn {
-        let mut chunks = Vec::new();
+    fn resolve_lyric_column(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricColumn> {
+        let lyric_node = node.child_by_field_name("lyric")?;
 
-        if let Some(lyric_node) = node.child_by_field_name("lyric") {
-            for child in lyric_node.named_children(&mut node.walk()) {
-                if let Some(value) = self.resolve_lyric_atom(child, scope_id) {
-                    chunks.push(value);
-                }
+        let chunks = match lyric_node.kind_id() {
+            node_types::LYRIC_GROUP => lyric_node
+                .named_children(&mut node.walk())
+                .filter_map(|c| self.resolve_lyric_chunk(c, scope_id))
+                .collect(),
+            _ => {
+                vec![self.resolve_lyric_chunk(lyric_node, scope_id)?]
             }
-        }
+        };
 
         let span = node
             .child_by_field_name("span")
@@ -634,27 +683,27 @@ impl<'a> DocumentValidator<'a> {
             .and_then(|c| self.parse_node(c))
             .unwrap_or(1);
 
-        LyricColumn { span, chunks }
+        Some(LyricColumn { span, chunks })
     }
 
-    fn resolve_lyric_atom(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricChunk> {
+    fn resolve_lyric_chunk(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricChunk> {
         let value = match node.kind_id() {
             node_types::SPACE_OPERATOR => LyricChunkKind::Space,
-            node_types::CONCAT_OPERATOR => LyricChunkKind::Concat,
             node_types::NEWLINE_OPERATOR => LyricChunkKind::Newline,
-            node_types::UNDERLINE_MARKER => LyricChunkKind::UnderlineMarker,
             node_types::LYRIC_PLACEHOLDER => LyricChunkKind::Placeholder,
 
-            node_types::LYRIC_STRING => {
-                let chunk = self.resolve_node_string(node)?;
-                let id = self.tree.store_lyric_chunk(chunk);
-                LyricChunkKind::String(id)
+            node_types::LYRIC_CHUNK => {
+                let scope_id =
+                    self.tree
+                        .add_scope(ScopeKind::LyricString, node.range(), Some(scope_id));
+
+                LyricChunkKind::String(
+                    node.named_children(&mut node.walk())
+                        .filter_map(|c| self.resolve_lyric_string(c, scope_id))
+                        .collect(),
+                )
             }
-            _ => {
-                let s = self.resolve_node_string(node)?;
-                let char = LyricSpecialChar::try_from(s.as_str()).ok()?;
-                LyricChunkKind::SpecialChar(char)
-            }
+            _ => return None,
         };
 
         let sid = self
@@ -662,6 +711,29 @@ impl<'a> DocumentValidator<'a> {
             .add_symbol(SymbolKind::Token, node.range(), scope_id);
 
         Some(LyricChunk { sid, value })
+    }
+
+    fn resolve_lyric_string(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricString> {
+        let sid = self
+            .tree
+            .add_symbol(SymbolKind::Token, node.range(), scope_id);
+
+        let value = match node.kind_id() {
+            node_types::UNDERLINE_MARKER => LyricStringKind::UnderlineMarker,
+            node_types::LYRIC_STRING => {
+                let chunk = self.resolve_node_string(node)?;
+                let id = self.tree.store_lyric_chunk(chunk);
+                LyricStringKind::Reference(id)
+            }
+            node_types::LYRIC_SPECIAL => {
+                let s = self.resolve_node_string(node)?;
+                let char = LyricSpecialChar::try_from(s.as_str()).ok()?;
+                LyricStringKind::SpecialChar(char)
+            }
+            _ => return None,
+        };
+
+        Some(LyricString { sid, value })
     }
 
     fn resolve_lyric_anchor(
@@ -692,32 +764,6 @@ impl<'a> DocumentValidator<'a> {
         }
 
         None
-    }
-
-    fn validate_lyric_line(&mut self, line: &LyricLine) {
-        let mut current_underline = None;
-
-        let columns = line.tokens.iter().filter_map(|t| match t {
-            LyricToken::Column(value) => Some(value),
-            LyricToken::Operator(_) => None,
-        });
-
-        for column in columns.flat_map(|c| &c.chunks) {
-            if matches!(column.value, LyricChunkKind::UnderlineMarker)
-                && current_underline.take().is_none()
-            {
-                current_underline = Some(column);
-            }
-        }
-
-        if let Some(token) = current_underline {
-            let range = self
-                .tree
-                .get_symbol_range(token.sid)
-                .merge(self.tree.get_scope_range(line.sid));
-
-            self.report_error(range, DiagnosticKind::UnmatchedUnderline);
-        }
     }
 
     fn handle_query(&mut self, root: Node<'_>, context: &mut TSContext) {
@@ -836,5 +882,15 @@ impl<'a> DocumentValidator<'a> {
             kind,
             range,
         });
+    }
+
+    fn report_trailing_underline(&mut self, underline_sid: SymbolId, line_sid: ScopeId) {
+        let underline_range = self.tree.get_symbol_range(underline_sid);
+        let line_range = self.tree.get_scope_range(line_sid);
+
+        self.report_error(
+            underline_range.merge(line_range),
+            DiagnosticKind::UnmatchedUnderline,
+        );
     }
 }

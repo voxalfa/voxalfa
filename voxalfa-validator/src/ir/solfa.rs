@@ -41,6 +41,16 @@ impl PulseIR {
     pub fn add_column(&mut self, kind: PulseColumnKind) {
         self.columns.push(PulseColumn { kind, duration: 0 });
     }
+
+    pub fn set_length(&mut self, length: usize) {
+        self.length = length;
+    }
+
+    pub fn fit_durations(&mut self, durations: &[usize]) {
+        for (i, duration) in durations.iter().enumerate() {
+            self.columns[i].duration = *duration;
+        }
+    }
 }
 
 #[derive(Debug)]

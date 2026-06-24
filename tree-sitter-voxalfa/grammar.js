@@ -150,32 +150,22 @@ export default grammar({
 
     lyric_column: ($) =>
       seq(
-        field("lyric", choice($.lyric_group, $.lyric_chunk)),
+        field(
+          "lyric",
+          choice($.lyric_group, $.lyric_chunk, $.lyric_placeholder),
+        ),
         field("span", optional($.lyric_span)),
-      ),
-
-    lyric_chunk: ($) =>
-      seq(
-        optional($.underline_marker),
-        choice($._lyric_string, $.lyric_placeholder),
-        optional($.underline_marker),
       ),
 
     lyric_group: ($) =>
       seq(
         "(",
-        sep1(
-          choice($.space_operator, $.newline_operator),
-          seq(
-            optional($.underline_marker),
-            $._lyric_string,
-            optional($.underline_marker),
-          ),
-        ),
+        sep1(choice($.space_operator, $.newline_operator), $.lyric_chunk),
         ")",
       ),
 
-    _lyric_string: ($) => repeat1(choice($.lyric_string, $.lyric_special)),
+    lyric_chunk: ($) =>
+      repeat1(choice($.lyric_string, $.lyric_special, $.underline_marker)),
 
     lyric_span: ($) => seq("@", field("count", $.integer)),
 

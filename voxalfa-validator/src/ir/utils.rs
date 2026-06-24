@@ -1,9 +1,45 @@
-use crate::math::lcm;
+use crate::{ast::symbols::SymbolId, math::lcm};
 
 #[derive(Debug)]
 pub struct UnderlineRange {
     pub start: usize,
     pub end: usize,
+}
+
+#[derive(Debug, Default)]
+pub struct UnderlineBuffer {
+    current_sid: Option<SymbolId>,
+    current_pos: Option<usize>,
+    offset: usize,
+    results: Vec<UnderlineRange>,
+}
+
+impl UnderlineBuffer {
+    pub fn mark(&mut self, sid: SymbolId, position: usize) {
+        self.current_sid = Some(sid);
+
+        if let Some(start) = self.current_pos.take() {
+            self.current_sid = None;
+            self.results.push(UnderlineRange {
+                start,
+                end: position + self.offset,
+            });
+        } else {
+            self.current_pos = Some(position + self.offset);
+        }
+    }
+
+    pub fn get_trailing(&self) -> Option<SymbolId> {
+        self.current_sid
+    }
+
+    pub fn add_offset(&mut self, value: usize) {
+        self.offset += value;
+    }
+
+    pub fn into_results_vec(self) -> Vec<UnderlineRange> {
+        self.results
+    }
 }
 
 #[derive(Debug)]

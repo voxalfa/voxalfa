@@ -146,10 +146,6 @@
       "required": true,
       "types": [
         {
-          "type": "lyric_placeholder",
-          "named": true
-        },
-        {
           "type": "lyric_special",
           "named": true
         },
@@ -178,6 +174,10 @@
           },
           {
             "type": "lyric_group",
+            "named": true
+          },
+          {
+            "type": "lyric_placeholder",
             "named": true
           }
         ]
@@ -230,11 +230,7 @@
       "required": true,
       "types": [
         {
-          "type": "lyric_special",
-          "named": true
-        },
-        {
-          "type": "lyric_string",
+          "type": "lyric_chunk",
           "named": true
         },
         {
@@ -243,10 +239,6 @@
         },
         {
           "type": "space_operator",
-          "named": true
-        },
-        {
-          "type": "underline_marker",
           "named": true
         }
       ]

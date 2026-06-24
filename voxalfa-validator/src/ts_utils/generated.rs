@@ -42,10 +42,10 @@ pub mod node_types {
     pub const NOTE: u16 = 83;
     pub const LYRIC_CONTENT: u16 = 84;
     pub const LYRIC_COLUMN: u16 = 86;
-    pub const LYRIC_CHUNK: u16 = 87;
-    pub const LYRIC_GROUP: u16 = 88;
-    pub const LYRIC_SPAN: u16 = 90;
-    pub const LYRIC_SPECIAL: u16 = 91;
-    pub const LANGUAGE_DIRECTIVE: u16 = 92;
-    pub const INLINE_COMMENT: u16 = 93;
+    pub const LYRIC_GROUP: u16 = 87;
+    pub const LYRIC_CHUNK: u16 = 88;
+    pub const LYRIC_SPAN: u16 = 89;
+    pub const LYRIC_SPECIAL: u16 = 90;
+    pub const LANGUAGE_DIRECTIVE: u16 = 91;
+    pub const INLINE_COMMENT: u16 = 92;
 }

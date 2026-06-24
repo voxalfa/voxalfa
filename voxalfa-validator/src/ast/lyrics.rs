@@ -15,9 +15,16 @@ pub enum LyricToken {
     Operator(LyricOperator),
 }
 
+impl LyricToken {
+    pub fn is_operator(&self) -> bool {
+        matches!(self, LyricToken::Operator(_))
+    }
+}
+
 pub type LyricChunk = SymbolRef<LyricChunkKind>;
 pub type LyricOperator = SymbolRef<LyricOperatorKind>;
 pub type LyricAnchor = SymbolRef<LyricOperatorKind>;
+pub type LyricString = SymbolRef<LyricStringKind>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum LyricOperatorKind {
@@ -35,15 +42,19 @@ pub struct LyricColumn {
 #[derive(Debug)]
 pub enum LyricChunkKind {
     Space,
-    Concat,
     Newline,
     Placeholder,
-    UnderlineMarker,
-    String(LyricStringId),
-    SpecialChar(LyricSpecialChar),
+    String(Vec<LyricString>),
 }
 
 #[derive(Debug)]
+pub enum LyricStringKind {
+    UnderlineMarker,
+    Reference(LyricStringId),
+    SpecialChar(LyricSpecialChar),
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum LyricSpecialChar {
     Backslash,
     Tilde,

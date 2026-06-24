@@ -812,6 +812,10 @@
               {
                 "type": "SYMBOL",
                 "name": "lyric_chunk"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "lyric_placeholder"
               }
             ]
           }
@@ -834,48 +838,6 @@
         }
       ]
     },
-    "lyric_chunk": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "underline_marker"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "_lyric_string"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "lyric_placeholder"
-            }
-          ]
-        },
-        {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "underline_marker"
-            },
-            {
-              "type": "BLANK"
-            }
-          ]
-        }
-      ]
-    },
     "lyric_group": {
       "type": "SEQ",
       "members": [
@@ -887,37 +849,8 @@
           "type": "SEQ",
           "members": [
             {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "CHOICE",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "underline_marker"
-                    },
-                    {
-                      "type": "BLANK"
-                    }
-                  ]
-                },
-                {
-                  "type": "SYMBOL",
-                  "name": "_lyric_string"
-                },
-                {
-                  "type": "CHOICE",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "underline_marker"
-                    },
-                    {
-                      "type": "BLANK"
-                    }
-                  ]
-                }
-              ]
+              "type": "SYMBOL",
+              "name": "lyric_chunk"
             },
             {
               "type": "REPEAT",
@@ -938,37 +871,8 @@
                     ]
                   },
                   {
-                    "type": "SEQ",
-                    "members": [
-                      {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "underline_marker"
-                          },
-                          {
-                            "type": "BLANK"
-                          }
-                        ]
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "_lyric_string"
-                      },
-                      {
-                        "type": "CHOICE",
-                        "members": [
-                          {
-                            "type": "SYMBOL",
-                            "name": "underline_marker"
-                          },
-                          {
-                            "type": "BLANK"
-                          }
-                        ]
-                      }
-                    ]
+                    "type": "SYMBOL",
+                    "name": "lyric_chunk"
                   }
                 ]
               }
@@ -981,7 +885,7 @@
         }
       ]
     },
-    "_lyric_string": {
+    "lyric_chunk": {
       "type": "REPEAT1",
       "content": {
         "type": "CHOICE",
@@ -993,6 +897,10 @@
           {
             "type": "SYMBOL",
             "name": "lyric_special"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "underline_marker"
           }
         ]
       }
