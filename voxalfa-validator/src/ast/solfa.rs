@@ -115,19 +115,3 @@ pub struct Note {
     pub variation: NoteVariation,
     pub octave: i8,
 }
-
-impl Note {
-    pub fn text_size(&self) -> usize {
-        let mut res = 1;
-
-        if !matches!(self.variation, NoteVariation::Base) {
-            res += 1;
-        }
-
-        if self.octave != 0 {
-            res += 2;
-        }
-
-        res
-    }
-}

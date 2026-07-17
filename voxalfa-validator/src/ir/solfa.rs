@@ -30,7 +30,7 @@ pub struct PulseIR {
     pub sid: ScopeId,
     pub accent: PulseAccent,
     pub columns: Vec<PulseColumn>,
-    pub length: usize,
+    pub factor: usize, // factor of the duration in pulse columns
 }
 
 impl PulseIR {
@@ -39,7 +39,7 @@ impl PulseIR {
             sid,
             accent,
             columns: Vec::new(),
-            length: 1,
+            factor: 1,
         }
     }
 
@@ -48,7 +48,7 @@ impl PulseIR {
     }
 
     pub fn set_length(&mut self, length: usize) {
-        self.length = length;
+        self.factor = length;
     }
 
     pub fn fit_durations(&mut self, durations: &[usize]) {

@@ -20,15 +20,15 @@ pub struct SectionIR {
 impl SectionIR {
     pub fn get_common_column(&self, group: usize, pulse: usize) -> Option<usize> {
         let group = self.groups.get(group)?;
-        let first_id = group.solfa.get(0)?;
+        let first_id = group.solfa.first()?;
         let first = self.solfa[*first_id].pulses.get(pulse)?;
 
         group
             .solfa
             .iter()
             .all(|id| {
-                self.solfa[*id].pulses.get(pulse).map_or(false, |p| {
-                    p.length == first.length && p.columns.len() == first.columns.len()
+                self.solfa[*id].pulses.get(pulse).is_some_and(|p| {
+                    p.factor == first.factor && p.columns.len() == first.columns.len()
                 })
             })
             .then_some(first.columns.len())
