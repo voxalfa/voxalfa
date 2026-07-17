@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut cli_reporter = CliReporter::default();
 
-    println!("{:?}", output.ir.sections[0].groups);
+    // println!("{:?}", output.ir.sections[0].groups);
 
     cli_reporter.register("hello.solfa", source, output.diagnostics);
     cli_reporter.display_report();

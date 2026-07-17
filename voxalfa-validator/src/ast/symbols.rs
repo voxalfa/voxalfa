@@ -49,6 +49,7 @@ pub enum ScopeKind {
     SolfaLine,
     Pulse,
     LyricLine,
+    LyricsColumn,
     LyricString,
 }
 
