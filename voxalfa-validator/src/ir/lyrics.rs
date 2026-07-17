@@ -1,23 +1,23 @@
 use crate::{
     ast::{
         lyrics::{LyricOperatorKind, LyricSpecialChar},
-        symbols::LyricStringId,
+        symbols::{LyricStringId, ScopeId},
     },
     ir::utils::UnderlineRange,
 };
 
 #[derive(Debug, Default)]
 pub struct LyricLineIR {
-    pub group: usize,
+    pub sid: ScopeId,
     pub columns: Vec<LyricColumnIR>,
     pub operators: Vec<LyricOperatorKind>,
     pub underlines: Vec<UnderlineRange>,
 }
 
 impl LyricLineIR {
-    pub fn new(group: usize) -> LyricLineIR {
-        LyricLineIR {
-            group,
+    pub fn new(sid: ScopeId) -> Self {
+        Self {
+            sid,
             ..Default::default()
         }
     }
@@ -25,14 +25,16 @@ impl LyricLineIR {
 
 #[derive(Debug, Default)]
 pub struct LyricColumnIR {
+    pub sid: ScopeId,
     pub chunks: Vec<LyricChunkIR>,
     pub operators: Vec<LyricOperatorKind>,
     pub span: usize,
 }
 
 impl LyricColumnIR {
-    pub fn new(span: usize) -> Self {
+    pub fn new(sid: ScopeId, span: usize) -> Self {
         Self {
+            sid,
             span,
             ..Default::default()
         }
