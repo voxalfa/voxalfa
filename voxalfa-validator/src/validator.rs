@@ -152,20 +152,24 @@ impl<'a> DocumentValidator<'a> {
         }
 
         for line in &section.lyrics {
-            let line_ir = self.build_lyric_line_ir(line, section, &section_ir);
+            let line_ir = self.build_lyric_line_ir(line);
             section_ir.lyrics.push(line_ir);
         }
+
+        section_ir.groups = self.build_section_group(section);
+
+        self.validate_section_ir(&section_ir);
 
         section_ir
     }
 
     fn build_solfa_line_ir(&mut self, line: &SolfaLine) -> SolfaLineIR {
-        let mut line_ir = SolfaLineIR::new(line.voice);
+        let mut line_ir = SolfaLineIR::new(line.sid, line.voice);
         let mut underline_buffer = UnderlineBuffer::default();
 
         for pulse in &line.pulses {
             let mut stream = pulse.tokens.iter().peekable();
-            let mut pulse_ir = PulseIR::new(pulse.accent.value);
+            let mut pulse_ir = PulseIR::new(pulse.sid, pulse.accent.value);
             let mut beat_buffer = BeatBuffer::default();
 
             if stream.peek().is_none() {
@@ -243,13 +247,8 @@ impl<'a> DocumentValidator<'a> {
             })
     }
 
-    fn build_lyric_line_ir(
-        &mut self,
-        line: &LyricLine,
-        _section: &Section,
-        _section_ir: &SectionIR,
-    ) -> LyricLineIR {
-        let mut line_ir = LyricLineIR::new(line.group);
+    fn build_lyric_line_ir(&mut self, line: &LyricLine) -> LyricLineIR {
+        let mut line_ir = LyricLineIR::new(line.sid);
         let mut underline_buffer = UnderlineBuffer::default();
 
         for token in &line.tokens {
@@ -315,6 +314,133 @@ impl<'a> DocumentValidator<'a> {
         underline_buffer.add_offset(partials.len());
 
         partials
+    }
+
+    fn build_section_group(&mut self, section: &Section) -> Vec<SectionGroup> {
+        if section.lyrics.is_empty() {
+            return vec![SectionGroup {
+                solfa: (0..=section.solfa.len()).collect(),
+                lyrics: Vec::new(),
+            }];
+        }
+
+        let mut groups: Vec<SectionGroup> = Vec::with_capacity(section.lyrics.len());
+        let mut last_voice = 0;
+
+        for (idx, lyric) in section.lyrics.iter().enumerate() {
+            if last_voice != 0 && lyric.position == last_voice - 1 {
+                if let Some(group) = groups.last_mut() {
+                    group.lyrics.push(idx);
+                }
+            } else {
+                groups.push(SectionGroup {
+                    solfa: (last_voice..=lyric.position).collect(),
+                    lyrics: vec![idx],
+                });
+
+                last_voice = lyric.position + 1;
+            }
+        }
+
+        groups
+    }
+
+    fn validate_section_ir(&mut self, section_ir: &SectionIR) {
+        for (group_idx, group) in section_ir.groups.iter().enumerate() {
+            // Validate each lyric line in the group independently
+            for &lyric_idx in &group.lyrics {
+                let lyric_line = &section_ir.lyrics[lyric_idx];
+
+                // Track our structural position across ALL solfa lines in this group.
+                // We keep a separate tracking state for each solfa line.
+                // State format: (pulse_index, column_index_within_pulse)
+                let mut solfa_states: Vec<(usize, usize)> = vec![(0, 0); group.solfa.len()];
+
+                for (lyric_col_idx, lyric_col) in lyric_line.columns.iter().enumerate() {
+                    let span = lyric_col.span;
+
+                    let mut expected_duration: Option<usize> = None;
+
+                    // Verify this lyric span against every solfa line in the group
+                    for (i, &solfa_idx) in group.solfa.iter().enumerate() {
+                        let solfa_line = &section_ir.solfa[solfa_idx];
+                        let (mut pulse_idx, mut col_idx) = solfa_states[i];
+
+                        // Ensure we haven't already exhausted the solfa pulses
+                        if pulse_idx >= solfa_line.pulses.len() {
+                            let range = self.tree.get_scope_range(solfa_line.sid);
+                            let context_range = self.tree.get_scope_range(lyric_line.sid);
+                            self.report_error(range, DiagnosticKind::PulseNotEnough(context_range));
+                            break;
+                        }
+
+                        let current_pulse = &solfa_line.pulses[pulse_idx];
+
+                        // CRITICAL CHECK: Does this lyric span exceed the remaining columns in the current pulse?
+                        if col_idx + span > current_pulse.columns.len() {
+                            let range = self.tree.get_symbol_range(current_pulse.sid);
+                            let context_range = self.tree.get_scope_range(lyric_col.sid);
+                            break;
+                            // panic!(
+                            //     "{}",
+                            //     format!(
+                            //         "Boundary Error in Group {}: Lyric column {} (span {}) crosses a pulse boundary on solfa line {}. \
+                            //     Pulse {} only has {} columns remaining, but needs {}.",
+                            //         group_idx,
+                            //         lyric_col_idx,
+                            //         span,
+                            //         solfa_idx,
+                            //         pulse_idx,
+                            //         current_pulse.columns.len() - col_idx,
+                            //         span
+                            //     )
+                            // );
+                        }
+
+                        // Calculate the fractioned sum of durations within this pulse boundary
+                        let duration_sum: usize = current_pulse.columns[col_idx..col_idx + span]
+                            .iter()
+                            .map(|col| col.duration)
+                            .sum();
+
+                        // Enforce duration alignment across all solfa lines in the group
+                        match expected_duration {
+                            None => {
+                                expected_duration = Some(duration_sum);
+                            }
+                            Some(expected) => {
+                                if duration_sum != expected {
+                                    // panic!(
+                                    //     "{}",
+                                    //     format!(
+                                    //         "Alignment Error in Group {}: Duration mismatch for lyric column {}. \
+                                    //     Solfa line {} has duration {}, expected {}.",
+                                    //         group_idx,
+                                    //         lyric_col_idx,
+                                    //         solfa_idx,
+                                    //         duration_sum,
+                                    //         expected
+                                    //     )
+                                    // );
+                                }
+                            }
+                        }
+
+                        // Advance our indices for this specific solfa line
+                        col_idx += span;
+
+                        // If we consumed exactly up to the end of the pulse, roll over to the next pulse
+                        if col_idx == current_pulse.columns.len() {
+                            pulse_idx += 1;
+                            col_idx = 0;
+                        }
+
+                        // Save the state for the next lyric column iteration
+                        solfa_states[i] = (pulse_idx, col_idx);
+                    }
+                }
+            }
+        }
     }
 
     fn handle_solfa_node(
@@ -599,7 +725,12 @@ impl<'a> DocumentValidator<'a> {
 
         let group = section.solfa.len().saturating_sub(1);
         let verse = self.parse_node(verse_node)?;
-        let expected_verse = section.lyrics.iter().filter(|l| l.group == group).count() + 1;
+        let expected_verse = section
+            .lyrics
+            .iter()
+            .filter(|l| l.position == group)
+            .count()
+            + 1;
         let tokens = self.resolve_lyric_tokens(content_node, scope_id);
         let anchor = self.resolve_lyric_anchor(anchor_node, &tokens, scope_id);
 
@@ -613,7 +744,7 @@ impl<'a> DocumentValidator<'a> {
         Some(LyricLine {
             sid: scope_id,
             verse: expected_verse,
-            group,
+            position: group,
             anchor,
             tokens,
         })

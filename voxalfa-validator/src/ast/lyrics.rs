@@ -3,7 +3,7 @@ use crate::ast::symbols::{LyricStringId, ScopeId, SymbolRef};
 #[derive(Debug)]
 pub struct LyricLine {
     pub sid: ScopeId,
-    pub group: usize,
+    pub position: usize,
     pub verse: usize,
     pub tokens: Vec<LyricToken>,
     pub anchor: Option<LyricAnchor>,
@@ -35,6 +35,7 @@ pub enum LyricOperatorKind {
 
 #[derive(Debug)]
 pub struct LyricColumn {
+    pub sid: ScopeId,
     pub span: usize,
     pub chunks: Vec<LyricChunk>,
 }

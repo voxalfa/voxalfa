@@ -58,6 +58,10 @@ pub enum DiagnosticKind {
     InvalidNoteProlongation,
     #[error("expected '{0}', got '{1}'")]
     MismatchedPulseAccent(PulseAccent, PulseAccent, Range),
+    #[error("not enough pulses for lyrics columns")]
+    PulseNotEnough(Range),
+    #[error("cross-boundary lyrics alignment error, expected {0} more solfa columns")]
+    LyricBoundaryError(usize, Range),
 }
 
 impl DiagnosticKind {
@@ -85,6 +89,8 @@ impl DiagnosticKind {
             DiagnosticKind::ExpectedLyricAnchor => "E020",
             DiagnosticKind::InvalidNoteProlongation => "E021",
             DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E022",
+            DiagnosticKind::PulseNotEnough(_) => "E023",
+            DiagnosticKind::LyricBoundaryError(_, _) => "E024",
         }
     }
 
@@ -116,6 +122,10 @@ impl DiagnosticKind {
             }
             DiagnosticKind::VoiceCountMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
                 message: "voices defined here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::PulseNotEnough(range) => vec![DiagnosticRelatedInfo {
+                message: "lyrics defined here".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),

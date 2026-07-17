@@ -1,6 +1,7 @@
 use crate::{
     ast::{
         solfa::{Note, PulseAccent},
+        symbols::ScopeId,
         types::Voice,
     },
     ir::utils::UnderlineRange,
@@ -8,13 +9,15 @@ use crate::{
 
 #[derive(Debug)]
 pub struct SolfaLineIR {
+    pub sid: ScopeId,
     pub voice: Voice,
     pub pulses: Vec<PulseIR>,
     pub underlines: Vec<UnderlineRange>,
 }
 impl SolfaLineIR {
-    pub fn new(voice: Voice) -> Self {
+    pub fn new(sid: ScopeId, voice: Voice) -> Self {
         Self {
+            sid,
             voice,
             pulses: Vec::new(),
             underlines: Vec::new(),
@@ -24,14 +27,16 @@ impl SolfaLineIR {
 
 #[derive(Debug)]
 pub struct PulseIR {
+    pub sid: ScopeId,
     pub accent: PulseAccent,
     pub columns: Vec<PulseColumn>,
     pub length: usize,
 }
 
 impl PulseIR {
-    pub fn new(accent: PulseAccent) -> Self {
+    pub fn new(sid: ScopeId, accent: PulseAccent) -> Self {
         Self {
+            sid,
             accent,
             columns: Vec::new(),
             length: 1,

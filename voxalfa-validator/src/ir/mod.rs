@@ -19,7 +19,6 @@ pub struct SectionIR {
 
 #[derive(Debug, Default)]
 pub struct SectionGroup {
-    pub id: usize,
     pub solfa: Vec<usize>,
     pub lyrics: Vec<usize>,
 }
