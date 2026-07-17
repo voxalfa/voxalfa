@@ -277,7 +277,7 @@ impl<'a> DocumentValidator<'a> {
         column: &LyricColumn,
         underline_buffer: &mut UnderlineBuffer,
     ) -> LyricColumnIR {
-        let mut column_ir = LyricColumnIR::new(column.span);
+        let mut column_ir = LyricColumnIR::new(column.sid, column.span);
 
         for chunk in &column.chunks {
             match &chunk.value {
@@ -347,96 +347,36 @@ impl<'a> DocumentValidator<'a> {
 
     fn validate_section_ir(&mut self, section_ir: &SectionIR) {
         for (group_idx, group) in section_ir.groups.iter().enumerate() {
-            // Validate each lyric line in the group independently
-            for &lyric_idx in &group.lyrics {
-                let lyric_line = &section_ir.lyrics[lyric_idx];
+            for lyric_idx in &group.lyrics {
+                let lyric_line = &section_ir.lyrics[*lyric_idx];
+                let first_solfa = group.solfa.first().map(|idx| &section_ir.solfa[*idx]);
+                let mut column_count = 0;
 
-                // Track our structural position across ALL solfa lines in this group.
-                // We keep a separate tracking state for each solfa line.
-                // State format: (pulse_index, column_index_within_pulse)
-                let mut solfa_states: Vec<(usize, usize)> = vec![(0, 0); group.solfa.len()];
+                let Some(solfa_line) = first_solfa else {
+                    continue;
+                };
 
-                for (lyric_col_idx, lyric_col) in lyric_line.columns.iter().enumerate() {
-                    let span = lyric_col.span;
+                for pulse_idx in 0..solfa_line.pulses.len() {
+                    let common_columns = section_ir
+                        .get_common_column(group_idx, pulse_idx)
+                        .unwrap_or(1);
 
-                    let mut expected_duration: Option<usize> = None;
+                    column_count += common_columns;
+                }
 
-                    // Verify this lyric span against every solfa line in the group
-                    for (i, &solfa_idx) in group.solfa.iter().enumerate() {
-                        let solfa_line = &section_ir.solfa[solfa_idx];
-                        let (mut pulse_idx, mut col_idx) = solfa_states[i];
+                for lyric_col in &lyric_line.columns {
+                    if column_count >= lyric_col.span {
+                        column_count -= lyric_col.span;
+                    } else {
+                        let range = self.tree.get_scope_range(lyric_col.sid);
 
-                        // Ensure we haven't already exhausted the solfa pulses
-                        if pulse_idx >= solfa_line.pulses.len() {
-                            let range = self.tree.get_scope_range(solfa_line.sid);
-                            let context_range = self.tree.get_scope_range(lyric_line.sid);
-                            self.report_error(range, DiagnosticKind::PulseNotEnough(context_range));
-                            break;
-                        }
-
-                        let current_pulse = &solfa_line.pulses[pulse_idx];
-
-                        // CRITICAL CHECK: Does this lyric span exceed the remaining columns in the current pulse?
-                        if col_idx + span > current_pulse.columns.len() {
-                            let range = self.tree.get_symbol_range(current_pulse.sid);
-                            let context_range = self.tree.get_scope_range(lyric_col.sid);
-                            break;
-                            // panic!(
-                            //     "{}",
-                            //     format!(
-                            //         "Boundary Error in Group {}: Lyric column {} (span {}) crosses a pulse boundary on solfa line {}. \
-                            //     Pulse {} only has {} columns remaining, but needs {}.",
-                            //         group_idx,
-                            //         lyric_col_idx,
-                            //         span,
-                            //         solfa_idx,
-                            //         pulse_idx,
-                            //         current_pulse.columns.len() - col_idx,
-                            //         span
-                            //     )
-                            // );
-                        }
-
-                        // Calculate the fractioned sum of durations within this pulse boundary
-                        let duration_sum: usize = current_pulse.columns[col_idx..col_idx + span]
+                        let ctx_ranges = group
+                            .solfa
                             .iter()
-                            .map(|col| col.duration)
-                            .sum();
+                            .map(|idx| self.tree.get_scope_range(section_ir.solfa[*idx].sid))
+                            .collect();
 
-                        // Enforce duration alignment across all solfa lines in the group
-                        match expected_duration {
-                            None => {
-                                expected_duration = Some(duration_sum);
-                            }
-                            Some(expected) => {
-                                if duration_sum != expected {
-                                    // panic!(
-                                    //     "{}",
-                                    //     format!(
-                                    //         "Alignment Error in Group {}: Duration mismatch for lyric column {}. \
-                                    //     Solfa line {} has duration {}, expected {}.",
-                                    //         group_idx,
-                                    //         lyric_col_idx,
-                                    //         solfa_idx,
-                                    //         duration_sum,
-                                    //         expected
-                                    //     )
-                                    // );
-                                }
-                            }
-                        }
-
-                        // Advance our indices for this specific solfa line
-                        col_idx += span;
-
-                        // If we consumed exactly up to the end of the pulse, roll over to the next pulse
-                        if col_idx == current_pulse.columns.len() {
-                            pulse_idx += 1;
-                            col_idx = 0;
-                        }
-
-                        // Save the state for the next lyric column iteration
-                        solfa_states[i] = (pulse_idx, col_idx);
+                        self.report_error(range, DiagnosticKind::TralingLyric(ctx_ranges));
                     }
                 }
             }
@@ -796,6 +736,9 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn resolve_lyric_column(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricColumn> {
+        let sid = self
+            .tree
+            .add_scope(ScopeKind::LyricsColumn, node.range(), Some(scope_id));
         let lyric_node = node.child_by_field_name("lyric")?;
 
         let chunks = match lyric_node.kind_id() {
@@ -814,7 +757,7 @@ impl<'a> DocumentValidator<'a> {
             .and_then(|c| self.parse_node(c))
             .unwrap_or(1);
 
-        Some(LyricColumn { span, chunks })
+        Some(LyricColumn { sid, span, chunks })
     }
 
     fn resolve_lyric_chunk(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<LyricChunk> {
