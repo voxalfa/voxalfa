@@ -28,6 +28,18 @@ pub struct Key {
     pub accidental: KeyAccidental,
 }
 
+impl std::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let suffix = match self.accidental {
+            KeyAccidental::Neutral => "",
+            KeyAccidental::Sharp => "#",
+            KeyAccidental::Flat => "b",
+        };
+
+        write!(f, "{:?}{suffix}", self.base)
+    }
+}
+
 impl TryFrom<&str> for Key {
     type Error = ();
 

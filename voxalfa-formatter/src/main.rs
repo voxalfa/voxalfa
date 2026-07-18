@@ -1,18 +1,17 @@
 use std::error::Error;
 
-use voxalfa_validator::{
-    cli::CliReporter, ts_utils::context::TSContext, validator::DocumentValidator,
-};
+use voxalfa_formatter::Formatter;
+use voxalfa_validator::ts_utils::context::TSContext;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let source = r#"
         ;; @version 1.0
 
-        [#] title="Hello World"
+        [#] title="Hello World" ; inline comment
         [#] author={"Foo Bar", "Jane Doe"}
         [#] composer="Bob"
-        [#] description="Lorem Ipsum."
         [#] release={2026}
+        [#] description="Lorem Ipsum."
 
         [$] key={C} | bpm={100} | time={4,4} | voices={S,T,A,B}
 
@@ -30,16 +29,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         [1] do `re` mi\(fa) so la ti_i do_o. ~ ~
 "#;
 
-    let mut context = TSContext::new()?;
-    let validator = DocumentValidator::new(source);
-    let output = validator.validate(&mut context);
+    let mut ts_context = TSContext::new()?;
+    let output = Formatter::default()
+        .format(source, &mut ts_context)
+        .unwrap();
 
-    let mut cli_reporter = CliReporter::default();
-
-    println!("{:?}", output.resolve_column_factor());
-
-    cli_reporter.register("hello.solfa", source, output.diagnostics);
-    cli_reporter.display_report();
+    println!("{output}");
 
     Ok(())
 }

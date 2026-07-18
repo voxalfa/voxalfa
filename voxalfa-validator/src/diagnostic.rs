@@ -145,6 +145,10 @@ impl Diagnostic {
     pub fn byte_range(&self) -> std::ops::Range<usize> {
         self.range.start_byte..self.range.end_byte
     }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self.level, DiagnosticLevel::Error)
+    }
 }
 
 #[derive(Debug)]

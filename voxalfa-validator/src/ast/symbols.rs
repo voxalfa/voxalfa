@@ -16,6 +16,15 @@ pub enum SymbolKind {
     Token,
 }
 
+impl SymbolKind {
+    pub fn as_key_unchecked(&self) -> &str {
+        match self {
+            SymbolKind::Key(key) => key,
+            _ => unreachable!("invalid key symbol"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Value {
     String,

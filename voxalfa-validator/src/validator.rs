@@ -23,6 +23,7 @@ use crate::{
         solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
         utils::{BeatBuffer, UnderlineBuffer},
     },
+    output::ValidatorOutput,
     ts_utils::{
         context::TSContext,
         generated::node_types,
@@ -31,14 +32,6 @@ use crate::{
         types::AssignmentData,
     },
 };
-
-#[derive(Debug)]
-pub struct ValidatorOutput {
-    pub tree: SymbolTree,
-    pub document: Document,
-    pub ir: DocumentIR,
-    pub diagnostics: Vec<Diagnostic>,
-}
 
 #[derive(Debug)]
 pub struct DocumentValidator<'a> {
@@ -319,7 +312,7 @@ impl<'a> DocumentValidator<'a> {
     fn build_section_group(&mut self, section: &Section) -> Vec<SectionGroup> {
         if section.lyrics.is_empty() {
             return vec![SectionGroup {
-                solfa: (0..=section.solfa.len()).collect(),
+                solfa: (0..section.solfa.len()).collect(),
                 lyrics: Vec::new(),
             }];
         }
@@ -332,7 +325,7 @@ impl<'a> DocumentValidator<'a> {
                 if let Some(group) = groups.last_mut() {
                     group.lyrics.push(idx);
                 }
-            } else {
+            } else if !section.solfa.is_empty() {
                 groups.push(SectionGroup {
                     solfa: (last_voice..=lyric.position).collect(),
                     lyrics: vec![idx],
