@@ -27,7 +27,7 @@ impl SolfaLineIR {
 
         for (column_idx, column) in columns.enumerate() {
             column.underline.left = underlines.iter().any(|u| u.start == column_idx);
-            column.underline.right = underlines.iter().any(|u| u.end == column_idx);
+            column.underline.right = underlines.iter().any(|u| u.end - 1 == column_idx);
         }
     }
 }

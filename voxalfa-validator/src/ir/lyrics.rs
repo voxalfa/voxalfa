@@ -26,11 +26,11 @@ impl LyricLineIR {
             .columns
             .iter_mut()
             .flat_map(|p| &mut p.chunks)
-            .flat_map(|c| &mut c.partials);
+            .flat_map(|c| &mut c.primitives);
 
         for (partial_idx, partial) in partials.enumerate() {
             partial.underline.left = underlines.iter().any(|u| u.start == partial_idx);
-            partial.underline.right = underlines.iter().any(|u| u.end == partial_idx);
+            partial.underline.right = underlines.iter().any(|u| u.end - 1 == partial_idx);
         }
     }
 }
@@ -55,23 +55,25 @@ impl LyricColumnIR {
     pub fn add_chunk(&mut self, strings: Vec<LyricStringIR>) {
         let partials = strings
             .into_iter()
-            .map(|s| LyricPartial {
+            .map(|s| LyricPrimitive {
                 underline: UnderlineMarker::default(),
                 string: s,
             })
             .collect();
 
-        self.chunks.push(LyricChunkIR { partials });
+        self.chunks.push(LyricChunkIR {
+            primitives: partials,
+        });
     }
 }
 
 #[derive(Debug)]
 pub struct LyricChunkIR {
-    pub partials: Vec<LyricPartial>,
+    pub primitives: Vec<LyricPrimitive>,
 }
 
 #[derive(Debug)]
-pub struct LyricPartial {
+pub struct LyricPrimitive {
     pub underline: UnderlineMarker,
     pub string: LyricStringIR,
 }

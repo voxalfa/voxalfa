@@ -361,7 +361,7 @@ impl<'a> DocumentValidator<'a> {
                 let current = &solfa[*solfa_idx];
                 let pulse = &current.pulses[pulse_idx];
 
-                view.update(&pulse);
+                view.update(pulse);
             }
 
             result.push(view);

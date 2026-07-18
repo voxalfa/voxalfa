@@ -3,11 +3,14 @@ mod literal;
 use std::collections::BTreeMap;
 
 use voxalfa_validator::{
-    ast::symbols::{SymbolRef, SymbolTree},
+    ast::{
+        lyrics::LyricOperatorKind,
+        symbols::{SymbolRef, SymbolTree},
+    },
     diagnostic::Diagnostic,
     ir::{
         SectionIR,
-        lyrics::{LyricChunkIR, LyricLineIR},
+        lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseIR, SolfaLineIR},
     },
     output::ValidatorOutput,
@@ -137,10 +140,9 @@ impl Formatter {
 
     fn format_pulse(&mut self, pulse: &PulseIR) -> String {
         let mut buffer = String::new();
-        let mut step = 0;
         let mut clock = 0;
 
-        for column in &pulse.columns {
+        for (step, column) in pulse.columns.iter().enumerate() {
             let lead = match (step, clock, pulse.factor) {
                 (0, _, _) => &pulse.accent.to_string(),
                 (1, 1, 2) | (_, 2, 4) => ".",
@@ -152,52 +154,79 @@ impl Formatter {
 
             let prefix_str = if column.underline.left { "`" } else { "" };
             let suffix_str = if column.underline.right { "`" } else { "" };
+            let column_str = column.kind.to_string();
 
-            let note = format!("{}{}{}", lead, prefix_str, column.kind.to_string());
+            let note = format!("{lead}{prefix_str}{column_str}");
             let total_width = self.col_width * column.duration * (self.col_factor / pulse.factor);
             let padding_width = total_width.saturating_sub(suffix_str.len());
 
-            let stretched = format!("{:<padding_width$}{}", note, suffix_str);
+            let stretched = format!("{note:<padding_width$}{suffix_str}");
 
             buffer.push_str(&stretched);
 
-            step += 1;
             clock += column.duration;
         }
 
         buffer
     }
 
+    // TODO: operators and columns resolution
     fn process_lyrics(
         &mut self,
         tree: &SymbolTree,
         lyrics: &LyricLineIR,
-        group_idx: usize,
-        section: &SectionIR,
+        _group_idx: usize,
+        _section: &SectionIR,
     ) {
-        // let scope = tree.get_scope(lyrics.sid);
-        // let line_idx = scope.range.start_point.row;
-        // let pulse_len = section.solfa[0].pulses.len();
-        // let mut partial_idx = 0;
-        // let mut pulse_idx = 0;
-        // let mut buffer = String::new();
-        //
-        // for (lyric_idx, lyric_col) in lyrics.columns.iter().enumerate() {
-        //     let col_factor = section.get_column_factor(group_idx, pulse_idx);
-        //     let col_max = section.get_maximum_column(group_idx, pulse_idx);
-        //
-        //     // todo!()
-        // }
-        //
-        // self.lines.insert(line_idx, buffer);
+        let scope = tree.get_scope(lyrics.sid);
+        let line_idx = scope.range.start_point.row;
+        let mut buffer = String::new();
+
+        for  lyric_col in &lyrics.columns{
+            buffer.push_str(&self.resolve_lyric_column(tree, lyric_col));
+        }
+
+        self.lines.insert(line_idx, buffer);
     }
 
-    fn build_virtual_columns(&self) -> Vec<VirtualColumn> {
-        todo!()
-    }
+    fn resolve_lyric_column(&self, tree: &SymbolTree, column: &LyricColumnIR) -> String {
+        let mut buffer = String::new();
 
-    fn resolve_lyric_chunks(&self, tree: &SymbolTree, chunks: &[LyricChunkIR]) -> Vec<String> {
-        todo!()
+        for (idx, chunk) in column.chunks.iter().enumerate() {
+            for primitve in &chunk.primitives {
+                if primitve.underline.left {
+
+                    buffer.push('`');
+                }
+
+                let lyric_str = match primitve.string {
+                    LyricStringIR::Reference(id) => tree.get_lyric_chunk(id),
+                    LyricStringIR::Special(special) => special.identifer(),
+                };
+
+                buffer.push_str(lyric_str);
+
+                if primitve.underline.right {
+                    buffer.push('`');
+                }
+            }
+
+            if let Some(operator) = column.operators.get(idx) {
+                let operator_char = match operator {
+                    LyricOperatorKind::Space => ' ',
+                    LyricOperatorKind::Newline => '\\',
+                    LyricOperatorKind::Concat => unreachable!("concat should not be compound"),
+                };
+
+                buffer.push(operator_char);
+            }
+        }
+
+        if column.chunks.len() > 1 {
+            format!("({buffer})")
+        } else {
+            buffer
+        }
     }
 
     fn process_comments(&mut self, tree: &SymbolTree) {
@@ -246,10 +275,4 @@ impl Formatter {
                 .insert(line_idx, format!("[{prefix}] {assignment_str}"));
         }
     }
-}
-
-#[derive(Debug)]
-pub struct VirtualColumn {
-    pub factor: usize,
-    pub columns: usize,
 }
