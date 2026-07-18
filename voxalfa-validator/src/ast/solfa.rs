@@ -72,6 +72,20 @@ pub enum BaseNote {
     T,
 }
 
+impl std::fmt::Display for BaseNote {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BaseNote::D => write!(f, "d"),
+            BaseNote::R => write!(f, "r"),
+            BaseNote::M => write!(f, "m"),
+            BaseNote::F => write!(f, "f"),
+            BaseNote::S => write!(f, "s"),
+            BaseNote::L => write!(f, "l"),
+            BaseNote::T => write!(f, "t"),
+        }
+    }
+}
+
 impl TryFrom<&str> for BaseNote {
     type Error = ();
 
@@ -114,4 +128,22 @@ pub struct Note {
     pub base: BaseNote,
     pub variation: NoteVariation,
     pub octave: i8,
+}
+
+impl std::fmt::Display for Note {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let variation_str = match self.variation {
+            NoteVariation::Base => "",
+            NoteVariation::Raised => "a",
+            NoteVariation::Lowered => "i",
+        };
+
+        let suffix = match self.octave {
+            n if n < 0 => n.to_string(),
+            n if n > 0 => format!("+{n}"),
+            _ => "".to_string(),
+        };
+
+        write!(f, "{}{variation_str}{suffix}", self.base)
+    }
 }

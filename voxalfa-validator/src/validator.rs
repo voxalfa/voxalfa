@@ -351,7 +351,7 @@ impl<'a> DocumentValidator<'a> {
 
                 for pulse_idx in 0..solfa_line.pulses.len() {
                     let common_columns = section_ir
-                        .get_common_column(group_idx, pulse_idx)
+                        .get_column_factor(group_idx, pulse_idx)
                         .unwrap_or(1);
 
                     column_count += common_columns;

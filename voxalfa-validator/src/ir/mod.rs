@@ -18,8 +18,8 @@ pub struct SectionIR {
 }
 
 impl SectionIR {
-    pub fn get_common_column(&self, group: usize, pulse: usize) -> Option<usize> {
-        let group = self.groups.get(group)?;
+    pub fn get_column_factor(&self, group: usize, pulse: usize) -> Option<usize> {
+        let group = &self.groups[group];
         let first_id = group.solfa.first()?;
         let first = self.solfa[*first_id].pulses.get(pulse)?;
 
@@ -32,6 +32,15 @@ impl SectionIR {
                 })
             })
             .then_some(first.columns.len())
+    }
+
+    pub fn get_maximum_column(&self, group: usize, pulse: usize) -> usize {
+        self.groups[group]
+            .solfa
+            .iter()
+            .flat_map(|id| self.solfa[*id].pulses.get(pulse).map(|p| p.columns.len()))
+            .max()
+            .unwrap_or(1)
     }
 }
 

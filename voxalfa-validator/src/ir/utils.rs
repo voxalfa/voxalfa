@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use crate::{ast::symbols::SymbolId, math::lcm};
 
 #[derive(Debug)]

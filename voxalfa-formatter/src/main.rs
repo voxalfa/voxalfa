@@ -21,12 +21,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         [^] p={1} | cre={3,6}
 
-        [S] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-        [T] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-        [A] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-        [B] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+        [S] |d:r!m :f ||
+        [T] |d :r !m :f ||
+        [A] |d :r !m :f ||
+        [B] |d :r !m :f ||
+        [1] do w`re` mi\(fa)
 
-        [1] do `re` mi\(fa) so la ti_i do_o. ~ ~
 "#;
 
     let mut ts_context = TSContext::new()?;
