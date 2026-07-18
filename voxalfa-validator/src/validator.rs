@@ -18,7 +18,7 @@ use crate::{
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ir::{
-        DocumentIR, SectionGroup, SectionIR,
+        DocumentIR, PulseView, SectionGroup, SectionIR,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
         utils::{BeatBuffer, UnderlineBuffer},
@@ -149,7 +149,7 @@ impl<'a> DocumentValidator<'a> {
             section_ir.lyrics.push(line_ir);
         }
 
-        section_ir.groups = self.build_section_group(section);
+        section_ir.groups = self.build_section_group(section, &section_ir);
 
         self.validate_section_ir(&section_ir);
 
@@ -222,7 +222,7 @@ impl<'a> DocumentValidator<'a> {
             self.report_trailing_underline(sid, line.sid);
         }
 
-        line_ir.underlines = underline_buffer.into_results_vec();
+        line_ir.fit_underlines(underline_buffer.results());
 
         line_ir
     }
@@ -260,7 +260,7 @@ impl<'a> DocumentValidator<'a> {
             self.report_trailing_underline(sid, line.sid);
         }
 
-        line_ir.underlines = underline_buffer.into_results_vec();
+        line_ir.fit_underlines(underline_buffer.results());
 
         line_ir
     }
@@ -309,11 +309,19 @@ impl<'a> DocumentValidator<'a> {
         partials
     }
 
-    fn build_section_group(&mut self, section: &Section) -> Vec<SectionGroup> {
+    fn build_section_group(
+        &mut self,
+        section: &Section,
+        section_ir: &SectionIR,
+    ) -> Vec<SectionGroup> {
         if section.lyrics.is_empty() {
+            let solfa = (0..section.solfa.len()).collect::<Vec<_>>();
+            let views = self.build_pulse_view(&section_ir.solfa, &solfa);
+
             return vec![SectionGroup {
-                solfa: (0..section.solfa.len()).collect(),
-                lyrics: Vec::new(),
+                solfa,
+                views,
+                ..Default::default()
             }];
         }
 
@@ -326,9 +334,13 @@ impl<'a> DocumentValidator<'a> {
                     group.lyrics.push(idx);
                 }
             } else if !section.solfa.is_empty() {
+                let solfa = (last_voice..=lyric.position).collect::<Vec<_>>();
+                let views = self.build_pulse_view(&section_ir.solfa, &solfa);
+
                 groups.push(SectionGroup {
-                    solfa: (last_voice..=lyric.position).collect(),
                     lyrics: vec![idx],
+                    views,
+                    solfa,
                 });
 
                 last_voice = lyric.position + 1;
@@ -338,28 +350,35 @@ impl<'a> DocumentValidator<'a> {
         groups
     }
 
+    fn build_pulse_view(&mut self, solfa: &[SolfaLineIR], group: &[usize]) -> Vec<PulseView> {
+        let mut result = Vec::new();
+        let pulse_len = solfa.first().map(|s| s.pulses.len()).unwrap_or_default();
+
+        for pulse_idx in 0..pulse_len {
+            let mut view = PulseView::default();
+
+            for solfa_idx in group {
+                let current = &solfa[*solfa_idx];
+                let pulse = &current.pulses[pulse_idx];
+
+                view.update(&pulse);
+            }
+
+            result.push(view);
+        }
+
+        result
+    }
+
     fn validate_section_ir(&mut self, section_ir: &SectionIR) {
-        for (group_idx, group) in section_ir.groups.iter().enumerate() {
+        for group in &section_ir.groups {
             for lyric_idx in &group.lyrics {
                 let lyric_line = &section_ir.lyrics[*lyric_idx];
-                let first_solfa = group.solfa.first().map(|idx| &section_ir.solfa[*idx]);
-                let mut column_count = 0;
-
-                let Some(solfa_line) = first_solfa else {
-                    continue;
-                };
-
-                for pulse_idx in 0..solfa_line.pulses.len() {
-                    let common_columns = section_ir
-                        .get_column_factor(group_idx, pulse_idx)
-                        .unwrap_or(1);
-
-                    column_count += common_columns;
-                }
+                let mut counter = group.width();
 
                 for lyric_col in &lyric_line.columns {
-                    if column_count >= lyric_col.span {
-                        column_count -= lyric_col.span;
+                    if counter >= lyric_col.span {
+                        counter -= lyric_col.span;
                     } else {
                         let range = self.tree.get_scope_range(lyric_col.sid);
 

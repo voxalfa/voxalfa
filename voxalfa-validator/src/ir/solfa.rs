@@ -4,7 +4,7 @@ use crate::{
         symbols::ScopeId,
         types::Voice,
     },
-    ir::utils::UnderlineRange,
+    ir::utils::{UnderlineMarker, UnderlineRange},
 };
 
 #[derive(Debug)]
@@ -12,7 +12,6 @@ pub struct SolfaLineIR {
     pub sid: ScopeId,
     pub voice: Voice,
     pub pulses: Vec<PulseIR>,
-    pub underlines: Vec<UnderlineRange>,
 }
 impl SolfaLineIR {
     pub fn new(sid: ScopeId, voice: Voice) -> Self {
@@ -20,7 +19,15 @@ impl SolfaLineIR {
             sid,
             voice,
             pulses: Vec::new(),
-            underlines: Vec::new(),
+        }
+    }
+
+    pub fn fit_underlines(&mut self, underlines: &[UnderlineRange]) {
+        let columns = self.pulses.iter_mut().flat_map(|p| &mut p.columns);
+
+        for (column_idx, column) in columns.enumerate() {
+            column.underline.left = underlines.iter().any(|u| u.start == column_idx);
+            column.underline.right = underlines.iter().any(|u| u.end == column_idx);
         }
     }
 }
@@ -44,7 +51,11 @@ impl PulseIR {
     }
 
     pub fn add_column(&mut self, kind: PulseColumnKind) {
-        self.columns.push(PulseColumn { kind, duration: 0 });
+        self.columns.push(PulseColumn {
+            kind,
+            duration: 0,
+            underline: UnderlineMarker::default(),
+        });
     }
 
     pub fn set_length(&mut self, length: usize) {
@@ -61,6 +72,7 @@ impl PulseIR {
 #[derive(Debug)]
 pub struct PulseColumn {
     pub duration: usize,
+    pub underline: UnderlineMarker,
     pub kind: PulseColumnKind,
 }
 

@@ -123,10 +123,9 @@ impl Formatter {
         let line_idx = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
         let mut buffer = format!("[{}] ", solfa.voice.format(true));
-        let mut col_idx = 0;
 
         for pulse in &solfa.pulses {
-            let pulse_str = self.format_pulse(pulse, solfa, &mut col_idx);
+            let pulse_str = self.format_pulse(pulse);
             let stretched = format!("{pulse_str:<pulse_width$}");
             buffer.push_str(&stretched);
         }
@@ -136,12 +135,7 @@ impl Formatter {
         self.lines.insert(line_idx, buffer);
     }
 
-    fn format_pulse(
-        &mut self,
-        pulse: &PulseIR,
-        solfa: &SolfaLineIR,
-        col_idx: &mut usize,
-    ) -> String {
+    fn format_pulse(&mut self, pulse: &PulseIR) -> String {
         let mut buffer = String::new();
         let mut step = 0;
         let mut clock = 0;
@@ -156,11 +150,8 @@ impl Formatter {
                 _ => "",
             };
 
-            let has_prefix = solfa.underlines.iter().any(|u| u.start == *col_idx);
-            let has_suffix = solfa.underlines.iter().any(|u| u.end == *col_idx + 1);
-
-            let prefix_str = if has_prefix { "`" } else { "" };
-            let suffix_str = if has_suffix { "`" } else { "" };
+            let prefix_str = if column.underline.left { "`" } else { "" };
+            let suffix_str = if column.underline.right { "`" } else { "" };
 
             let note = format!("{}{}{}", lead, prefix_str, column.kind.to_string());
             let total_width = self.col_width * column.duration * (self.col_factor / pulse.factor);
@@ -170,7 +161,6 @@ impl Formatter {
 
             buffer.push_str(&stretched);
 
-            *col_idx += 1;
             step += 1;
             clock += column.duration;
         }

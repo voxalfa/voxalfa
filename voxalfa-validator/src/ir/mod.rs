@@ -5,6 +5,8 @@ pub mod utils;
 use lyrics::LyricLineIR;
 use solfa::SolfaLineIR;
 
+use crate::ir::solfa::PulseIR;
+
 #[derive(Debug, Default)]
 pub struct DocumentIR {
     pub sections: Vec<SectionIR>,
@@ -17,35 +19,42 @@ pub struct SectionIR {
     pub groups: Vec<SectionGroup>,
 }
 
-impl SectionIR {
-    pub fn get_column_factor(&self, group: usize, pulse: usize) -> Option<usize> {
-        let group = &self.groups[group];
-        let first_id = group.solfa.first()?;
-        let first = self.solfa[*first_id].pulses.get(pulse)?;
+#[derive(Debug, Default)]
+pub struct SectionGroup {
+    pub views: Vec<PulseView>,
+    pub solfa: Vec<usize>,
+    pub lyrics: Vec<usize>,
+}
 
-        group
-            .solfa
-            .iter()
-            .all(|id| {
-                self.solfa[*id].pulses.get(pulse).is_some_and(|p| {
-                    p.factor == first.factor && p.columns.len() == first.columns.len()
-                })
-            })
-            .then_some(first.columns.len())
-    }
-
-    pub fn get_maximum_column(&self, group: usize, pulse: usize) -> usize {
-        self.groups[group]
-            .solfa
-            .iter()
-            .flat_map(|id| self.solfa[*id].pulses.get(pulse).map(|p| p.columns.len()))
-            .max()
-            .unwrap_or(1)
+impl SectionGroup {
+    pub fn width(&self) -> usize {
+        self.views.iter().map(|v| v.min_factor).sum()
     }
 }
 
-#[derive(Debug, Default)]
-pub struct SectionGroup {
-    pub solfa: Vec<usize>,
-    pub lyrics: Vec<usize>,
+#[derive(Debug)]
+pub struct PulseView {
+    pub min_factor: usize,
+    pub max_factor: usize,
+}
+
+impl Default for PulseView {
+    fn default() -> Self {
+        Self {
+            min_factor: 1,
+            max_factor: 1,
+        }
+    }
+}
+
+impl PulseView {
+    pub fn update(&mut self, pulse: &PulseIR) {
+        if self.min_factor > pulse.factor {
+            self.min_factor = pulse.factor;
+        }
+
+        if self.max_factor < pulse.factor {
+            self.max_factor = pulse.factor;
+        }
+    }
 }

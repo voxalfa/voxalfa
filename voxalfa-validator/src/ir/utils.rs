@@ -1,6 +1,10 @@
-use std::collections::BTreeSet;
-
 use crate::{ast::symbols::SymbolId, math::lcm};
+
+#[derive(Debug, Default)]
+pub struct UnderlineMarker {
+    pub left: bool,
+    pub right: bool,
+}
 
 #[derive(Debug)]
 pub struct UnderlineRange {
@@ -39,8 +43,8 @@ impl UnderlineBuffer {
         self.offset += value;
     }
 
-    pub fn into_results_vec(self) -> Vec<UnderlineRange> {
-        self.results
+    pub fn results(&self) -> &[UnderlineRange] {
+        &self.results
     }
 }
 

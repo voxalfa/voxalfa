@@ -3,7 +3,7 @@ use crate::{
         lyrics::{LyricOperatorKind, LyricSpecialChar},
         symbols::{LyricStringId, ScopeId},
     },
-    ir::utils::UnderlineRange,
+    ir::utils::{UnderlineMarker, UnderlineRange},
 };
 
 #[derive(Debug, Default)]
@@ -11,7 +11,6 @@ pub struct LyricLineIR {
     pub sid: ScopeId,
     pub columns: Vec<LyricColumnIR>,
     pub operators: Vec<LyricOperatorKind>,
-    pub underlines: Vec<UnderlineRange>,
 }
 
 impl LyricLineIR {
@@ -19,6 +18,19 @@ impl LyricLineIR {
         Self {
             sid,
             ..Default::default()
+        }
+    }
+
+    pub fn fit_underlines(&mut self, underlines: &[UnderlineRange]) {
+        let partials = self
+            .columns
+            .iter_mut()
+            .flat_map(|p| &mut p.chunks)
+            .flat_map(|c| &mut c.partials);
+
+        for (partial_idx, partial) in partials.enumerate() {
+            partial.underline.left = underlines.iter().any(|u| u.start == partial_idx);
+            partial.underline.right = underlines.iter().any(|u| u.end == partial_idx);
         }
     }
 }
@@ -40,14 +52,28 @@ impl LyricColumnIR {
         }
     }
 
-    pub fn add_chunk(&mut self, partials: Vec<LyricStringIR>) {
+    pub fn add_chunk(&mut self, strings: Vec<LyricStringIR>) {
+        let partials = strings
+            .into_iter()
+            .map(|s| LyricPartial {
+                underline: UnderlineMarker::default(),
+                string: s,
+            })
+            .collect();
+
         self.chunks.push(LyricChunkIR { partials });
     }
 }
 
 #[derive(Debug)]
 pub struct LyricChunkIR {
-    pub partials: Vec<LyricStringIR>,
+    pub partials: Vec<LyricPartial>,
+}
+
+#[derive(Debug)]
+pub struct LyricPartial {
+    pub underline: UnderlineMarker,
+    pub string: LyricStringIR,
 }
 
 #[derive(Debug)]
