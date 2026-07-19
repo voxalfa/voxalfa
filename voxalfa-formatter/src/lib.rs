@@ -157,7 +157,6 @@ impl Formatter {
             let column_str = column.kind.to_string();
 
             let note = format!("{lead}{prefix_str}{column_str}");
-
             let total_width = (self.col_width * column.duration * self.col_factor) / pulse.factor;
             let padding_width = total_width.saturating_sub(suffix_str.len());
 
@@ -184,9 +183,12 @@ impl Formatter {
 
         let scope = tree.get_scope(lyrics.sid);
         let line_idx = scope.range.start_point.row;
+        let last_lyric_idx = lyrics.columns.len() - 1;
 
-        for (lyrics_idx, lyric_col) in lyrics.columns.iter().enumerate() {
+        for (lyric_idx, lyric_col) in lyrics.columns.iter().enumerate() {
             let lyric_str = self.resolve_lyric_column(tree, lyric_col);
+            let operator = lyrics.operators.get(lyric_idx);
+
             let mut span_value = lyric_col.span;
             let mut width = 0;
 
@@ -205,7 +207,7 @@ impl Formatter {
                 }
             }
 
-            let filler = match lyrics.operators.get(lyrics_idx) {
+            let filler = match operator {
                 Some(LyricOperatorKind::Concat) => '_',
                 Some(LyricOperatorKind::Newline) => '\\',
                 _ => ' ',
@@ -219,6 +221,10 @@ impl Formatter {
             );
 
             buffer.push_str(&padded_str);
+
+            if lyric_idx == last_lyric_idx && operator.is_some() {
+                buffer.push_str("...");
+            }
         }
 
         self.lines.insert(line_idx, buffer);
@@ -232,6 +238,10 @@ impl Formatter {
         }
 
         for (idx, chunk) in column.chunks.iter().enumerate() {
+            if chunk.primitives.is_empty() {
+                return '~'.to_string(); // placeholder
+            }
+
             for primitve in &chunk.primitives {
                 if primitve.underline.left {
                     buffer.push('`');

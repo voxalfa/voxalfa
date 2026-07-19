@@ -165,7 +165,7 @@ impl<'a> DocumentValidator<'a> {
             let mut pulse_ir = PulseIR::new(pulse.sid, pulse.accent.value);
             let mut beat_buffer = BeatBuffer::default();
 
-            if stream.peek().is_none() {
+            if stream.peek().is_none() || stream.peek().is_some_and(|t| t.value.is_beat_divider()) {
                 pulse_ir.add_column(PulseColumnKind::EmptyNote);
                 beat_buffer.append_note();
             }
@@ -176,6 +176,7 @@ impl<'a> DocumentValidator<'a> {
                 {
                     pulse_ir.add_column(PulseColumnKind::EmptyNote);
                     beat_buffer.append_note();
+                    break;
                 } else if token.value.is_note() {
                     beat_buffer.append_note();
                 }
