@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-codespan-reporting = { workspace = true }
 thiserror = { workspace = true }
 tree-sitter = "0.26.8"
 tree-sitter-voxalfa = { workspace = true }

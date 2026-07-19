@@ -7,7 +7,7 @@ use codespan_reporting::{
     },
 };
 
-use crate::diagnostic::{Diagnostic, DiagnosticLevel};
+use voxalfa_validator::diagnostic::{Diagnostic, DiagnosticLevel};
 
 #[derive(Debug)]
 pub struct CliReporter<'a> {

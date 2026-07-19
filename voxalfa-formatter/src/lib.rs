@@ -1,13 +1,15 @@
 mod literal;
 
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    io::{self, Write},
+};
 
 use voxalfa_validator::{
     ast::{
         lyrics::LyricOperatorKind,
         symbols::{SymbolRef, SymbolTree},
     },
-    diagnostic::Diagnostic,
     ir::{
         PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
@@ -15,8 +17,6 @@ use voxalfa_validator::{
     },
     output::ValidatorOutput,
     render::RenderType,
-    ts_utils::context::TSContext,
-    validator::DocumentValidator,
 };
 
 use crate::literal::Formattable;
@@ -30,18 +30,11 @@ pub struct Formatter {
 }
 
 impl Formatter {
-    pub fn format(
+    pub fn format<W: Write>(
         mut self,
-        source: &str,
-        ts_context: &mut TSContext,
-    ) -> Result<String, Vec<Diagnostic>> {
-        let validator = DocumentValidator::new(source);
-        let output = validator.validate(ts_context);
-
-        if output.diagnostics.iter().any(|d| d.is_error()) {
-            return Err(output.diagnostics);
-        }
-
+        output: &ValidatorOutput,
+        writter: &mut W,
+    ) -> Result<(), io::Error> {
         self.col_width = output.resolve_column_width(RenderType::Text) + 1;
         self.col_factor = output.resolve_column_factor();
 
@@ -49,32 +42,31 @@ impl Formatter {
         self.process_body(&output);
         self.process_comments(&output.tree);
 
-        Ok(self.finalize())
+        self.finalize(writter)
     }
 
-    fn finalize(self) -> String {
-        let mut buffer = String::new();
+    fn finalize<W: Write>(self, writer: &mut W) -> Result<(), io::Error> {
         let mut lines = self.lines.into_iter().peekable();
 
         while let Some((line_idx, line)) = lines.next() {
-            buffer.push_str(&line);
+            writer.write_all(line.as_bytes())?;
 
             if let Some(separator) = self.separators.get(&line_idx) {
-                buffer.push_str(separator);
+                writer.write_all(separator.as_bytes())?;
             } else {
                 if let Some((next_line_idx, _)) = lines.peek()
                     && next_line_idx - line_idx > 1
                 {
-                    buffer.push('\n');
+                    writer.write_all(b"\n")?;
                 }
 
                 if lines.peek().is_some() {
-                    buffer.push('\n');
+                    writer.write_all(b"\n")?;
                 }
             }
         }
 
-        buffer
+        Ok(())
     }
 
     fn process_header(&mut self, output: &ValidatorOutput) {

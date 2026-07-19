@@ -1,0 +1,11 @@
+[package]
+name = "voxalfa-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.2", features = ["derive"] }
+codespan-reporting = "0.13.1"
+voxalfa-validator = { workspace = true }
+voxalfa-formatter = { workspace = true }
+thiserror = { workspace = true }
