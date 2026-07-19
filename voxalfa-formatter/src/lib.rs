@@ -9,7 +9,7 @@ use voxalfa_validator::{
     },
     diagnostic::Diagnostic,
     ir::{
-        SectionIR,
+        PulseView, SectionIR,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseIR, SolfaLineIR},
     },
@@ -42,7 +42,7 @@ impl Formatter {
             return Err(output.diagnostics);
         }
 
-        self.col_width = output.resolve_column_width(RenderType::Text);
+        self.col_width = output.resolve_column_width(RenderType::Text) + 1;
         self.col_factor = output.resolve_column_factor();
 
         self.process_header(&output);
@@ -107,7 +107,7 @@ impl Formatter {
 
                 for lyrics_idx in &group.lyrics {
                     let lyrics = &section.lyrics[*lyrics_idx];
-                    self.process_lyrics(&output.tree, lyrics, group_idx, section);
+                    self.process_lyrics(&output.tree, &group.views, lyrics);
                 }
 
                 if group_idx != section.groups.len() - 1 {
@@ -171,19 +171,22 @@ impl Formatter {
     }
 
     // TODO: operators and columns resolution
-    fn process_lyrics(
-        &mut self,
-        tree: &SymbolTree,
-        lyrics: &LyricLineIR,
-        _group_idx: usize,
-        _section: &SectionIR,
-    ) {
+    fn process_lyrics(&mut self, tree: &SymbolTree, views: &[PulseView], lyrics: &LyricLineIR) {
+        let mut buffer = "[1] ".to_string();
+        let mut view_idx = 0;
+        let mut remainder = 0;
+
         let scope = tree.get_scope(lyrics.sid);
         let line_idx = scope.range.start_point.row;
-        let mut buffer = String::new();
 
-        for  lyric_col in &lyrics.columns{
-            buffer.push_str(&self.resolve_lyric_column(tree, lyric_col));
+        for lyric_col in &lyrics.columns {
+            let lyric_str = self.resolve_lyric_column(tree, lyric_col);
+
+            let view = &views[view_idx];
+            let width = self.col_width * (view.max_factor / view.min_factor);
+            let stretched = format!("{lyric_str:<width$}");
+
+            buffer.push_str(&stretched);
         }
 
         self.lines.insert(line_idx, buffer);
@@ -195,7 +198,6 @@ impl Formatter {
         for (idx, chunk) in column.chunks.iter().enumerate() {
             for primitve in &chunk.primitives {
                 if primitve.underline.left {
-
                     buffer.push('`');
                 }
 

@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         [T] |d :r !m :f ||
         [A] |d :r !m :f ||
         [B] |d :r !m :f ||
-        [1] do w`re` mi\(fa)
+        [1] do `re` mi\(fa)
 
 "#;
 
