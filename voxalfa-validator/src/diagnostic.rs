@@ -59,7 +59,7 @@ pub enum DiagnosticKind {
     #[error("expected '{0}', got '{1}'")]
     MismatchedPulseAccent(PulseAccent, PulseAccent, Range),
     #[error("trailing lyric, no solfa column matched")]
-    TralingLyric(Vec<Range>),
+    TrailingLyric(Vec<Range>),
 }
 
 impl DiagnosticKind {
@@ -87,7 +87,7 @@ impl DiagnosticKind {
             DiagnosticKind::ExpectedLyricAnchor => "E020",
             DiagnosticKind::InvalidNoteProlongation => "E021",
             DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E022",
-            DiagnosticKind::TralingLyric(_) => "E023",
+            DiagnosticKind::TrailingLyric(_) => "E023",
         }
     }
 
@@ -121,7 +121,7 @@ impl DiagnosticKind {
                 message: "voices defined here".to_string(),
                 range: *range,
             }],
-            DiagnosticKind::TralingLyric(ranges) => ranges
+            DiagnosticKind::TrailingLyric(ranges) => ranges
                 .iter()
                 .map(|r| DiagnosticRelatedInfo {
                     message: "add more columns here".to_string(),

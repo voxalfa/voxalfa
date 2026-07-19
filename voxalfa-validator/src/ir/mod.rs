@@ -28,33 +28,45 @@ pub struct SectionGroup {
 
 impl SectionGroup {
     pub fn width(&self) -> usize {
-        self.views.iter().map(|v| v.min_factor).sum()
+        self.views.iter().map(|v| v.factor).sum()
     }
 }
 
 #[derive(Debug)]
 pub struct PulseView {
-    pub min_factor: usize,
-    pub max_factor: usize,
-}
-
-impl Default for PulseView {
-    fn default() -> Self {
-        Self {
-            min_factor: 1,
-            max_factor: 1,
-        }
-    }
+    pub durations: Vec<usize>,
+    pub factor: usize,
+    pub aligned: bool,
 }
 
 impl PulseView {
-    pub fn update(&mut self, pulse: &PulseIR) {
-        if self.min_factor > pulse.factor {
-            self.min_factor = pulse.factor;
+    pub fn new(pulse: &PulseIR) -> Self {
+        Self {
+            durations: pulse.columns.iter().map(|c| c.duration).collect(),
+            factor: pulse.factor,
+            aligned: true,
         }
+    }
 
-        if self.max_factor < pulse.factor {
-            self.max_factor = pulse.factor;
+    pub fn add(&mut self, pulse: &PulseIR) {
+        let duration_match = pulse
+            .columns
+            .iter()
+            .map(|p| p.duration)
+            .zip(&self.durations)
+            .all(|(lhs, &rhs)| lhs == rhs);
+
+        if pulse.factor != self.factor || !duration_match {
+            self.aligned = false;
+            self.factor = 1;
+            self.durations = vec![1];
         }
+    }
+
+    pub fn resolve_widths(&self, col_width: usize, col_factor: usize) -> Vec<usize> {
+        self.durations
+            .iter()
+            .map(|d| (col_width * d * col_factor) / self.factor)
+            .collect()
     }
 }

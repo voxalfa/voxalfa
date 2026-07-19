@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         [S] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
         [T] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
         [A] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-        [B] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+        [B] |d :r !m :f |`s :l` !t :- |da+1 :- !  ||
 
         [1] do `re` mi\(fa) so la ti_i do_o. ~ ~
 "#;

@@ -351,34 +351,45 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn build_pulse_view(&mut self, solfa: &[SolfaLineIR], group: &[usize]) -> Vec<PulseView> {
-        let mut result = Vec::new();
-        let pulse_len = solfa.first().map(|s| s.pulses.len()).unwrap_or_default();
+        let mut views = group
+            .first()
+            .map(|idx| {
+                solfa[*idx]
+                    .pulses
+                    .iter()
+                    .map(PulseView::new)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
-        for pulse_idx in 0..pulse_len {
-            let mut view = PulseView::default();
-
-            for solfa_idx in group {
+        for pulse_idx in 0..views.len() {
+            for solfa_idx in group.iter().skip(1) {
                 let current = &solfa[*solfa_idx];
-                let pulse = &current.pulses[pulse_idx];
+                let pulse = current.pulses.get(pulse_idx);
+                let view = &mut views[pulse_idx];
 
-                view.update(pulse);
+                if let Some(pulse) = pulse {
+                    view.add(pulse);
+
+                    if !view.aligned {
+                        break;
+                    }
+                }
             }
-
-            result.push(view);
         }
 
-        result
+        views
     }
 
     fn validate_section_ir(&mut self, section_ir: &SectionIR) {
         for group in &section_ir.groups {
             for lyric_idx in &group.lyrics {
                 let lyric_line = &section_ir.lyrics[*lyric_idx];
-                let mut counter = group.width();
+                let mut span_counter = group.width();
 
                 for lyric_col in &lyric_line.columns {
-                    if counter >= lyric_col.span {
-                        counter -= lyric_col.span;
+                    if span_counter >= lyric_col.span {
+                        span_counter -= lyric_col.span;
                     } else {
                         let range = self.tree.get_scope_range(lyric_col.sid);
 
@@ -388,7 +399,7 @@ impl<'a> DocumentValidator<'a> {
                             .map(|idx| self.tree.get_scope_range(section_ir.solfa[*idx].sid))
                             .collect();
 
-                        self.report_error(range, DiagnosticKind::TralingLyric(ctx_ranges));
+                        self.report_error(range, DiagnosticKind::TrailingLyric(ctx_ranges));
                     }
                 }
             }

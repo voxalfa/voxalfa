@@ -49,6 +49,8 @@ impl ValidatorOutput {
     }
 
     fn resolve_lyric_column_width(&self, column: &LyricColumn, render_type: RenderType) -> usize {
+        let extra = if column.chunks.len() > 1 { 2 } else { 0 }; // add parenthesis
+
         column
             .chunks
             .iter()
@@ -60,7 +62,8 @@ impl ValidatorOutput {
                 }
                 _ => 0,
             })
-            .sum()
+            .sum::<usize>()
+            + extra
     }
 
     fn resolve_lyric_string_width(

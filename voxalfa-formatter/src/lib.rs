@@ -9,7 +9,7 @@ use voxalfa_validator::{
     },
     diagnostic::Diagnostic,
     ir::{
-        PulseView, SectionIR,
+        PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseIR, SolfaLineIR},
     },
@@ -105,9 +105,9 @@ impl Formatter {
                     self.process_solfa(&output.tree, solfa);
                 }
 
-                for lyrics_idx in &group.lyrics {
+                for (verse, lyrics_idx) in group.lyrics.iter().enumerate() {
                     let lyrics = &section.lyrics[*lyrics_idx];
-                    self.process_lyrics(&output.tree, &group.views, lyrics);
+                    self.process_lyrics(&output.tree, &group.views, lyrics, verse + 1);
                 }
 
                 if group_idx != section.groups.len() - 1 {
@@ -157,7 +157,8 @@ impl Formatter {
             let column_str = column.kind.to_string();
 
             let note = format!("{lead}{prefix_str}{column_str}");
-            let total_width = self.col_width * column.duration * (self.col_factor / pulse.factor);
+
+            let total_width = (self.col_width * column.duration * self.col_factor) / pulse.factor;
             let padding_width = total_width.saturating_sub(suffix_str.len());
 
             let stretched = format!("{note:<padding_width$}{suffix_str}");
@@ -170,23 +171,54 @@ impl Formatter {
         buffer
     }
 
-    // TODO: operators and columns resolution
-    fn process_lyrics(&mut self, tree: &SymbolTree, views: &[PulseView], lyrics: &LyricLineIR) {
-        let mut buffer = "[1] ".to_string();
+    fn process_lyrics(
+        &mut self,
+        tree: &SymbolTree,
+        views: &[PulseView],
+        lyrics: &LyricLineIR,
+        verse: usize,
+    ) {
+        let mut buffer = format!("[{verse}] ");
         let mut view_idx = 0;
-        let mut remainder = 0;
+        let mut view_offset = 0;
 
         let scope = tree.get_scope(lyrics.sid);
         let line_idx = scope.range.start_point.row;
 
-        for lyric_col in &lyrics.columns {
+        for (lyrics_idx, lyric_col) in lyrics.columns.iter().enumerate() {
             let lyric_str = self.resolve_lyric_column(tree, lyric_col);
+            let mut span_value = lyric_col.span;
+            let mut width = 0;
 
-            let view = &views[view_idx];
-            let width = self.col_width * (view.max_factor / view.min_factor);
-            let stretched = format!("{lyric_str:<width$}");
+            while span_value != 0 {
+                let view = &views[view_idx];
+                let widths = view.resolve_widths(self.col_width, self.col_factor);
 
-            buffer.push_str(&stretched);
+                width += widths[view_offset];
+                view_offset += 1;
+                span_value -= 1;
+
+                if view_offset >= widths.len() {
+                    // width += self.col_width * self.col_factor - widths.iter().sum::<usize>();
+                    view_idx += 1;
+                    view_offset = 0;
+                }
+            }
+
+            let filler = match lyrics.operators.get(lyrics_idx) {
+                Some(LyricOperatorKind::Concat) => '_',
+                Some(LyricOperatorKind::Newline) => '\\',
+                _ => ' ',
+            };
+
+            let padding = width.saturating_sub(lyric_str.chars().count());
+            let padded_str = format!(
+                "{}{}",
+                lyric_str,
+                std::iter::repeat_n(filler, padding).collect::<String>()
+            );
+
+            buffer.push_str(&padded_str);
         }
 
         self.lines.insert(line_idx, buffer);
@@ -194,6 +226,10 @@ impl Formatter {
 
     fn resolve_lyric_column(&self, tree: &SymbolTree, column: &LyricColumnIR) -> String {
         let mut buffer = String::new();
+
+        if column.chunks.len() > 1 {
+            buffer.push('(');
+        }
 
         for (idx, chunk) in column.chunks.iter().enumerate() {
             for primitve in &chunk.primitives {
@@ -225,10 +261,14 @@ impl Formatter {
         }
 
         if column.chunks.len() > 1 {
-            format!("({buffer})")
-        } else {
-            buffer
+            buffer.push(')');
         }
+
+        if column.span > 1 {
+            buffer.push_str(&format!("@{}", column.span));
+        }
+
+        buffer
     }
 
     fn process_comments(&mut self, tree: &SymbolTree) {
