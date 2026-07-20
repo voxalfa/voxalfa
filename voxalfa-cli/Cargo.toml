@@ -2,6 +2,7 @@
 name = "voxalfa-cli"
 version = "0.1.0"
 edition = "2024"
+description = "A command line interface for the core voxalfa functions."
 
 [dependencies]
 clap = { version = "4.6.2", features = ["derive"] }

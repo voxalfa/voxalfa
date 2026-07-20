@@ -9,6 +9,8 @@ use codespan_reporting::{
 
 use voxalfa_validator::diagnostic::{Diagnostic, DiagnosticLevel};
 
+use crate::types::SourceFile;
+
 #[derive(Debug)]
 pub struct CliReporter<'a> {
     config: term::Config,
@@ -27,8 +29,8 @@ impl Default for CliReporter<'_> {
 }
 
 impl<'a> CliReporter<'a> {
-    pub fn register(&mut self, file_name: &str, source: &'a str, diagnostics: Vec<Diagnostic>) {
-        let file_id = self.files.add(file_name.to_string(), source);
+    pub fn register(&mut self, file: &'a SourceFile, diagnostics: Vec<Diagnostic>) {
+        let file_id = self.files.add(file.path.to_string(), &file.content);
 
         for diagnostic in diagnostics {
             let severity = match diagnostic.level {

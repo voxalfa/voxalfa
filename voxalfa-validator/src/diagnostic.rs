@@ -5,7 +5,7 @@ use crate::{
     ts_utils::range::Range,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub kind: DiagnosticKind,
