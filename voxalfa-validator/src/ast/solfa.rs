@@ -6,7 +6,7 @@ use crate::ast::{
 #[derive(Debug)]
 pub struct SolfaLine {
     pub sid: ScopeId,
-    pub voice: Voice,
+    pub voice: SymbolRef<Voice>,
     pub pulses: Vec<Pulse>,
 }
 
@@ -134,8 +134,8 @@ impl std::fmt::Display for Note {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let variation_str = match self.variation {
             NoteVariation::Base => "",
-            NoteVariation::Raised => "a",
-            NoteVariation::Lowered => "i",
+            NoteVariation::Raised => "i",
+            NoteVariation::Lowered => "a",
         };
 
         let suffix = match self.octave {

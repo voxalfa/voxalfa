@@ -55,6 +55,7 @@ pub enum ScopeKind {
     Assignment,
     Body,
     Section,
+    SubSection,
     SolfaLine,
     Pulse,
     LyricLine,

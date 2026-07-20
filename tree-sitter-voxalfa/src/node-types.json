@@ -489,22 +489,10 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
+      "required": true,
       "types": [
         {
-          "type": "dynamics_line",
-          "named": true
-        },
-        {
-          "type": "lyric_line",
-          "named": true
-        },
-        {
-          "type": "parameter_line",
-          "named": true
-        },
-        {
-          "type": "solfa_line",
+          "type": "sub_section",
           "named": true
         }
       ]
@@ -592,6 +580,33 @@
     "fields": {}
   },
   {
+    "type": "sub_section",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "dynamics_line",
+          "named": true
+        },
+        {
+          "type": "lyric_line",
+          "named": true
+        },
+        {
+          "type": "parameter_line",
+          "named": true
+        },
+        {
+          "type": "solfa_line",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "\"",
     "named": false
   },
@@ -657,6 +672,10 @@
   },
   {
     "type": ")",
+    "named": false
+  },
+  {
+    "type": "++",
     "named": false
   },
   {

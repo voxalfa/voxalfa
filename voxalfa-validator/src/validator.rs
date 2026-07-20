@@ -2,7 +2,7 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
     ast::{
-        body::{Body, Section},
+        body::{Body, Section, SubSection},
         document::Document,
         header::Header,
         lyrics::{
@@ -18,7 +18,7 @@ use crate::{
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ir::{
-        DocumentIR, PulseView, SectionIR, VoiceGroup,
+        DocumentIR, PulseView, SectionIR, SubSectionIR,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
         utils::{BeatBuffer, UnderlineBuffer},
@@ -128,6 +128,9 @@ impl<'a> DocumentValidator<'a> {
                 let section = self.resolve_section(child, body.sid);
                 let section_ir = self.build_section_ir(&section);
 
+                self.validate_pulses(&section);
+                self.validate_voice_count(&section);
+
                 body.sections.push(section);
                 self.ir.sections.push(section_ir);
             }
@@ -136,28 +139,62 @@ impl<'a> DocumentValidator<'a> {
         self.document.body = body;
     }
 
+    fn resolve_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> Section {
+        let sid = self
+            .tree
+            .add_scope(ScopeKind::Section, node.range(), parent_sid.into());
+
+        let mut section = Section::new(sid);
+
+        for child in node.named_children(&mut node.walk()) {
+            if child.kind_id() == node_types::SUB_SECTION {
+                let result = self.resolve_sub_section(child, sid);
+
+                section.sub_sections.push(result);
+            }
+        }
+
+        section
+    }
+
     fn build_section_ir(&mut self, section: &Section) -> SectionIR {
-        let mut section_ir = SectionIR::default();
+        let sub_sections = section
+            .sub_sections
+            .iter()
+            .map(|s| self.build_sub_section_ir(s))
+            .collect::<Vec<_>>();
 
-        for line in &section.solfa {
-            let line_ir = self.build_solfa_line_ir(line);
-            section_ir.solfa.push(line_ir);
+        for sub_section in &sub_sections {
+            self.validate_sub_section_ir(sub_section);
         }
 
-        for line in &section.lyrics {
-            let line_ir = self.build_lyric_line_ir(line);
-            section_ir.lyrics.push(line_ir);
+        SectionIR { sub_sections }
+    }
+
+    fn build_sub_section_ir(&mut self, section: &SubSection) -> SubSectionIR {
+        let solfa = section
+            .solfa
+            .iter()
+            .map(|s| self.build_solfa_line_ir(s))
+            .collect::<Vec<_>>();
+
+        let lyrics = section
+            .lyrics
+            .iter()
+            .map(|l| self.build_lyric_line_ir(l))
+            .collect();
+
+        let views = self.build_pulse_view(&solfa);
+
+        SubSectionIR {
+            views,
+            solfa,
+            lyrics,
         }
-
-        section_ir.groups = self.build_section_group(section, &section_ir);
-
-        self.validate_section_ir(&section_ir);
-
-        section_ir
     }
 
     fn build_solfa_line_ir(&mut self, line: &SolfaLine) -> SolfaLineIR {
-        let mut line_ir = SolfaLineIR::new(line.sid, line.voice);
+        let mut line_ir = SolfaLineIR::new(line.sid, line.voice.value);
         let mut underline_buffer = UnderlineBuffer::default();
 
         for pulse in &line.pulses {
@@ -310,75 +347,14 @@ impl<'a> DocumentValidator<'a> {
         partials
     }
 
-    fn build_section_group(
-        &mut self,
-        section: &Section,
-        section_ir: &SectionIR,
-    ) -> Vec<VoiceGroup> {
-        if section.lyrics.is_empty() {
-            let solfa = (0..section.solfa.len()).collect::<Vec<_>>();
-            let views = self.build_pulse_view(&section_ir.solfa, &solfa);
-
-            return vec![VoiceGroup {
-                solfa,
-                views,
-                ..Default::default()
-            }];
-        }
-
-        let mut groups: Vec<VoiceGroup> = Vec::with_capacity(section.lyrics.len());
-        let mut last_voice = 0;
-
-        for (idx, lyric) in section.lyrics.iter().enumerate() {
-            if last_voice != 0 && lyric.position == last_voice - 1 {
-                if let Some(group) = groups.last_mut() {
-                    group.lyrics.push(idx);
-                }
-            } else if !section.solfa.is_empty() {
-                let solfa = (last_voice..=lyric.position).collect::<Vec<_>>();
-                let views = self.build_pulse_view(&section_ir.solfa, &solfa);
-
-                groups.push(VoiceGroup {
-                    lyrics: vec![idx],
-                    views,
-                    solfa,
-                });
-
-                last_voice = lyric.position + 1;
-            }
-        }
-
-        let solfa_len = section.solfa.len();
-
-        if last_voice < solfa_len {
-            let solfa = (last_voice..solfa_len).collect::<Vec<_>>();
-            let views = self.build_pulse_view(&section_ir.solfa, &solfa);
-
-            groups.push(VoiceGroup {
-                views,
-                solfa,
-                ..Default::default()
-            });
-        }
-
-        groups
-    }
-
-    fn build_pulse_view(&mut self, solfa: &[SolfaLineIR], group: &[usize]) -> Vec<PulseView> {
-        let mut views = group
+    fn build_pulse_view(&mut self, solfa: &[SolfaLineIR]) -> Vec<PulseView> {
+        let mut views = solfa
             .first()
-            .map(|idx| {
-                solfa[*idx]
-                    .pulses
-                    .iter()
-                    .map(PulseView::new)
-                    .collect::<Vec<_>>()
-            })
+            .map(|first| first.pulses.iter().map(PulseView::new).collect::<Vec<_>>())
             .unwrap_or_default();
 
         for (pulse_idx, view) in views.iter_mut().enumerate() {
-            for solfa_idx in group.iter().skip(1) {
-                let current = &solfa[*solfa_idx];
+            for current in solfa.iter().skip(1) {
                 let pulse = current.pulses.get(pulse_idx);
 
                 if let Some(pulse) = pulse {
@@ -394,26 +370,23 @@ impl<'a> DocumentValidator<'a> {
         views
     }
 
-    fn validate_section_ir(&mut self, section_ir: &SectionIR) {
-        for group in &section_ir.groups {
-            for lyric_idx in &group.lyrics {
-                let lyric_line = &section_ir.lyrics[*lyric_idx];
-                let mut span_counter = group.width();
+    fn validate_sub_section_ir(&mut self, sub_section: &SubSectionIR) {
+        for lyric_line in &sub_section.lyrics {
+            let mut span_counter = sub_section.width();
 
-                for lyric_col in &lyric_line.columns {
-                    if span_counter >= lyric_col.span {
-                        span_counter -= lyric_col.span;
-                    } else {
-                        let range = self.tree.get_scope_range(lyric_col.sid);
+            for lyric_col in &lyric_line.columns {
+                if span_counter >= lyric_col.span {
+                    span_counter -= lyric_col.span;
+                } else {
+                    let range = self.tree.get_scope_range(lyric_col.sid);
 
-                        let ctx_ranges = group
-                            .solfa
-                            .iter()
-                            .map(|idx| self.tree.get_scope_range(section_ir.solfa[*idx].sid))
-                            .collect();
+                    let context_ranges = sub_section
+                        .solfa
+                        .iter()
+                        .map(|s| self.tree.get_scope_range(s.sid))
+                        .collect();
 
-                        self.report_error(range, DiagnosticKind::TrailingLyric(ctx_ranges));
-                    }
+                    self.report_error(range, DiagnosticKind::TrailingLyric(context_ranges));
                 }
             }
         }
@@ -423,18 +396,18 @@ impl<'a> DocumentValidator<'a> {
         &mut self,
         node: Node<'_>,
         parent_sid: ScopeId,
-        lines: &mut Vec<SolfaLine>,
+        sub_section: &mut SubSection,
     ) {
         let sid = self
             .tree
             .add_scope(ScopeKind::SolfaLine, node.range(), parent_sid.into());
 
-        if let Some(value) = self.resolve_solfa_line(node, sid, lines.len()) {
-            lines.push(value);
+        if let Some(value) = self.resolve_solfa_line(node, sid) {
+            sub_section.solfa.push(value);
         }
     }
 
-    fn handle_lyric_node(&mut self, node: Node<'_>, parent_sid: ScopeId, section: &mut Section) {
+    fn handle_lyric_node(&mut self, node: Node<'_>, parent_sid: ScopeId, section: &mut SubSection) {
         let sid = self
             .tree
             .add_scope(ScopeKind::LyricLine, node.range(), parent_sid.into());
@@ -444,13 +417,8 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
-    fn resolve_solfa_line(
-        &mut self,
-        node: Node<'_>,
-        scope_id: ScopeId,
-        id: usize,
-    ) -> Option<SolfaLine> {
-        let voice = self.resolve_solfa_voice(node, id)?;
+    fn resolve_solfa_line(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<SolfaLine> {
+        let voice = self.resolve_solfa_voice(node, scope_id)?;
         let content_node = node.child_by_field_name("content")?;
         let mut pulses = Vec::new();
 
@@ -471,32 +439,25 @@ impl<'a> DocumentValidator<'a> {
         })
     }
 
-    fn resolve_solfa_voice(&mut self, node: Node<'_>, id: usize) -> Option<Voice> {
+    fn resolve_solfa_voice(
+        &mut self,
+        node: Node<'_>,
+        parent_sid: ScopeId,
+    ) -> Option<SymbolRef<Voice>> {
         let voice_node = node.child_by_field_name("voice")?;
         let voice_str = self.resolve_node_string(voice_node)?;
         let voice = Voice::try_from(voice_str.as_str());
 
+        let sid = self
+            .tree
+            .add_symbol(SymbolKind::Token, node.range(), parent_sid);
+
         if let Ok(value) = voice {
-            if let Some(expected) = self.document.get_voice(id) {
-                if value != expected {
-                    self.report_error(
-                        voice_node.range(),
-                        DiagnosticKind::VoiceMismatch(expected, value),
-                    );
-                }
-
-                return Some(expected);
-            }
-
-            self.report_error(
-                voice_node.range(),
-                DiagnosticKind::UndefinedVoice(voice_str),
-            );
+            Some(SymbolRef { sid, value })
         } else {
             self.report_error(voice_node.range(), DiagnosticKind::InvalidVoice(voice_str));
+            None
         }
-
-        None
     }
 
     fn resolve_pulse(&mut self, node: Node<'_>, scope_id: ScopeId) -> Option<Pulse> {
@@ -562,38 +523,41 @@ impl<'a> DocumentValidator<'a> {
         Some(PulseToken { sid, value: kind })
     }
 
-    fn resolve_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> Section {
+    fn resolve_sub_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> SubSection {
         let sid = self
             .tree
-            .add_scope(ScopeKind::Section, node.range(), parent_sid.into());
+            .add_scope(ScopeKind::SubSection, node.range(), parent_sid.into());
 
-        let mut section = Section::new(sid);
+        let mut result = SubSection::new(sid);
 
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::PARAMETER_LINE => {
-                    self.handle_assignment_node(child, sid, &mut section.params)
+                    self.handle_assignment_node(child, sid, &mut result.params)
                 }
                 node_types::DYNAMICS_LINE => {
-                    self.handle_assignment_node(child, sid, &mut section.dynamics)
+                    self.handle_assignment_node(child, sid, &mut result.dynamics)
                 }
-                node_types::SOLFA_LINE => self.handle_solfa_node(child, sid, &mut section.solfa),
-                node_types::LYRIC_LINE => self.handle_lyric_node(child, sid, &mut section),
+                node_types::SOLFA_LINE => self.handle_solfa_node(child, sid, &mut result),
+                node_types::LYRIC_LINE => self.handle_lyric_node(child, sid, &mut result),
                 _ => {}
             }
         }
 
-        self.validate_pulses(&section);
-        self.validate_voice_count(&section);
-
-        section
+        result
     }
 
     fn validate_pulses(&mut self, section: &Section) {
         let time_signature = self.document.time_signature().cloned();
 
-        for line in &section.solfa {
-            if let Some(first) = section.solfa.first() {
+        let solfa = section
+            .sub_sections
+            .iter()
+            .flat_map(|s| &s.solfa)
+            .collect::<Vec<_>>();
+
+        for line in &solfa {
+            if let Some(first) = solfa.first() {
                 let first_len = first.pulses.len();
                 let current_len = line.pulses.len();
 
@@ -674,17 +638,29 @@ impl<'a> DocumentValidator<'a> {
         };
 
         let range = self.tree.get_scope_range(section.sid);
-        let count = section.solfa.len();
         let expected = voices.value.len();
+        let context_range = self.tree.get_symbol_range(voices.sid);
 
-        if count != expected {
+        let voices = section
+            .sub_sections
+            .iter()
+            .flat_map(|sub| sub.solfa.iter().map(|s| &s.voice))
+            .collect::<Vec<_>>();
+
+        for (id, voice) in voices.iter().enumerate() {
+            if let Some(expected) = self.document.get_voice(id) {
+                let range = self.tree.get_symbol_range(voice.sid);
+
+                if voice.value != expected {
+                    self.report_error(range, DiagnosticKind::VoiceMismatch(expected, voice.value));
+                }
+            }
+        }
+
+        if voices.len() != expected {
             self.report_error(
                 range,
-                DiagnosticKind::VoiceCountMismatch(
-                    expected,
-                    count,
-                    self.tree.get_symbol_range(voices.sid),
-                ),
+                DiagnosticKind::VoiceCountMismatch(expected, voices.len(), context_range),
             );
         }
     }
@@ -693,20 +669,14 @@ impl<'a> DocumentValidator<'a> {
         &mut self,
         node: Node<'_>,
         scope_id: ScopeId,
-        section: &Section,
+        section: &SubSection,
     ) -> Option<LyricLine> {
         let verse_node = node.child_by_field_name("verse")?;
         let content_node = node.child_by_field_name("content")?;
         let anchor_node = node.child_by_field_name("anchor");
 
-        let group = section.solfa.len().saturating_sub(1);
         let verse = self.parse_node(verse_node)?;
-        let expected_verse = section
-            .lyrics
-            .iter()
-            .filter(|l| l.position == group)
-            .count()
-            + 1;
+        let expected_verse = section.lyrics.len() + 1;
         let tokens = self.resolve_lyric_tokens(content_node, scope_id);
         let anchor = self.resolve_lyric_anchor(anchor_node, &tokens, scope_id);
 
@@ -720,7 +690,6 @@ impl<'a> DocumentValidator<'a> {
         Some(LyricLine {
             sid: scope_id,
             verse: expected_verse,
-            position: group,
             anchor,
             tokens,
         })

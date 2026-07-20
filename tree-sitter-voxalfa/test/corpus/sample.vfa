@@ -122,370 +122,368 @@ Sample Partition
           (token)))))
   (body
     (section
-      (inline_comment)
-      (inline_comment)
-      (inline_comment)
-      (parameter_line
-        (parameter_assignment
-          name: (identifier)
-          value: (boolean)))
-      (dynamics_line
-        (parameter_assignment
-          name: (identifier)
-          value: (integer))
-        (parameter_assignment
-          name: (identifier)
-          value: (list
-            (integer)
-            (integer))))
-      (solfa_line
-        voice: (token)
-        content: (solfa_content
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (underline_marker)
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))
-              (underline_marker)))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base)
-                variation: (note_variation)
-                octave: (note_octave))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (medium_accent))
-          (pulse
-            accent: (weak_accent))))
-      (solfa_line
-        voice: (token)
-        content: (solfa_content
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (underline_marker)
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))
-              (underline_marker)))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base)
-                variation: (note_variation)
-                octave: (note_octave))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (medium_accent))
-          (pulse
-            accent: (weak_accent))))
-      (solfa_line
-        voice: (token)
-        content: (solfa_content
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (underline_marker)
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))
-              (underline_marker)))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base)
-                variation: (note_variation)
-                octave: (note_octave))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (medium_accent))
-          (pulse
-            accent: (weak_accent))))
-      (solfa_line
-        voice: (token)
-        content: (solfa_content
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (underline_marker)
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))
-              (underline_marker)))
-          (pulse
-            accent: (medium_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (strong_accent)
-            tokens: (pulse_tokens
-              (note
-                base: (note_base)
-                variation: (note_variation)
-                octave: (note_octave))))
-          (pulse
-            accent: (weak_accent)
-            tokens: (pulse_tokens
-              (prolonged_note)))
-          (pulse
-            accent: (medium_accent))
-          (pulse
-            accent: (weak_accent))))
-      (lyric_line
-        verse: (integer)
-        content: (lyric_content
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (underline_marker)
-              (lyric_string)
-              (underline_marker)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (newline_operator)
-          (lyric_column
-            lyric: (lyric_group
-              (lyric_chunk
-                (lyric_string))
-              (space_operator)
-              (lyric_chunk
-                (lyric_string))))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (concat_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (concat_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_placeholder))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_placeholder))
-          (space_operator))
-        anchor: (lyric_anchor))
-      (lyric_line
-        verse: (integer)
-        content: (lyric_content
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (underline_marker)
-              (lyric_string)
-              (underline_marker)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (newline_operator)
-          (lyric_column
-            lyric: (lyric_group
-              (lyric_chunk
-                (lyric_string))
-              (space_operator)
-              (lyric_chunk
-                (lyric_string))))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (concat_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (concat_operator)
-          (lyric_column
-            lyric: (lyric_chunk
-              (lyric_string)))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_placeholder))
-          (space_operator)
-          (lyric_column
-            lyric: (lyric_placeholder))
-          (space_operator))
-        anchor: (lyric_anchor))
-      (inline_comment)
-      (inline_comment)
-      (inline_comment))))
+      (sub_section
+        (inline_comment)
+        (inline_comment)
+        (dynamics_line
+          (parameter_assignment
+            name: (identifier)
+            value: (integer))
+          (parameter_assignment
+            name: (identifier)
+            value: (list
+              (integer)
+              (integer))))
+        (inline_comment)
+        (inline_comment)
+        (solfa_line
+          voice: (token)
+          content: (solfa_content
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (underline_marker)
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))
+                (underline_marker)))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base)
+                  variation: (note_variation)
+                  octave: (note_octave))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (medium_accent))
+            (pulse
+              accent: (weak_accent))))
+        (solfa_line
+          voice: (token)
+          content: (solfa_content
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (underline_marker)
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))
+                (underline_marker)))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base)
+                  variation: (note_variation)
+                  octave: (note_octave))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (medium_accent))
+            (pulse
+              accent: (weak_accent))))
+        (solfa_line
+          voice: (token)
+          content: (solfa_content
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (underline_marker)
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))
+                (underline_marker)))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base)
+                  variation: (note_variation)
+                  octave: (note_octave))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (medium_accent))
+            (pulse
+              accent: (weak_accent))))
+        (solfa_line
+          voice: (token)
+          content: (solfa_content
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (underline_marker)
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))
+                (underline_marker)))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base)
+                  variation: (note_variation)
+                  octave: (note_octave))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (medium_accent))
+            (pulse
+              accent: (weak_accent))))
+        (lyric_line
+          verse: (integer)
+          content: (lyric_content
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (underline_marker)
+                (lyric_string)
+                (underline_marker)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (newline_operator)
+            (lyric_column
+              lyric: (lyric_group
+                (lyric_chunk
+                  (lyric_string))
+                (space_operator)
+                (lyric_chunk
+                  (lyric_string))))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator))
+          anchor: (lyric_anchor))
+        (lyric_line
+          verse: (integer)
+          content: (lyric_content
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (underline_marker)
+                (lyric_string)
+                (underline_marker)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (newline_operator)
+            (lyric_column
+              lyric: (lyric_group
+                (lyric_chunk
+                  (lyric_string))
+                (space_operator)
+                (lyric_chunk
+                  (lyric_string))))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator))
+          anchor: (lyric_anchor))
+        (inline_comment)
+        (inline_comment)
+        (inline_comment)))))

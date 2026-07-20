@@ -85,6 +85,31 @@
       ]
     },
     "section": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "sub_section"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "++"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "sub_section"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "sub_section": {
       "type": "REPEAT1",
       "content": {
         "type": "SYMBOL",

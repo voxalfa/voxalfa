@@ -23,6 +23,7 @@ impl ValidatorOutput {
             .body
             .sections
             .iter()
+            .flat_map(|s| &s.sub_sections)
             .flat_map(|s| &s.lyrics)
             .flat_map(|l| &l.tokens)
             .filter_map(|t| match t {
@@ -39,6 +40,7 @@ impl ValidatorOutput {
         self.ir
             .sections
             .iter()
+            .flat_map(|s| &s.sub_sections)
             .flat_map(|s| {
                 s.solfa
                     .iter()

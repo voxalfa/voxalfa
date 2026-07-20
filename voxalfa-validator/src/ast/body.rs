@@ -21,13 +21,28 @@ impl Body {
 #[derive(Debug, Default)]
 pub struct Section {
     pub sid: ScopeId,
+    pub sub_sections: Vec<SubSection>,
+}
+
+impl Section {
+    pub fn new(sid: ScopeId) -> Self {
+        Self {
+            sid,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct SubSection {
+    pub sid: ScopeId,
     pub params: CompositionParams,
     pub dynamics: Dynamics,
     pub solfa: Vec<SolfaLine>,
     pub lyrics: Vec<LyricLine>,
 }
 
-impl Section {
+impl SubSection {
     pub fn new(sid: ScopeId) -> Self {
         Self {
             sid,

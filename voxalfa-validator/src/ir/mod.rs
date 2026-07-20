@@ -14,19 +14,17 @@ pub struct DocumentIR {
 
 #[derive(Debug, Default)]
 pub struct SectionIR {
-    pub solfa: Vec<SolfaLineIR>,
-    pub lyrics: Vec<LyricLineIR>,
-    pub groups: Vec<VoiceGroup>,
+    pub sub_sections: Vec<SubSectionIR>,
 }
 
 #[derive(Debug, Default)]
-pub struct VoiceGroup {
+pub struct SubSectionIR {
     pub views: Vec<PulseView>,
-    pub solfa: Vec<usize>,
-    pub lyrics: Vec<usize>,
+    pub solfa: Vec<SolfaLineIR>,
+    pub lyrics: Vec<LyricLineIR>,
 }
 
-impl VoiceGroup {
+impl SubSectionIR {
     pub fn width(&self) -> usize {
         self.views.iter().map(|v| v.factor).sum()
     }

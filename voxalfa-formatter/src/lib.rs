@@ -94,25 +94,25 @@ impl<'a> Formatter<'a> {
 
     fn process_body(&mut self) {
         for (section_idx, section) in self.source.ir.sections.iter().enumerate() {
-            let section_data = &self.source.document.body.sections[section_idx];
+            for (sub_idx, sub) in section.sub_sections.iter().enumerate() {
+                let section_data = &self.source.document.body.sections[section_idx];
+                let sub_data = &section_data.sub_sections[sub_idx];
 
-            self.append_separators("\n\n");
-            self.process_params(&section_data.params);
-            self.process_dynamics(&section_data.dynamics);
+                self.append_separators("\n\n");
 
-            for (group_idx, group) in section.groups.iter().enumerate() {
-                for solfa_idx in &group.solfa {
-                    let solfa = &section.solfa[*solfa_idx];
+                self.process_params(&sub_data.params);
+                self.process_dynamics(&sub_data.dynamics);
+
+                for solfa in &sub.solfa {
                     self.process_solfa(solfa);
                 }
 
-                for (verse, lyrics_idx) in group.lyrics.iter().enumerate() {
-                    let lyrics = &section.lyrics[*lyrics_idx];
-                    self.process_lyrics(&group.views, lyrics, verse + 1);
+                for (verse, lyrics) in sub.lyrics.iter().enumerate() {
+                    self.process_lyrics(&sub.views, lyrics, verse + 1);
                 }
 
-                if group_idx != section.groups.len() - 1 {
-                    self.append_separators("\n\n");
+                if sub_idx != section.sub_sections.len() - 1 {
+                    self.append_separators("\n\n++");
                 }
             }
 

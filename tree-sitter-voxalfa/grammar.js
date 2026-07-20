@@ -22,7 +22,9 @@ export default grammar({
 
     body: ($) => sep1("--", $.section),
 
-    section: ($) => repeat1($._section_line),
+    section: ($) => sep1("++", $.sub_section),
+
+    sub_section: ($) => repeat1($._section_line),
 
     _section_line: ($) =>
       choice(
