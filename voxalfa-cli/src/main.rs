@@ -56,7 +56,7 @@ fn format(file_paths: Vec<String>) -> Result<(), Error> {
         let output = parse_file(&file.content)?;
 
         if output.diagnostics.iter().any(|d| d.is_error()) {
-            cli_reporter.register(&file, output.diagnostics);
+            cli_reporter.register(file, output.diagnostics);
         } else {
             let formatter = Formatter::new(&output);
             let mut writter = File::create(&file.path)?;
@@ -78,7 +78,7 @@ fn check(file_paths: Vec<String>) -> Result<(), Error> {
     for file in &files {
         let output = parse_file(&file.content)?;
 
-        cli_reporter.register(&file, output.diagnostics);
+        cli_reporter.register(file, output.diagnostics);
     }
 
     cli_reporter.display_report();

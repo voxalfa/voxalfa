@@ -1,5 +1,5 @@
 use crate::ast::{
-    dynamics::Dynamics, lyrics::LyricLine, params::SectionParams, solfa::SolfaLine,
+    dynamics::Dynamics, lyrics::LyricLine, params::CompositionParams, solfa::SolfaLine,
     symbols::ScopeId,
 };
 
@@ -21,7 +21,7 @@ impl Body {
 #[derive(Debug, Default)]
 pub struct Section {
     pub sid: ScopeId,
-    pub params: SectionParams,
+    pub params: CompositionParams,
     pub dynamics: Dynamics,
     pub solfa: Vec<SolfaLine>,
     pub lyrics: Vec<LyricLine>,
@@ -31,6 +31,10 @@ impl Section {
     pub fn new(sid: ScopeId) -> Self {
         Self {
             sid,
+            params: CompositionParams {
+                section: true,
+                ..Default::default()
+            },
             ..Default::default()
         }
     }

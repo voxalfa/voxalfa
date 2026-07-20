@@ -3,6 +3,7 @@ use crate::{
         params::CompositionParams,
         symbols::{Field, FieldAssign, ScopeId},
     },
+    diagnostic::DiagnosticKind,
     ts_utils::types::AssignmentData,
     validator::DocumentValidator,
 };
@@ -33,14 +34,29 @@ pub struct HeaderMetadata {
 }
 
 impl FieldAssign for HeaderMetadata {
-    fn assign_field(&mut self, source: AssignmentData, context: &mut DocumentValidator) {
-        match source.key_name.as_str() {
-            "title" => context.assign_field(source, &mut self.title),
-            "author" => context.assign_field(source, &mut self.author),
-            "composer" => context.assign_field(source, &mut self.composer),
-            "release" => context.assign_field(source, &mut self.release),
-            "description" => context.assign_field(source, &mut self.description),
-            _ => {}
+    fn assign_field(&mut self, data: AssignmentData, context: &mut DocumentValidator) {
+        match data.key_name.as_str() {
+            "title" => {
+                context.assign_field(data, &mut self.title);
+            }
+            "author" => {
+                context.assign_field(data, &mut self.author);
+            }
+            "composer" => {
+                context.assign_field(data, &mut self.composer);
+            }
+            "release" => {
+                context.assign_field(data, &mut self.release);
+            }
+            "description" => {
+                context.assign_field(data, &mut self.description);
+            }
+            _ => {
+                context.report_error(
+                    data.full_range,
+                    DiagnosticKind::UnknownField(data.key_name.clone()),
+                );
+            }
         }
     }
 }

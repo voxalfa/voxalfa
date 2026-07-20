@@ -27,7 +27,7 @@ pub struct Formatter<'a> {
     col_factor: usize,
     source: &'a ValidatorOutput,
     lines: BTreeMap<usize, String>,
-    separators: BTreeMap<usize, &'static str>,
+    separators: BTreeMap<usize, String>,
 }
 
 impl<'a> Formatter<'a> {
@@ -76,23 +76,28 @@ impl<'a> Formatter<'a> {
     fn process_header(&mut self) {
         let meta = &self.source.document.header.metadata;
         let params = &self.source.document.header.params;
+        let checkpoint = self.last_line();
 
         self.append_assignement("#", meta.title.as_ref());
         self.append_assignement("#", meta.author.as_ref());
         self.append_assignement("#", meta.composer.as_ref());
         self.append_assignement("#", meta.release.as_ref());
         self.append_assignement("#", meta.description.as_ref());
-        self.append_separators("\n\n");
+
+        if checkpoint != self.last_line() {
+            self.append_separators("\n\n");
+        }
+
         self.process_params(params);
-        self.append_separators("\n\n---\n\n");
+        self.append_separators("---");
     }
 
     fn process_body(&mut self) {
         for (section_idx, section) in self.source.ir.sections.iter().enumerate() {
             let section_data = &self.source.document.body.sections[section_idx];
 
-            self.process_params(&section_data.params.base);
-            self.append_assignement("$", section_data.params.repeat.as_ref());
+            self.append_separators("\n\n");
+            self.process_params(&section_data.params);
             self.process_dynamics(&section_data.dynamics);
 
             for (group_idx, group) in section.groups.iter().enumerate() {
@@ -112,16 +117,22 @@ impl<'a> Formatter<'a> {
             }
 
             if section_idx != self.source.ir.sections.len() - 1 {
-                self.append_separators("\n\n--\n\n");
+                self.append_separators("\n\n--");
             }
         }
     }
 
     fn process_params(&mut self, params: &CompositionParams) {
+        let checkpoint = self.last_line();
+
         self.append_assignement("$", params.key.as_ref());
         self.append_assignement("$", params.time.as_ref());
         self.append_assignement("$", params.bpm.as_ref());
         self.append_assignement("$", params.voices.as_ref());
+
+        if checkpoint != self.last_line() {
+            self.append_separators("\n\n");
+        }
     }
 
     fn process_dynamics(&mut self, dynamics: &Dynamics) {
@@ -302,11 +313,13 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    fn append_separators(&mut self, separator: &'static str) {
-        let last_line = self.lines.last_key_value().map(|(k, _)| k);
+    fn append_separators(&mut self, separator: &str) {
+        let key = self.last_line();
 
-        if let Some(line) = last_line {
-            self.separators.insert(*line, separator);
+        if let Some(value) = self.separators.get_mut(&key) {
+            *value = value.to_owned() + separator;
+        } else {
+            self.separators.insert(key, separator.to_string());
         }
     }
 
@@ -332,5 +345,12 @@ impl<'a> Formatter<'a> {
             self.lines
                 .insert(line_idx, format!("[{prefix}] {assignment_str}"));
         }
+    }
+
+    fn last_line(&self) -> usize {
+        self.lines
+            .last_key_value()
+            .map(|(&k, _)| k)
+            .unwrap_or_default()
     }
 }

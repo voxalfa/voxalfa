@@ -363,11 +363,10 @@ impl<'a> DocumentValidator<'a> {
             })
             .unwrap_or_default();
 
-        for pulse_idx in 0..views.len() {
+        for (pulse_idx, view) in views.iter_mut().enumerate() {
             for solfa_idx in group.iter().skip(1) {
                 let current = &solfa[*solfa_idx];
                 let pulse = current.pulses.get(pulse_idx);
-                let view = &mut views[pulse_idx];
 
                 if let Some(pulse) = pulse {
                     view.add(pulse);
