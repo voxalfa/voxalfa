@@ -44,10 +44,10 @@ fn format(file_path: &str) -> Result<(), Error> {
     if output.diagnostics.iter().any(|d| d.is_error()) {
         show_diagnostics(file_path, &source, output.diagnostics);
     } else {
-        let formatter = Formatter::default();
+        let formatter = Formatter::new(&output);
         let mut writter = File::create(file_path)?;
 
-        formatter.format(&output, &mut writter)?;
+        formatter.format(&mut writter)?;
     }
 
     Ok(())

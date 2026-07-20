@@ -843,7 +843,9 @@ impl<'a> DocumentValidator<'a> {
         let last_token = tokens.last();
 
         if let Some(LyricToken::Operator(operator)) = last_token {
-            if let Some(node) = node {
+            if let Some(node) = node
+                && node.kind_id() == node_types::LYRIC_ANCHOR
+            {
                 let sid = self
                     .tree
                     .add_symbol(SymbolKind::Token, node.range(), scope_id);

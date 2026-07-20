@@ -6,10 +6,7 @@ use std::{
 };
 
 use voxalfa_validator::{
-    ast::{
-        lyrics::LyricOperatorKind,
-        symbols::{SymbolRef, SymbolTree},
-    },
+    ast::{lyrics::LyricOperatorKind, symbols::SymbolRef},
     ir::{
         PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
@@ -21,26 +18,30 @@ use voxalfa_validator::{
 
 use crate::literal::Formattable;
 
-#[derive(Debug, Default)]
-pub struct Formatter {
+#[derive(Debug)]
+pub struct Formatter<'a> {
     col_width: usize,
     col_factor: usize,
+    source: &'a ValidatorOutput,
     lines: BTreeMap<usize, String>,
     separators: BTreeMap<usize, &'static str>,
 }
 
-impl Formatter {
-    pub fn format<W: Write>(
-        mut self,
-        output: &ValidatorOutput,
-        writter: &mut W,
-    ) -> Result<(), io::Error> {
-        self.col_width = output.resolve_column_width(RenderType::Text) + 1;
-        self.col_factor = output.resolve_column_factor();
+impl<'a> Formatter<'a> {
+    pub fn new(source: &'a ValidatorOutput) -> Self {
+        Self {
+            col_width: source.resolve_column_width(RenderType::Text) + 1,
+            col_factor: source.resolve_column_factor(),
+            lines: BTreeMap::new(),
+            separators: BTreeMap::new(),
+            source,
+        }
+    }
 
-        self.process_header(&output);
-        self.process_body(&output);
-        self.process_comments(&output.tree);
+    pub fn format<W: Write>(mut self, writter: &mut W) -> Result<(), io::Error> {
+        self.process_header();
+        self.process_body();
+        self.process_comments();
 
         self.finalize(writter)
     }
@@ -69,37 +70,37 @@ impl Formatter {
         Ok(())
     }
 
-    fn process_header(&mut self, output: &ValidatorOutput) {
-        let meta = &output.document.header.metadata;
-        let params = &output.document.header.params;
+    fn process_header(&mut self) {
+        let meta = &self.source.document.header.metadata;
+        let params = &self.source.document.header.params;
 
-        self.append_assignement("#", &output.tree, meta.title.as_ref());
-        self.append_assignement("#", &output.tree, meta.author.as_ref());
-        self.append_assignement("#", &output.tree, meta.composer.as_ref());
-        self.append_assignement("#", &output.tree, meta.release.as_ref());
-        self.append_assignement("#", &output.tree, meta.description.as_ref());
+        self.append_assignement("#", meta.title.as_ref());
+        self.append_assignement("#", meta.author.as_ref());
+        self.append_assignement("#", meta.composer.as_ref());
+        self.append_assignement("#", meta.release.as_ref());
+        self.append_assignement("#", meta.description.as_ref());
 
         self.append_separators("\n\n");
 
-        self.append_assignement("$", &output.tree, params.key.as_ref());
-        self.append_assignement("$", &output.tree, params.time.as_ref());
-        self.append_assignement("$", &output.tree, params.bpm.as_ref());
-        self.append_assignement("$", &output.tree, params.voices.as_ref());
+        self.append_assignement("$", params.key.as_ref());
+        self.append_assignement("$", params.time.as_ref());
+        self.append_assignement("$", params.bpm.as_ref());
+        self.append_assignement("$", params.voices.as_ref());
 
         self.append_separators("\n\n---\n\n");
     }
 
-    fn process_body(&mut self, output: &ValidatorOutput) {
-        for (section_idx, section) in output.ir.sections.iter().enumerate() {
+    fn process_body(&mut self) {
+        for (section_idx, section) in self.source.ir.sections.iter().enumerate() {
             for (group_idx, group) in section.groups.iter().enumerate() {
                 for solfa_idx in &group.solfa {
                     let solfa = &section.solfa[*solfa_idx];
-                    self.process_solfa(&output.tree, solfa);
+                    self.process_solfa(solfa);
                 }
 
                 for (verse, lyrics_idx) in group.lyrics.iter().enumerate() {
                     let lyrics = &section.lyrics[*lyrics_idx];
-                    self.process_lyrics(&output.tree, &group.views, lyrics, verse + 1);
+                    self.process_lyrics(&group.views, lyrics, verse + 1);
                 }
 
                 if group_idx != section.groups.len() - 1 {
@@ -107,14 +108,14 @@ impl Formatter {
                 }
             }
 
-            if section_idx != output.ir.sections.len() - 1 {
+            if section_idx != self.source.ir.sections.len() - 1 {
                 self.append_separators("\n\n--\n\n");
             }
         }
     }
 
-    fn process_solfa(&mut self, tree: &SymbolTree, solfa: &SolfaLineIR) {
-        let scope = tree.get_scope(solfa.sid);
+    fn process_solfa(&mut self, solfa: &SolfaLineIR) {
+        let scope = self.source.tree.get_scope(solfa.sid);
         let line_idx = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
         let mut buffer = format!("[{}] ", solfa.voice.format(true));
@@ -162,23 +163,17 @@ impl Formatter {
         buffer
     }
 
-    fn process_lyrics(
-        &mut self,
-        tree: &SymbolTree,
-        views: &[PulseView],
-        lyrics: &LyricLineIR,
-        verse: usize,
-    ) {
+    fn process_lyrics(&mut self, views: &[PulseView], lyrics: &LyricLineIR, verse: usize) {
         let mut buffer = format!("[{verse}] ");
         let mut view_idx = 0;
         let mut view_offset = 0;
 
-        let scope = tree.get_scope(lyrics.sid);
+        let scope = self.source.tree.get_scope(lyrics.sid);
         let line_idx = scope.range.start_point.row;
         let last_lyric_idx = lyrics.columns.len() - 1;
 
         for (lyric_idx, lyric_col) in lyrics.columns.iter().enumerate() {
-            let lyric_str = self.resolve_lyric_column(tree, lyric_col);
+            let lyric_str = self.resolve_lyric_column(lyric_col);
             let operator = lyrics.operators.get(lyric_idx);
 
             let mut span_value = lyric_col.span;
@@ -222,7 +217,7 @@ impl Formatter {
         self.lines.insert(line_idx, buffer);
     }
 
-    fn resolve_lyric_column(&self, tree: &SymbolTree, column: &LyricColumnIR) -> String {
+    fn resolve_lyric_column(&self, column: &LyricColumnIR) -> String {
         let mut buffer = String::new();
 
         if column.chunks.len() > 1 {
@@ -240,7 +235,7 @@ impl Formatter {
                 }
 
                 let lyric_str = match primitve.string {
-                    LyricStringIR::Reference(id) => tree.get_lyric_chunk(id),
+                    LyricStringIR::Reference(id) => self.source.tree.get_lyric_chunk(id),
                     LyricStringIR::Special(special) => special.identifer(),
                 };
 
@@ -273,9 +268,9 @@ impl Formatter {
         buffer
     }
 
-    fn process_comments(&mut self, tree: &SymbolTree) {
-        for comment in &tree.comments {
-            let symbol = tree.get_symbol(comment.sid);
+    fn process_comments(&mut self) {
+        for comment in &self.source.tree.comments {
+            let symbol = self.source.tree.get_symbol(comment.sid);
             let line_idx = symbol.range.start_point.row;
 
             if let Some(line) = self.lines.get_mut(&line_idx) {
@@ -298,14 +293,13 @@ impl Formatter {
     fn append_assignement<F: Formattable>(
         &mut self,
         prefix: &str,
-        tree: &SymbolTree,
         symbol_ref: Option<&SymbolRef<F>>,
     ) {
         let Some(symbol) = symbol_ref else { return };
 
-        let value_symbol = tree.get_symbol(symbol.sid);
-        let scope = tree.get_scope(value_symbol.scope);
-        let key_symbol = tree.get_symbol(scope.symbols[0]);
+        let value_symbol = self.source.tree.get_symbol(symbol.sid);
+        let scope = self.source.tree.get_scope(value_symbol.scope);
+        let key_symbol = self.source.tree.get_symbol(scope.symbols[0]);
         let line_idx = scope.range.start_point.row;
 
         let key_str = key_symbol.kind.as_key_unchecked();
