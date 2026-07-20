@@ -143,7 +143,7 @@ export default grammar({
         ),
       ),
 
-    lyric_anchor: () => "...",
+    lyric_anchor: () => "..",
 
     _lyric_operator: ($) =>
       choice($.concat_operator, $.space_operator, $.newline_operator),
@@ -173,8 +173,7 @@ export default grammar({
     concat_operator: () => /_+/,
     newline_operator: () => /\\+/,
 
-    lyric_string: () =>
-      /[^\s_/~``<>\\/\()@&;]+(\.\.?[^\s_/~``<>\\/\()@&;\.]+)?/,
+    lyric_string: () => /[^\s_/~``<>\\/\()@&;]+(\.[^\s_/~``<>\\/\()@&;\.]+)?/,
     lyric_placeholder: () => "~",
 
     lyric_special: () =>

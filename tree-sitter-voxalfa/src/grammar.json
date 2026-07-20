@@ -777,7 +777,7 @@
     },
     "lyric_anchor": {
       "type": "STRING",
-      "value": "..."
+      "value": ".."
     },
     "_lyric_operator": {
       "type": "CHOICE",
@@ -936,7 +936,7 @@
     },
     "lyric_string": {
       "type": "PATTERN",
-      "value": "[^\\s_/~``<>\\\\/\\()@&;]+(\\.\\.?[^\\s_/~``<>\\\\/\\()@&;\\.]+)?"
+      "value": "[^\\s_/~``<>\\\\/\\()@&;]+(\\.[^\\s_/~``<>\\\\/\\()@&;\\.]+)?"
     },
     "lyric_placeholder": {
       "type": "STRING",

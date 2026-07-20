@@ -5,15 +5,15 @@ Sample Partition
 
 ; This is a sample voxalfa file (.vfa), it was designed to be a simple language for composing and storing Tonic-Solfa pieces.
 ; It is a markup language with inline markers denoted with [<marker>]
-; 
+;
 ; We can divide the file into two parts:
 ; - Header: contains metadata and the initial parameters for the song
 ; - Body: contains the actual Solfa composition and lyrics, it can be divided into multiple sections with their own parameters
-; 
+;
 ; There are two kinds of markers:
 ; - K/V: they define a key/value pair ([#], [$], [^])
 ; - Formatters: they are immediately followed by tokens that follows a specific syntax rule ([<voice>], [<verse>])
-; 
+;
 ; The language supports simple data types, types without delimiters needs curly brackets {...}.
 ; - Strings: delimited by double quotes "..."
 ; - Numbers: signed integer or float
@@ -27,7 +27,7 @@ Sample Partition
 [#] description="Lorem Ipsum."
 [#] release={2026}
 
-[$] key={C} | bpm={100} | time={4,4} | voices={S,T,A,B}
+[$] key={C} | time={4,4} | bpm={100} | voices={S,T,A,B}
 
 ---
 
@@ -39,16 +39,17 @@ Sample Partition
 
 [^] p={1} | cre={3,6}
 
-[S] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-[T] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-[A] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-[B] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
+[S] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
+[T] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
+[A] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
+[B] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 
-[1] do `re` mi\(f a) so la ti_i do_o. ~ ~ ...
-[2] do `re` mi\(f a) so la ti_i do_o. ~ ~ ... ; scream
+[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
+[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     .. ; scream
 
 ; --
 ; more sections...
+
 
 ----
 
@@ -107,12 +108,12 @@ Sample Partition
         value: (token))
       (parameter_assignment
         name: (identifier)
-        value: (integer))
-      (parameter_assignment
-        name: (identifier)
         value: (list
           (integer)
           (integer)))
+      (parameter_assignment
+        name: (identifier)
+        value: (integer))
       (parameter_assignment
         name: (identifier)
         value: (list
@@ -393,9 +394,11 @@ Sample Partition
           (newline_operator)
           (lyric_column
             lyric: (lyric_group
-              (lyric_string)
+              (lyric_chunk
+                (lyric_string))
               (space_operator)
-              (lyric_string)))
+              (lyric_chunk
+                (lyric_string))))
           (space_operator)
           (lyric_column
             lyric: (lyric_chunk
@@ -422,12 +425,10 @@ Sample Partition
               (lyric_string)))
           (space_operator)
           (lyric_column
-            lyric: (lyric_chunk
-              (lyric_placeholder)))
+            lyric: (lyric_placeholder))
           (space_operator)
           (lyric_column
-            lyric: (lyric_chunk
-              (lyric_placeholder)))
+            lyric: (lyric_placeholder))
           (space_operator))
         anchor: (lyric_anchor))
       (lyric_line
@@ -449,9 +450,11 @@ Sample Partition
           (newline_operator)
           (lyric_column
             lyric: (lyric_group
-              (lyric_string)
+              (lyric_chunk
+                (lyric_string))
               (space_operator)
-              (lyric_string)))
+              (lyric_chunk
+                (lyric_string))))
           (space_operator)
           (lyric_column
             lyric: (lyric_chunk
@@ -478,12 +481,10 @@ Sample Partition
               (lyric_string)))
           (space_operator)
           (lyric_column
-            lyric: (lyric_chunk
-              (lyric_placeholder)))
+            lyric: (lyric_placeholder))
           (space_operator)
           (lyric_column
-            lyric: (lyric_chunk
-              (lyric_placeholder)))
+            lyric: (lyric_placeholder))
           (space_operator))
         anchor: (lyric_anchor))
       (inline_comment)

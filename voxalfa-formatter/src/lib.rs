@@ -6,7 +6,10 @@ use std::{
 };
 
 use voxalfa_validator::{
-    ast::{lyrics::LyricOperatorKind, symbols::SymbolRef},
+    ast::{
+        dynamics::Dynamics, lyrics::LyricOperatorKind, params::CompositionParams,
+        symbols::SymbolRef,
+    },
     ir::{
         PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
@@ -79,19 +82,19 @@ impl<'a> Formatter<'a> {
         self.append_assignement("#", meta.composer.as_ref());
         self.append_assignement("#", meta.release.as_ref());
         self.append_assignement("#", meta.description.as_ref());
-
         self.append_separators("\n\n");
-
-        self.append_assignement("$", params.key.as_ref());
-        self.append_assignement("$", params.time.as_ref());
-        self.append_assignement("$", params.bpm.as_ref());
-        self.append_assignement("$", params.voices.as_ref());
-
+        self.process_params(params);
         self.append_separators("\n\n---\n\n");
     }
 
     fn process_body(&mut self) {
         for (section_idx, section) in self.source.ir.sections.iter().enumerate() {
+            let section_data = &self.source.document.body.sections[section_idx];
+
+            self.process_params(&section_data.params.base);
+            self.append_assignement("$", section_data.params.repeat.as_ref());
+            self.process_dynamics(&section_data.dynamics);
+
             for (group_idx, group) in section.groups.iter().enumerate() {
                 for solfa_idx in &group.solfa {
                     let solfa = &section.solfa[*solfa_idx];
@@ -111,6 +114,23 @@ impl<'a> Formatter<'a> {
             if section_idx != self.source.ir.sections.len() - 1 {
                 self.append_separators("\n\n--\n\n");
             }
+        }
+    }
+
+    fn process_params(&mut self, params: &CompositionParams) {
+        self.append_assignement("$", params.key.as_ref());
+        self.append_assignement("$", params.time.as_ref());
+        self.append_assignement("$", params.bpm.as_ref());
+        self.append_assignement("$", params.voices.as_ref());
+    }
+
+    fn process_dynamics(&mut self, dynamics: &Dynamics) {
+        for dynamic in &dynamics.value {
+            self.append_assignement("^", Some(dynamic));
+        }
+
+        if !dynamics.value.is_empty() {
+            self.append_separators("\n\n");
         }
     }
 
@@ -210,7 +230,7 @@ impl<'a> Formatter<'a> {
             buffer.push_str(&padded_str);
 
             if lyric_idx == last_lyric_idx && operator.is_some() {
-                buffer.push_str("...");
+                buffer.push_str("..");
             }
         }
 

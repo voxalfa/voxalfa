@@ -1,4 +1,4 @@
-use voxalfa_validator::ast::types::{Key, TimeSignature, Voice};
+use voxalfa_validator::ast::types::{Dynamic, Key, TimeSignature, Voice};
 
 pub trait Formattable {
     fn format(&self, embedded: bool) -> String;
@@ -38,6 +38,28 @@ impl Formattable for Voice {
             format!("{self:?}")
         } else {
             format!("{{{self:?}}}")
+        }
+    }
+}
+
+impl Formattable for Dynamic {
+    fn format(&self, _embedded: bool) -> String {
+        if self.start != self.end {
+            format!("{{{},{}}}", self.start, self.end)
+        } else {
+            format!("{{{}}}", self.start)
+        }
+    }
+}
+
+impl Formattable for bool {
+    fn format(&self, embedded: bool) -> String {
+        let s = if *self { "true" } else { "false" };
+
+        if embedded {
+            s.to_string()
+        } else {
+            format!("{{{s}}}")
         }
     }
 }

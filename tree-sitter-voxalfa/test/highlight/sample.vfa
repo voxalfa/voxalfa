@@ -1,40 +1,37 @@
 ;; @version 1.0
-;  ^keyword
+;  ^ keyword
 
 [#] title="Hello World"
-;   ^property
-;               ^string
-[#] author={"Foo Bar", "Jane Doe"}
-;          ^punctuation.bracket
+;   ^ property
+;          ^ string
+[#] author={"Foo Bar","Jane Doe"}
+;          ^ punctuation.bracket
 [#] composer="Bob"
 [#] description="Lorem Ipsum."
 [#] release={2026}
-;            ^number
+;            ^ number
 
-[$] key={C} | bpm={100} | time={4,4} | voices={S,T,A,B}
-;        ^identifier
+[$] key={C} | time={4,4} | bpm={100} | voices={S,T,A,B}
+;        ^ identifier
 
 ---
-; ^punctuation.delimiter
+; ^ punctuation.delimiter
 
 [$] repeat={true}
 
 [^] p={1} | cre={3,6}
 
-[S] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-[T] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-[A] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-[B] |d :r !m :f |`s :l` !t :- |da+1 :- !  :  ||
-;                               ^type.qualifier
-;                                 ^number
-;                                    ^constant.builtin
+[S] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
+;                                                     ^ type.qualifier
+;                                                       ^ number
+;                                                          ^ constant.builtin
+[T] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
+[A] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
+[B] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 
-[1] do `re` mi\(f a) so la ti_i do_o. ~ ~ ...
-[2] do `re` mi\(f a) so la ti_i do_o. ~ ~ ... ; scream
-;      ^punctuation.bracket
-;              ^punctuation.bracket
-;                                     ^constant.builtin
-;                            ^operator          ^comment
-
-; --
-; ...
+[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
+[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     .. ; scream
+;         ^ punctuation.bracket
+;                     ^ punctuation.bracket
+;                                                                     ^ constant.builtin
+;                                                       ^ operator
