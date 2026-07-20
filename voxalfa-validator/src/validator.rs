@@ -18,7 +18,7 @@ use crate::{
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ir::{
-        DocumentIR, PulseView, SectionGroup, SectionIR,
+        DocumentIR, PulseView, SectionIR, VoiceGroup,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
         utils::{BeatBuffer, UnderlineBuffer},
@@ -277,7 +277,7 @@ impl<'a> DocumentValidator<'a> {
             match &chunk.value {
                 LyricChunkKind::Space => column_ir.operators.push(LyricOperatorKind::Space),
                 LyricChunkKind::Newline => column_ir.operators.push(LyricOperatorKind::Newline),
-                LyricChunkKind::Placeholder => column_ir.add_chunk(Vec::new()), // placehodler
+                LyricChunkKind::Placeholder => column_ir.placeholder = true,
                 LyricChunkKind::String(tokens) => {
                     let lyric_ir = self.build_lyric_string_ir(tokens, underline_buffer);
                     column_ir.add_chunk(lyric_ir);
@@ -314,19 +314,19 @@ impl<'a> DocumentValidator<'a> {
         &mut self,
         section: &Section,
         section_ir: &SectionIR,
-    ) -> Vec<SectionGroup> {
+    ) -> Vec<VoiceGroup> {
         if section.lyrics.is_empty() {
             let solfa = (0..section.solfa.len()).collect::<Vec<_>>();
             let views = self.build_pulse_view(&section_ir.solfa, &solfa);
 
-            return vec![SectionGroup {
+            return vec![VoiceGroup {
                 solfa,
                 views,
                 ..Default::default()
             }];
         }
 
-        let mut groups: Vec<SectionGroup> = Vec::with_capacity(section.lyrics.len());
+        let mut groups: Vec<VoiceGroup> = Vec::with_capacity(section.lyrics.len());
         let mut last_voice = 0;
 
         for (idx, lyric) in section.lyrics.iter().enumerate() {
@@ -338,7 +338,7 @@ impl<'a> DocumentValidator<'a> {
                 let solfa = (last_voice..=lyric.position).collect::<Vec<_>>();
                 let views = self.build_pulse_view(&section_ir.solfa, &solfa);
 
-                groups.push(SectionGroup {
+                groups.push(VoiceGroup {
                     lyrics: vec![idx],
                     views,
                     solfa,
@@ -346,6 +346,19 @@ impl<'a> DocumentValidator<'a> {
 
                 last_voice = lyric.position + 1;
             }
+        }
+
+        let solfa_len = section.solfa.len();
+
+        if last_voice < solfa_len {
+            let solfa = (last_voice..solfa_len).collect::<Vec<_>>();
+            let views = self.build_pulse_view(&section_ir.solfa, &solfa);
+
+            groups.push(VoiceGroup {
+                views,
+                solfa,
+                ..Default::default()
+            });
         }
 
         groups

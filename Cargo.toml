@@ -1,6 +1,12 @@
 [workspace]
-members = ["voxalfa-validator", "tree-sitter-voxalfa", "voxalfa-formatter", "voxalfa-cli"]
 resolver = "3"
+members = [
+  "voxalfa-validator",
+  "voxalfa-formatter",
+  "voxalfa-midi",
+  "voxalfa-cli",
+  "tree-sitter-voxalfa",
+]
 
 [workspace.dependencies]
 thiserror = "2.0.18"

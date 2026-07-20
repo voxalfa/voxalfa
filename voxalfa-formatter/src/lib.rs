@@ -1,4 +1,4 @@
-mod literal;
+mod primitives;
 
 use std::{
     collections::BTreeMap,
@@ -19,7 +19,7 @@ use voxalfa_validator::{
     render::RenderType,
 };
 
-use crate::literal::Formattable;
+use crate::primitives::Formattable;
 
 #[derive(Debug)]
 pub struct Formatter<'a> {
@@ -41,12 +41,12 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    pub fn format<W: Write>(mut self, writter: &mut W) -> Result<(), io::Error> {
+    pub fn format<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
         self.process_header();
         self.process_body();
         self.process_comments();
 
-        self.finalize(writter)
+        self.finalize(writer)
     }
 
     fn finalize<W: Write>(self, writer: &mut W) -> Result<(), io::Error> {
@@ -249,6 +249,10 @@ impl<'a> Formatter<'a> {
     }
 
     fn resolve_lyric_column(&self, column: &LyricColumnIR) -> String {
+        if column.placeholder {
+            return '~'.to_string();
+        }
+
         let mut buffer = String::new();
 
         if column.chunks.len() > 1 {
@@ -256,10 +260,6 @@ impl<'a> Formatter<'a> {
         }
 
         for (idx, chunk) in column.chunks.iter().enumerate() {
-            if chunk.primitives.is_empty() {
-                return '~'.to_string(); // placeholder
-            }
-
             for primitve in &chunk.primitives {
                 if primitve.underline.left {
                     buffer.push('`');

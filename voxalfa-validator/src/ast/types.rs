@@ -166,8 +166,8 @@ impl TryFrom<&str> for DynamicKind {
 #[derive(Debug)]
 pub struct Dynamic {
     pub kind: DynamicKind,
-    pub start: usize,
-    pub end: usize,
+    pub start: f32,
+    pub end: f32,
 }
 
 #[cfg(test)]

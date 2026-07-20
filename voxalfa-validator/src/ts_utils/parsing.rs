@@ -41,6 +41,31 @@ impl ParseNode for usize {
     }
 }
 
+impl ParseNode for f32 {
+    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+        let range = node.range();
+
+        if matches!(node.kind_id(), node_types::INTEGER | node_types::FLOAT) {
+            let text = context.resolve_node_string(node)?;
+            let parsed = text.parse::<f32>();
+
+            if let Ok(value) = parsed {
+                return Some(value);
+            }
+
+            context.report_error(range, DiagnosticKind::InvalidType("float"));
+        } else {
+            context.report_error(range, DiagnosticKind::ExpectedType("float", node.kind()));
+        }
+
+        None
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::Float)
+    }
+}
+
 impl ParseNode for String {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
         let range = node.range();

@@ -59,9 +59,9 @@ fn format(file_paths: Vec<String>) -> Result<(), Error> {
             cli_reporter.register(file, output.diagnostics);
         } else {
             let formatter = Formatter::new(&output);
-            let mut writter = File::create(&file.path)?;
+            let mut writer = File::create(&file.path)?;
 
-            formatter.format(&mut writter)?;
+            formatter.format(&mut writer)?;
         }
     }
 

@@ -181,6 +181,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
+name = "midly"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "207d755f4cb882d20c4da58d707ca9130a0c9bc5061f657a4f299b8e36362b7a"
+
+[[package]]
 name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -397,6 +403,14 @@ dependencies = [
 name = "voxalfa-formatter"
 version = "0.1.0"
 dependencies = [
+ "voxalfa-validator",
+]
+
+[[package]]
+name = "voxalfa-midi"
+version = "0.1.0"
+dependencies = [
+ "midly",
  "voxalfa-validator",
 ]
 

@@ -1,0 +1,12 @@
+[package]
+name = "voxalfa-midi"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+voxalfa-validator = { workspace = true }
+
+[dependencies.midly]
+version = "0.5.3"
+default-features = false
+features = ["std", "alloc"]

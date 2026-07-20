@@ -34,11 +34,10 @@ Sample Partition
 ; we can override the global parameters inside sections
 ; [$] bpm={80}
 
-; there are also section-only parameters
-[$] repeat={true}
+[^] p={0} | cre={4,6}
 
-[^] p={1} | cre={3,6}
-
+;   [0]   [1]   [2]   [3]    [4]  [5]  [6]
+;    p                       <<<<<<<<<<<<<
 [S] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [T] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [A] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||

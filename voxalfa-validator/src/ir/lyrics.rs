@@ -40,6 +40,7 @@ pub struct LyricColumnIR {
     pub sid: ScopeId,
     pub chunks: Vec<LyricChunkIR>,
     pub operators: Vec<LyricOperatorKind>,
+    pub placeholder: bool,
     pub span: usize,
 }
 
