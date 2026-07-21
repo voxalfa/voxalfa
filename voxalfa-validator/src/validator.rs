@@ -28,7 +28,7 @@ use crate::{
         context::TSContext,
         generated::node_types,
         parsing::ParseNode,
-        range::{Range, RangeMerge},
+        range::{Range, RangeUtil},
         types::AssignmentData,
     },
 };
@@ -95,6 +95,8 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
+        self.validate_header(&header);
+
         self.document.header = header;
     }
 
@@ -128,8 +130,10 @@ impl<'a> DocumentValidator<'a> {
                 let section = self.resolve_section(child, body.sid);
                 let section_ir = self.build_section_ir(&section);
 
+                // FIXME: merge the first two validations into the last???
                 self.validate_pulses(&section);
-                self.validate_voice_count(&section);
+                self.validate_voices(&section);
+                self.validte_section_ir(&section_ir);
 
                 body.sections.push(section);
                 self.ir.sections.push(section_ir);
@@ -164,10 +168,6 @@ impl<'a> DocumentValidator<'a> {
             .map(|s| self.build_sub_section_ir(s))
             .collect::<Vec<_>>();
 
-        for sub_section in &sub_sections {
-            self.validate_sub_section_ir(sub_section);
-        }
-
         SectionIR { sub_sections }
     }
 
@@ -187,6 +187,7 @@ impl<'a> DocumentValidator<'a> {
         let views = self.build_pulse_view(&solfa);
 
         SubSectionIR {
+            sid: section.sid,
             views,
             solfa,
             lyrics,
@@ -370,7 +371,50 @@ impl<'a> DocumentValidator<'a> {
         views
     }
 
+    fn validte_section_ir(&mut self, section: &SectionIR) {
+        for (sub_id, sub_section) in section.sub_sections.iter().enumerate() {
+            let range = self.tree.get_scope_range(sub_section.sid);
+
+            if let Some(splits) = self.document.splits() {
+                let voice_count = splits.value.get(sub_id).copied().unwrap_or_default();
+                let context_range = self.tree.get_symbol_range(splits.sid);
+
+                if voice_count != sub_section.solfa.len() {
+                    self.report_error(
+                        range,
+                        DiagnosticKind::InvalidVoiceDistribution(context_range),
+                    );
+                }
+            } else if sub_id > 0 {
+                let context_range = self.tree.get_scope_range(self.document.header.sid);
+
+                self.report_error(range, DiagnosticKind::UndefinedSplits(context_range));
+            }
+
+            self.validate_sub_section_ir(sub_section);
+        }
+    }
+
     fn validate_sub_section_ir(&mut self, sub_section: &SubSectionIR) {
+        let range = self.tree.get_scope_range(sub_section.sid);
+
+        if let Some(verses) = self.document.verses() {
+            let value = sub_section.lyrics.len();
+
+            if value != verses.value {
+                let context_range = self.tree.get_symbol_range(verses.sid);
+
+                self.report_error(
+                    range,
+                    DiagnosticKind::VerseMismatch(verses.value, value, context_range),
+                );
+            }
+        } else if sub_section.lyrics.len() > 0 {
+            let context_range = self.tree.get_scope_range(self.document.header.sid);
+
+            self.report_error(range, DiagnosticKind::UndefinedVerses(context_range));
+        }
+
         for lyric_line in &sub_section.lyrics {
             let mut span_counter = sub_section.width();
 
@@ -450,7 +494,7 @@ impl<'a> DocumentValidator<'a> {
 
         let sid = self
             .tree
-            .add_symbol(SymbolKind::Token, node.range(), parent_sid);
+            .add_symbol(SymbolKind::Token, voice_node.range(), parent_sid);
 
         if let Ok(value) = voice {
             Some(SymbolRef { sid, value })
@@ -547,6 +591,28 @@ impl<'a> DocumentValidator<'a> {
         result
     }
 
+    fn validate_header(&mut self, header: &Header) {
+        if let Some(splits) = &header.metadata.splits {
+            let range = self.tree.get_symbol_range(splits.sid);
+
+            if splits.value.iter().any(|&s| s == 0) {
+                self.report_error(range, DiagnosticKind::NullSplitValue);
+            }
+
+            if let Some(voices) = &header.metadata.voices {
+                if voices.value.len() != splits.value.iter().sum() {
+                    let context_range = self.tree.get_symbol_range(voices.sid);
+                    self.report_error(
+                        range,
+                        DiagnosticKind::SplitVoiceMismatch(context_range.into()),
+                    );
+                }
+            } else {
+                self.report_error(range, DiagnosticKind::SplitVoiceMismatch(None));
+            }
+        }
+    }
+
     fn validate_pulses(&mut self, section: &Section) {
         let time_signature = self.document.time_signature().cloned();
 
@@ -556,7 +622,7 @@ impl<'a> DocumentValidator<'a> {
             .flat_map(|s| &s.solfa)
             .collect::<Vec<_>>();
 
-        for line in &solfa {
+        for line in solfa.iter().skip(1) {
             if let Some(first) = solfa.first() {
                 let first_len = first.pulses.len();
                 let current_len = line.pulses.len();
@@ -632,8 +698,8 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
-    fn validate_voice_count(&mut self, section: &Section) {
-        let Some(voices) = &self.document.header.params.voices else {
+    fn validate_voices(&mut self, section: &Section) {
+        let Some(voices) = &self.document.header.metadata.voices else {
             return;
         };
 

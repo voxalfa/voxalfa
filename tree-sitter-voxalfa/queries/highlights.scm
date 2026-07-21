@@ -5,8 +5,10 @@
   "@" @keyword
   type: (identifier) @keyword)
 
+(solfa_line
+  voice: (identifier) @identifier)
+
 (string) @string
-(token) @identifier
 (boolean) @boolean
 
 [

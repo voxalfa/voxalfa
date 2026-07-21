@@ -129,10 +129,6 @@
         {
           "type": "string",
           "named": true
-        },
-        {
-          "type": "token",
-          "named": true
         }
       ]
     }
@@ -389,10 +385,6 @@
           {
             "type": "string",
             "named": true
-          },
-          {
-            "type": "token",
-            "named": true
           }
         ]
       }
@@ -532,7 +524,7 @@
         "required": true,
         "types": [
           {
-            "type": "token",
+            "type": "identifier",
             "named": true
           }
         ]
@@ -568,7 +560,11 @@
       "required": true,
       "types": [
         {
-          "type": "string_content",
+          "type": "double_quote_content",
+          "named": true
+        },
+        {
+          "type": "single_quote_content",
           "named": true
         }
       ]
@@ -667,6 +663,10 @@
     "named": false
   },
   {
+    "type": "'",
+    "named": false
+  },
+  {
     "type": "(",
     "named": false
   },
@@ -727,6 +727,10 @@
     "named": true
   },
   {
+    "type": "double_quote_content",
+    "named": true
+  },
+  {
     "type": "false",
     "named": false
   },
@@ -779,15 +783,11 @@
     "named": true
   },
   {
+    "type": "single_quote_content",
+    "named": true
+  },
+  {
     "type": "space_operator",
-    "named": true
-  },
-  {
-    "type": "string_content",
-    "named": true
-  },
-  {
-    "type": "token",
     "named": true
   },
   {

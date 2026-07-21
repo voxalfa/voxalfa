@@ -14,11 +14,19 @@ pub struct Document {
 impl Document {
     pub fn get_voice(&self, id: usize) -> Option<Voice> {
         self.header
-            .params
+            .metadata
             .voices
             .as_ref()
             .and_then(|v| v.value.get(id))
             .copied()
+    }
+
+    pub fn splits(&self) -> Option<&SymbolRef<Vec<usize>>> {
+        self.header.metadata.splits.as_ref()
+    }
+
+    pub fn verses(&self) -> Option<&SymbolRef<usize>> {
+        self.header.metadata.verses.as_ref()
     }
 
     pub fn time_signature(&self) -> Option<&SymbolRef<TimeSignature>> {

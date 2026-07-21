@@ -310,7 +310,7 @@
           "name": "voice",
           "content": {
             "type": "SYMBOL",
-            "name": "token"
+            "name": "identifier"
           }
         },
         {
@@ -417,7 +417,7 @@
     },
     "identifier": {
       "type": "PATTERN",
-      "value": "[a-zA-Z_$-]+"
+      "value": "[a-zA-Z][a-zA-Z_-]*"
     },
     "_delimited_value": {
       "type": "SEQ",
@@ -458,10 +458,6 @@
             {
               "type": "SYMBOL",
               "name": "_number"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "token"
             },
             {
               "type": "SYMBOL",
@@ -514,33 +510,55 @@
       ]
     },
     "string": {
-      "type": "SEQ",
+      "type": "CHOICE",
       "members": [
         {
-          "type": "STRING",
-          "value": "\""
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "\""
+            },
+            {
+              "type": "SYMBOL",
+              "name": "double_quote_content"
+            },
+            {
+              "type": "STRING",
+              "value": "\""
+            }
+          ]
         },
         {
-          "type": "SYMBOL",
-          "name": "string_content"
-        },
-        {
-          "type": "STRING",
-          "value": "\""
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "'"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "single_quote_content"
+            },
+            {
+              "type": "STRING",
+              "value": "'"
+            }
+          ]
         }
       ]
     },
-    "string_content": {
+    "double_quote_content": {
       "type": "PATTERN",
       "value": "[^\"\\n]*"
+    },
+    "single_quote_content": {
+      "type": "PATTERN",
+      "value": "[^'\\n]*"
     },
     "inline_string": {
       "type": "PATTERN",
       "value": "[^\\n]+"
-    },
-    "token": {
-      "type": "PATTERN",
-      "value": "[a-zA-Z#]+"
     },
     "boolean": {
       "type": "CHOICE",

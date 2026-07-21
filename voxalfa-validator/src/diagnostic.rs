@@ -62,6 +62,18 @@ pub enum DiagnosticKind {
     MismatchedPulseAccent(PulseAccent, PulseAccent, Range),
     #[error("trailing lyric, no solfa column matched")]
     TrailingLyric(Vec<Range>),
+    #[error("splits contains a null value")]
+    NullSplitValue,
+    #[error("splits don't match voices")]
+    SplitVoiceMismatch(Option<Range>),
+    #[error("voice distribution doesn't match splits")]
+    InvalidVoiceDistribution(Range),
+    #[error("splits have not been defined")]
+    UndefinedSplits(Range),
+    #[error("expected {0} verses, got {1}")]
+    VerseMismatch(usize, usize, Range),
+    #[error("verses have not been defined")]
+    UndefinedVerses(Range),
 }
 
 impl DiagnosticKind {
@@ -91,6 +103,12 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidNoteProlongation => "E022",
             DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E023",
             DiagnosticKind::TrailingLyric(_) => "E024",
+            DiagnosticKind::NullSplitValue => "E025",
+            DiagnosticKind::SplitVoiceMismatch(_) => "E026",
+            DiagnosticKind::InvalidVoiceDistribution(_) => "E027",
+            DiagnosticKind::UndefinedSplits(_) => "E028",
+            DiagnosticKind::VerseMismatch(_, _, _) => "E029",
+            DiagnosticKind::UndefinedVerses(_) => "E030",
         }
     }
 
@@ -131,6 +149,25 @@ impl DiagnosticKind {
                     range: *r,
                 })
                 .collect(),
+            DiagnosticKind::SplitVoiceMismatch(Some(range))
+            | DiagnosticKind::InvalidVoiceDistribution(range) => {
+                vec![DiagnosticRelatedInfo {
+                    message: "splits defined here".to_string(),
+                    range: *range,
+                }]
+            }
+            DiagnosticKind::VerseMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
+                message: "verses defined here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::UndefinedSplits(range) => vec![DiagnosticRelatedInfo {
+                message: "consider adding 'splits' metadata".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::UndefinedVerses(range) => vec![DiagnosticRelatedInfo {
+                message: "consider adding 'verses' metadata".to_string(),
+                range: *range,
+            }],
             _ => Vec::default(),
         }
     }

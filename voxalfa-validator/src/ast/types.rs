@@ -155,7 +155,7 @@ impl TryFrom<&str> for DynamicKind {
             "fff" => Ok(Self::FFF),
             "dc" => Ok(Self::DC),
             "ds" => Ok(Self::DS),
-            "seg" | "$" => Ok(Self::Seg),
+            "seg" => Ok(Self::Seg),
             "cre" => Ok(Self::Cre),
             "dec" => Ok(Self::Dec),
             _ => Err(()),

@@ -55,7 +55,7 @@ export default grammar({
     solfa_line: ($) =>
       seq(
         "[",
-        field("voice", $.token),
+        field("voice", $.identifier),
         "]",
         field("content", $.solfa_content),
         "||",
@@ -75,19 +75,25 @@ export default grammar({
         choice(field("value", $.string), $._delimited_value),
       ),
 
-    identifier: () => /[a-zA-Z_$-]+/,
+    identifier: () => /[a-zA-Z][a-zA-Z_-]*/,
 
     _delimited_value: ($) =>
       seq("{", field("value", choice($._value_atom, $.list)), "}"),
-    _value_atom: ($) => seq(choice($._number, $.token, $.string, $.boolean)),
+    _value_atom: ($) => seq(choice($._number, $.string, $.boolean)),
 
     list: ($) => seq($._value_atom, ",", sep1(",", $._value_atom)),
 
-    string: ($) => seq('"', $.string_content, '"'),
-    string_content: () => /[^"\n]*/,
+    string: ($) =>
+      choice(
+        seq('"', $.double_quote_content, '"'),
+        seq("'", $.single_quote_content, "'"),
+      ),
+
+    double_quote_content: () => /[^"\n]*/,
+    single_quote_content: () => /[^'\n]*/,
+
     inline_string: () => /[^\n]+/,
 
-    token: () => /[a-zA-Z#]+/,
     boolean: () => choice("true", "false"),
     integer: () => /\d+/,
     float: ($) => seq(optional($.integer), ".", $.integer),

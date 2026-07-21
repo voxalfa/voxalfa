@@ -110,21 +110,14 @@ impl ParseNode for bool {
 
 impl ParseNode for Key {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let range = node.range();
+        let text = context.parse_node::<String>(node)?;
 
-        if node.kind_id() == node_types::TOKEN {
-            let text = context.resolve_node_string(node)?;
-
-            if let Ok(res) = Key::try_from(text.as_str()) {
-                return Some(res);
-            }
-
-            context.report_error(range, DiagnosticKind::InvalidType("key"));
+        if let Ok(res) = Key::try_from(text.as_str()) {
+            Some(res)
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("key", node.kind()));
+            context.report_error(node.range(), DiagnosticKind::InvalidType("key"));
+            None
         }
-
-        None
     }
 
     fn symbol_kind() -> SymbolKind {
@@ -134,21 +127,14 @@ impl ParseNode for Key {
 
 impl ParseNode for Voice {
     fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
-        let range = node.range();
+        let text = context.parse_node::<String>(node)?;
 
-        if node.kind_id() == node_types::TOKEN {
-            let text = context.resolve_node_string(node)?;
-
-            if let Ok(res) = Voice::try_from(text.as_str()) {
-                return Some(res);
-            }
-
-            context.report_error(range, DiagnosticKind::InvalidType("voice"));
+        if let Ok(res) = Voice::try_from(text.as_str()) {
+            Some(res)
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("voice", node.kind()));
+            context.report_error(node.range(), DiagnosticKind::InvalidType("voice"));
+            None
         }
-
-        None
     }
 
     fn symbol_kind() -> SymbolKind {

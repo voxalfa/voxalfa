@@ -55,6 +55,7 @@ fn format(file_paths: Vec<String>) -> Result<(), Error> {
     for file in &files {
         let output = parse_file(&file.content)?;
 
+        // TODO: recoverable error implementation
         if output.diagnostics.iter().any(|d| d.is_error()) {
             cli_reporter.register(file, output.diagnostics);
         } else {

@@ -1,6 +1,7 @@
 =================================================
 Sample Partition
 =================================================
+
 ;; @version 1.0
 
 ; This is a sample voxalfa file (.vfa), it was designed to be a simple language for composing and storing Tonic-Solfa pieces.
@@ -22,12 +23,15 @@ Sample Partition
 ; - Tokens: they represent built-in values or identifiers (notes, voices, ...)
 
 [#] title="Hello World"
-[#] author={"Foo Bar", "Jane Doe"}
+[#] author={"Foo Bar","Jane Doe"}
 [#] composer="Bob"
 [#] description="Lorem Ipsum."
+[#] voices={"S","T","A","B"}
+[#] splits={2,2}
+[#] verses={2}
 [#] release={2026}
 
-[$] key={C} | time={4,4} | bpm={100} | voices={S,T,A,B}
+[$] key="C" | time={4,4} | bpm={100}
 
 ---
 
@@ -40,23 +44,28 @@ Sample Partition
 ;    p                       <<<<<<<<<<<<<
 [S] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [T] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
+
+[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
+[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
+
+++
+
 [A] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [B] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 
 [1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
-[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     .. ; scream
+[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     .. ; anchor comment
 
 ; --
 ; more sections...
 
-
 ----
 
 (source_file
-  (language_directive
-    type: (identifier)
-    value: (inline_string))
   (header
+    (language_directive
+      type: (identifier)
+      value: (inline_string))
     (inline_comment)
     (inline_comment)
     (inline_comment)
@@ -78,25 +87,47 @@ Sample Partition
       (parameter_assignment
         name: (identifier)
         value: (string
-          (string_content))))
+          (double_quote_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (list
           (string
-            (string_content))
+            (double_quote_content))
           (string
-            (string_content)))))
+            (double_quote_content)))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (string
-          (string_content))))
+          (double_quote_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (string
-          (string_content))))
+          (double_quote_content))))
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (list
+          (string
+            (double_quote_content))
+          (string
+            (double_quote_content))
+          (string
+            (double_quote_content))
+          (string
+            (double_quote_content)))))
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (list
+          (integer)
+          (integer))))
+    (metadata_line
+      (parameter_assignment
+        name: (identifier)
+        value: (integer)))
     (metadata_line
       (parameter_assignment
         name: (identifier)
@@ -104,7 +135,8 @@ Sample Partition
     (parameter_line
       (parameter_assignment
         name: (identifier)
-        value: (token))
+        value: (string
+          (double_quote_content)))
       (parameter_assignment
         name: (identifier)
         value: (list
@@ -112,14 +144,7 @@ Sample Partition
           (integer)))
       (parameter_assignment
         name: (identifier)
-        value: (integer))
-      (parameter_assignment
-        name: (identifier)
-        value: (list
-          (token)
-          (token)
-          (token)
-          (token)))))
+        value: (integer))))
   (body
     (section
       (sub_section
@@ -137,7 +162,7 @@ Sample Partition
         (inline_comment)
         (inline_comment)
         (solfa_line
-          voice: (token)
+          voice: (identifier)
           content: (solfa_content
             (pulse
               accent: (strong_accent)
@@ -196,7 +221,179 @@ Sample Partition
             (pulse
               accent: (weak_accent))))
         (solfa_line
-          voice: (token)
+          voice: (identifier)
+          content: (solfa_content
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (underline_marker)
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))
+                (underline_marker)))
+            (pulse
+              accent: (medium_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (strong_accent)
+              tokens: (pulse_tokens
+                (note
+                  base: (note_base)
+                  variation: (note_variation)
+                  octave: (note_octave))))
+            (pulse
+              accent: (weak_accent)
+              tokens: (pulse_tokens
+                (prolonged_note)))
+            (pulse
+              accent: (medium_accent))
+            (pulse
+              accent: (weak_accent))))
+        (lyric_line
+          verse: (integer)
+          content: (lyric_content
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (underline_marker)
+                (lyric_string)
+                (underline_marker)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (newline_operator)
+            (lyric_column
+              lyric: (lyric_group
+                (lyric_chunk
+                  (lyric_string))
+                (space_operator)
+                (lyric_chunk
+                  (lyric_string))))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator))
+          anchor: (lyric_anchor))
+        (lyric_line
+          verse: (integer)
+          content: (lyric_content
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (underline_marker)
+                (lyric_string)
+                (underline_marker)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (newline_operator)
+            (lyric_column
+              lyric: (lyric_group
+                (lyric_chunk
+                  (lyric_string))
+                (space_operator)
+                (lyric_chunk
+                  (lyric_string))))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (concat_operator)
+            (lyric_column
+              lyric: (lyric_chunk
+                (lyric_string)))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator)
+            (lyric_column
+              lyric: (lyric_placeholder))
+            (space_operator))
+          anchor: (lyric_anchor)))
+      (sub_section
+        (solfa_line
+          voice: (identifier)
           content: (solfa_content
             (pulse
               accent: (strong_accent)
@@ -255,66 +452,7 @@ Sample Partition
             (pulse
               accent: (weak_accent))))
         (solfa_line
-          voice: (token)
-          content: (solfa_content
-            (pulse
-              accent: (strong_accent)
-              tokens: (pulse_tokens
-                (note
-                  base: (note_base))))
-            (pulse
-              accent: (weak_accent)
-              tokens: (pulse_tokens
-                (note
-                  base: (note_base))))
-            (pulse
-              accent: (medium_accent)
-              tokens: (pulse_tokens
-                (note
-                  base: (note_base))))
-            (pulse
-              accent: (weak_accent)
-              tokens: (pulse_tokens
-                (note
-                  base: (note_base))))
-            (pulse
-              accent: (strong_accent)
-              tokens: (pulse_tokens
-                (underline_marker)
-                (note
-                  base: (note_base))))
-            (pulse
-              accent: (weak_accent)
-              tokens: (pulse_tokens
-                (note
-                  base: (note_base))
-                (underline_marker)))
-            (pulse
-              accent: (medium_accent)
-              tokens: (pulse_tokens
-                (note
-                  base: (note_base))))
-            (pulse
-              accent: (weak_accent)
-              tokens: (pulse_tokens
-                (prolonged_note)))
-            (pulse
-              accent: (strong_accent)
-              tokens: (pulse_tokens
-                (note
-                  base: (note_base)
-                  variation: (note_variation)
-                  octave: (note_octave))))
-            (pulse
-              accent: (weak_accent)
-              tokens: (pulse_tokens
-                (prolonged_note)))
-            (pulse
-              accent: (medium_accent))
-            (pulse
-              accent: (weak_accent))))
-        (solfa_line
-          voice: (token)
+          voice: (identifier)
           content: (solfa_content
             (pulse
               accent: (strong_accent)

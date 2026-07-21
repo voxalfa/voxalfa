@@ -7,8 +7,8 @@ use std::{
 
 use voxalfa_validator::{
     ast::{
-        dynamics::Dynamics, lyrics::LyricOperatorKind, params::CompositionParams,
-        symbols::SymbolRef,
+        dynamics::Dynamics, header::HeaderMetadata, lyrics::LyricOperatorKind,
+        params::CompositionParams, symbols::SymbolRef,
     },
     ir::{
         PulseView,
@@ -74,21 +74,9 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_header(&mut self) {
-        let meta = &self.source.document.header.metadata;
-        let params = &self.source.document.header.params;
-        let checkpoint = self.last_line();
+        self.process_metadata(&self.source.document.header.metadata);
+        self.process_params(&self.source.document.header.params);
 
-        self.append_assignement("#", meta.title.as_ref());
-        self.append_assignement("#", meta.author.as_ref());
-        self.append_assignement("#", meta.composer.as_ref());
-        self.append_assignement("#", meta.release.as_ref());
-        self.append_assignement("#", meta.description.as_ref());
-
-        if checkpoint != self.last_line() {
-            self.append_separators("\n\n");
-        }
-
-        self.process_params(params);
         self.append_separators("---");
     }
 
@@ -122,13 +110,28 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    fn process_metadata(&mut self, meta: &HeaderMetadata) {
+        let checkpoint = self.last_line();
+
+        self.append_assignement("#", meta.title.as_ref());
+        self.append_assignement("#", meta.author.as_ref());
+        self.append_assignement("#", meta.composer.as_ref());
+        self.append_assignement("#", meta.voices.as_ref());
+        self.append_assignement("#", meta.splits.as_ref());
+        self.append_assignement("#", meta.description.as_ref());
+        self.append_assignement("#", meta.release.as_ref());
+
+        if checkpoint != self.last_line() {
+            self.append_separators("\n\n");
+        }
+    }
+
     fn process_params(&mut self, params: &CompositionParams) {
         let checkpoint = self.last_line();
 
         self.append_assignement("$", params.key.as_ref());
         self.append_assignement("$", params.time.as_ref());
         self.append_assignement("$", params.bpm.as_ref());
-        self.append_assignement("$", params.voices.as_ref());
 
         if checkpoint != self.last_line() {
             self.append_separators("\n\n");
@@ -149,7 +152,7 @@ impl<'a> Formatter<'a> {
         let scope = self.source.tree.get_scope(solfa.sid);
         let line_idx = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
-        let mut buffer = format!("[{}] ", solfa.voice.format(true));
+        let mut buffer = format!("[{:?}] ", solfa.voice);
 
         for pulse in &solfa.pulses {
             let pulse_str = self.format_pulse(pulse);

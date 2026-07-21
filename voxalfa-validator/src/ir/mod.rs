@@ -5,7 +5,7 @@ pub mod utils;
 use lyrics::LyricLineIR;
 use solfa::SolfaLineIR;
 
-use crate::ir::solfa::PulseIR;
+use crate::{ast::symbols::ScopeId, ir::solfa::PulseIR};
 
 #[derive(Debug, Default)]
 pub struct DocumentIR {
@@ -19,6 +19,7 @@ pub struct SectionIR {
 
 #[derive(Debug, Default)]
 pub struct SubSectionIR {
+    pub sid: ScopeId,
     pub views: Vec<PulseView>,
     pub solfa: Vec<SolfaLineIR>,
     pub lyrics: Vec<LyricLineIR>,

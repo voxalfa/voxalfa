@@ -2,6 +2,7 @@ use crate::{
     ast::{
         params::CompositionParams,
         symbols::{Field, FieldAssign, ScopeId},
+        types::Voice,
     },
     diagnostic::DiagnosticKind,
     ts_utils::types::AssignmentData,
@@ -29,28 +30,24 @@ pub struct HeaderMetadata {
     pub title: Field<String>,
     pub author: Field<Vec<String>>,
     pub composer: Field<Vec<String>>,
-    pub release: Field<usize>,
+    pub voices: Field<Vec<Voice>>,
+    pub splits: Field<Vec<usize>>,
+    pub verses: Field<usize>,
     pub description: Field<String>,
+    pub release: Field<usize>,
 }
 
 impl FieldAssign for HeaderMetadata {
     fn assign_field(&mut self, data: AssignmentData, context: &mut DocumentValidator) {
         match data.key_name.as_str() {
-            "title" => {
-                context.assign_field(data, &mut self.title);
-            }
-            "author" => {
-                context.assign_field(data, &mut self.author);
-            }
-            "composer" => {
-                context.assign_field(data, &mut self.composer);
-            }
-            "release" => {
-                context.assign_field(data, &mut self.release);
-            }
-            "description" => {
-                context.assign_field(data, &mut self.description);
-            }
+            "title" => context.assign_field(data, &mut self.title),
+            "author" => context.assign_field(data, &mut self.author),
+            "composer" => context.assign_field(data, &mut self.composer),
+            "voices" => context.assign_field(data, &mut self.voices),
+            "splits" => context.assign_field(data, &mut self.splits),
+            "verses" => context.assign_field(data, &mut self.verses),
+            "description" => context.assign_field(data, &mut self.description),
+            "release" => context.assign_field(data, &mut self.release),
             _ => {
                 context.report_error(
                     data.full_range,

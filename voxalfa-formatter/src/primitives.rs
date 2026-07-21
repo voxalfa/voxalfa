@@ -22,7 +22,7 @@ impl Formattable for usize {
 
 impl Formattable for Key {
     fn format(&self, _embedded: bool) -> String {
-        format!("{{{self}}}")
+        format!("\"{self}\"")
     }
 }
 
@@ -35,9 +35,9 @@ impl Formattable for TimeSignature {
 impl Formattable for Voice {
     fn format(&self, embedded: bool) -> String {
         if embedded {
-            format!("{self:?}")
+            format!("\"{self:?}\"")
         } else {
-            format!("{{{self:?}}}")
+            format!("{{\"{self:?}\"}}")
         }
     }
 }

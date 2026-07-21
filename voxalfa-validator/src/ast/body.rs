@@ -46,10 +46,6 @@ impl SubSection {
     pub fn new(sid: ScopeId) -> Self {
         Self {
             sid,
-            params: CompositionParams {
-                section: true,
-                ..Default::default()
-            },
             ..Default::default()
         }
     }

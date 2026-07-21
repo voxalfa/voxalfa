@@ -1,10 +1,10 @@
 pub type Range = tree_sitter::Range;
 
-pub trait RangeMerge {
+pub trait RangeUtil {
     fn merge(&self, other: Self) -> Range;
 }
 
-impl RangeMerge for Range {
+impl RangeUtil for Range {
     fn merge(&self, other: Self) -> Range {
         Range {
             start_byte: self.start_byte,
