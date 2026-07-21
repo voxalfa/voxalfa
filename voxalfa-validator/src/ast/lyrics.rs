@@ -27,7 +27,7 @@ pub type LyricChunk = SymbolRef<LyricChunkKind>;
 pub type LyricOperator = SymbolRef<LyricOperatorKind>;
 pub type LyricString = SymbolRef<LyricStringKind>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LyricOperatorKind {
     Space,
     Concat,

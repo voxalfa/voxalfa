@@ -939,8 +939,10 @@ impl<'a> DocumentValidator<'a> {
                 self.report_error(node.range(), DiagnosticKind::SyntaxError)
             }
             (None, Some(LyricToken::Operator(operator))) => {
-                let range = self.tree.get_symbol_range(operator.sid);
-                self.report_error(range, DiagnosticKind::ExpectedLyricAnchor);
+                if operator.value != LyricOperatorKind::Space {
+                    let range = self.tree.get_symbol_range(operator.sid);
+                    self.report_error(range, DiagnosticKind::ExpectedLyricAnchor);
+                }
             }
             (Some(node), Some(LyricToken::Operator(_))) => {
                 return Some(node.range());

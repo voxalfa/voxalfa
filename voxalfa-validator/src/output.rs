@@ -44,6 +44,7 @@ impl ValidatorOutput {
             .iter()
             .map(|c| self.resolve_lyric_string_width(&c.primitives, render_type))
             .sum::<usize>()
+            + column.operators.len()
             + extra
     }
 
