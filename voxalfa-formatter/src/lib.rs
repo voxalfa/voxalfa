@@ -122,7 +122,6 @@ impl<'a> Formatter<'a> {
         self.append_assignement("#", meta.author.as_ref());
         self.append_assignement("#", meta.composer.as_ref());
         self.append_assignement("#", meta.voices.as_ref());
-        self.append_assignement("#", meta.splits.as_ref());
         self.append_assignement("#", meta.verses.as_ref());
         self.append_assignement("#", meta.description.as_ref());
         self.append_assignement("#", meta.release.as_ref());
@@ -203,18 +202,18 @@ impl<'a> Formatter<'a> {
         buffer
     }
 
-    fn process_lyrics(&mut self, views: &[PulseView], lyrics: &LyricLineIR, verse: usize) {
+    fn process_lyrics(&mut self, views: &[PulseView], line: &LyricLineIR, verse: usize) {
         let mut buffer = format!("[{verse}] ");
         let mut view_idx = 0;
         let mut view_offset = 0;
 
-        let scope = self.source.tree.get_scope(lyrics.sid);
+        let scope = self.source.tree.get_scope(line.sid);
         let line_idx = scope.range.start_point.row;
-        let last_lyric_idx = lyrics.columns.len() - 1;
+        let last_lyric_idx = line.columns.len() - 1;
 
-        for (lyric_idx, lyric_col) in lyrics.columns.iter().enumerate() {
+        for (lyric_idx, lyric_col) in line.columns.iter().enumerate() {
             let lyric_str = self.resolve_lyric_column(lyric_col);
-            let operator = lyrics.operators.get(lyric_idx);
+            let operator = line.operators.get(lyric_idx);
 
             let mut span_value = lyric_col.span;
             let mut width = 0;
@@ -240,16 +239,14 @@ impl<'a> Formatter<'a> {
                 _ => ' ',
             };
 
-            let padding = width.saturating_sub(lyric_str.chars().count());
             let padded_str = format!(
-                "{}{}",
-                lyric_str,
-                std::iter::repeat_n(filler, padding).collect::<String>()
+                "{lyric_str}{filler:<w$}",
+                w = width.saturating_sub(lyric_str.chars().count())
             );
 
             buffer.push_str(&padded_str);
 
-            if lyric_idx == last_lyric_idx && operator.is_some() {
+            if lyric_idx == last_lyric_idx && operator.is_some() && line.anchor {
                 buffer.push_str("..");
             }
         }
@@ -258,11 +255,11 @@ impl<'a> Formatter<'a> {
     }
 
     fn resolve_lyric_column(&self, column: &LyricColumnIR) -> String {
-        if column.placeholder {
-            return '~'.to_string();
-        }
-
         let mut buffer = String::new();
+
+        if column.placeholder {
+            buffer.push('~');
+        }
 
         if column.chunks.len() > 1 {
             buffer.push('(');

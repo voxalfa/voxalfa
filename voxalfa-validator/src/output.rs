@@ -33,7 +33,7 @@ impl ValidatorOutput {
             .map(|col| self.resolve_lyric_column_width(col, render_type))
             .max()
             .unwrap_or(1)
-            .max(4)
+            .max(4) // FIXME: check all notes length
     }
 
     pub fn resolve_column_factor(&self) -> usize {

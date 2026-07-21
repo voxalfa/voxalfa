@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        lyrics::{LyricOperatorKind, LyricSpecialChar},
+        lyrics::{LyricLine, LyricOperatorKind, LyricSpecialChar},
         symbols::{LyricStringId, ScopeId},
     },
     ir::utils::{UnderlineMarker, UnderlineRange},
@@ -11,12 +11,14 @@ pub struct LyricLineIR {
     pub sid: ScopeId,
     pub columns: Vec<LyricColumnIR>,
     pub operators: Vec<LyricOperatorKind>,
+    pub anchor: bool,
 }
 
 impl LyricLineIR {
-    pub fn new(sid: ScopeId) -> Self {
+    pub fn new(line: &LyricLine) -> Self {
         Self {
-            sid,
+            sid: line.sid,
+            anchor: line.anchor.is_some(),
             ..Default::default()
         }
     }

@@ -25,10 +25,6 @@ impl Document {
         self.header.metadata.voices.as_ref()
     }
 
-    pub fn splits(&self) -> Option<&SymbolRef<Vec<usize>>> {
-        self.header.metadata.splits.as_ref()
-    }
-
     pub fn verses(&self) -> Option<&SymbolRef<usize>> {
         self.header.metadata.verses.as_ref()
     }

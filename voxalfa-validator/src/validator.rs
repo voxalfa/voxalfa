@@ -6,8 +6,8 @@ use crate::{
         document::Document,
         header::Header,
         lyrics::{
-            LyricAnchor, LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator,
-            LyricOperatorKind, LyricSpecialChar, LyricString, LyricStringKind, LyricToken,
+            LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind,
+            LyricSpecialChar, LyricString, LyricStringKind, LyricToken,
         },
         solfa::{Note, Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
         symbols::{
@@ -95,8 +95,6 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        self.validate_header(&header);
-
         self.document.header = header;
     }
 
@@ -140,6 +138,8 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
+        self.validate_lyrics_join(&body.sections);
+
         self.document.body = body;
     }
 
@@ -166,7 +166,10 @@ impl<'a> DocumentValidator<'a> {
             .map(|s| self.build_sub_section_ir(s))
             .collect::<Vec<_>>();
 
-        SectionIR { sub_sections }
+        SectionIR {
+            sid: section.sid,
+            sub_sections,
+        }
     }
 
     fn build_sub_section_ir(&mut self, section: &SubSection) -> SubSectionIR {
@@ -278,7 +281,7 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn build_lyric_line_ir(&mut self, line: &LyricLine) -> LyricLineIR {
-        let mut line_ir = LyricLineIR::new(line.sid);
+        let mut line_ir = LyricLineIR::new(&line);
         let mut underline_buffer = UnderlineBuffer::default();
 
         for token in &line.tokens {
@@ -370,28 +373,7 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn validte_section_ir(&mut self, section: &SectionIR) {
-        for (sub_id, sub_section) in section.sub_sections.iter().enumerate() {
-            let range = self.tree.get_scope_range(sub_section.sid);
-
-            if let Some(splits) = self.document.splits() {
-                let voice_count = splits.value.get(sub_id).copied().unwrap_or_default();
-                let context_range = self.tree.get_symbol_range(splits.sid);
-
-                if voice_count != sub_section.solfa.len() {
-                    self.report_error(
-                        range,
-                        DiagnosticKind::InvalidVoiceDistribution(context_range),
-                    );
-                }
-            } else if sub_id > 0 {
-                let context_range = self.tree.get_scope_range(self.document.header.sid);
-
-                self.report_error(
-                    range,
-                    DiagnosticKind::UndefinedSplitsMetadata(context_range),
-                );
-            }
-
+        for sub_section in &section.sub_sections {
             self.validate_sub_section_ir(sub_section);
         }
     }
@@ -613,28 +595,6 @@ impl<'a> DocumentValidator<'a> {
         self.handle_assignment_node(node, section_sid, &mut section.params)
     }
 
-    fn validate_header(&mut self, header: &Header) {
-        if let Some(splits) = &header.metadata.splits {
-            let range = self.tree.get_symbol_range(splits.sid);
-
-            if splits.value.iter().any(|&s| s == 0) {
-                self.report_error(range, DiagnosticKind::NullSplitValue);
-            }
-
-            if let Some(voices) = &header.metadata.voices {
-                if voices.value.len() != splits.value.iter().sum() {
-                    let context_range = self.tree.get_symbol_range(voices.sid);
-                    self.report_error(
-                        range,
-                        DiagnosticKind::SplitVoiceMismatch(context_range.into()),
-                    );
-                }
-            } else {
-                self.report_error(range, DiagnosticKind::SplitVoiceMismatch(None));
-            }
-        }
-    }
-
     fn validate_pulses(&mut self, section: &Section) {
         let time_signature = self.document.time_signature(section);
 
@@ -782,6 +742,39 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
+    fn validate_lyrics_join(&mut self, sections: &[Section]) {
+        for (id, section) in sections.iter().enumerate() {
+            if let Some(next_section) = sections.get(id + 1) {
+                for line in section.sub_sections.iter().flat_map(|s| &s.lyrics) {
+                    if line.anchor.is_none() {
+                        let range = self.tree.get_scope_range(line.sid);
+                        let context_range = self.tree.get_scope_range(next_section.sid);
+
+                        self.report_error(
+                            range.end(),
+                            DiagnosticKind::ExpectedLyricJoin(context_range),
+                        );
+                    }
+                }
+            } else {
+                for line in section.sub_sections.iter().flat_map(|s| &s.lyrics) {
+                    if let Some((anchor_range, LyricToken::Operator(op))) =
+                        line.anchor.zip(line.tokens.last())
+                    {
+                        let operator_range = self.tree.get_symbol_range(op.sid);
+                        let range = operator_range.merge(anchor_range);
+                        let context_range = self.tree.get_scope_range(section.sid);
+
+                        self.report_error(
+                            range,
+                            DiagnosticKind::UnusedLyricJoin(context_range.end()),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn resolve_lyric_line(
         &mut self,
         node: Node<'_>,
@@ -795,7 +788,7 @@ impl<'a> DocumentValidator<'a> {
         let verse = self.parse_node(verse_node)?;
         let expected_verse = section.lyrics.len() + 1;
         let tokens = self.resolve_lyric_tokens(content_node, scope_id);
-        let anchor = self.resolve_lyric_anchor(anchor_node, &tokens, scope_id);
+        let anchor = self.resolve_lyric_anchor(anchor_node, &tokens);
 
         if verse != expected_verse {
             self.report_warning(
@@ -816,19 +809,18 @@ impl<'a> DocumentValidator<'a> {
         let mut tokens = Vec::new();
 
         for child in node.named_children(&mut node.walk()) {
-            match child.kind_id() {
-                node_types::LYRIC_COLUMN => {
-                    if let Some(column) = self.resolve_lyric_column(child, scope_id) {
-                        tokens.push(LyricToken::Column(column));
-                    }
+            if child.kind_id() == node_types::LYRIC_COLUMN {
+                if let Some(column) = self.resolve_lyric_column(child, scope_id) {
+                    tokens.push(LyricToken::Column(column));
                 }
-                _ => {
-                    if let Some(operator) = self.resolve_lyric_operator(child, scope_id) {
-                        if tokens.last().is_some_and(|t| t.is_operator()) {
-                            let range = self.tree.get_symbol_range(operator.sid);
-                            self.report_error(range, DiagnosticKind::SyntaxError);
-                        }
-
+            } else if let Some(operator) = self.resolve_lyric_operator(child, scope_id) {
+                match tokens.last() {
+                    // ignore trailing spaces after another opeartor
+                    Some(LyricToken::Operator(SymbolRef {
+                        value: LyricOperatorKind::Space,
+                        ..
+                    })) => {}
+                    _ => {
                         tokens.push(LyricToken::Operator(operator));
                     }
                 }
@@ -936,29 +928,21 @@ impl<'a> DocumentValidator<'a> {
         &mut self,
         node: Option<Node<'_>>,
         tokens: &[LyricToken],
-        scope_id: ScopeId,
-    ) -> Option<LyricAnchor> {
+    ) -> Option<Range> {
         let last_token = tokens.last();
 
-        if let Some(LyricToken::Operator(operator)) = last_token {
-            if let Some(node) = node
-                && node.kind_id() == node_types::LYRIC_ANCHOR
-            {
-                let sid = self
-                    .tree
-                    .add_symbol(SymbolKind::Token, node.range(), scope_id);
-
-                return Some(LyricAnchor {
-                    sid,
-                    value: operator.value,
-                });
-            } else {
-                let range = self.tree.get_symbol_range(operator.sid);
-
-                if !matches!(operator.value, LyricOperatorKind::Space) {
-                    self.report_error(range, DiagnosticKind::ExpectedLyricAnchor);
-                }
+        match (node, last_token) {
+            (Some(node), Some(LyricToken::Column(_))) => {
+                self.report_error(node.range(), DiagnosticKind::SyntaxError)
             }
+            (None, Some(LyricToken::Operator(operator))) => {
+                let range = self.tree.get_symbol_range(operator.sid);
+                self.report_error(range, DiagnosticKind::ExpectedLyricAnchor);
+            }
+            (Some(node), Some(LyricToken::Operator(_))) => {
+                return Some(node.range());
+            }
+            _ => {}
         }
 
         None

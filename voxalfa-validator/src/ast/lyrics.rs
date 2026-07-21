@@ -1,11 +1,14 @@
-use crate::ast::symbols::{LyricStringId, ScopeId, SymbolRef};
+use crate::{
+    ast::symbols::{LyricStringId, ScopeId, SymbolRef},
+    ts_utils::range::Range,
+};
 
 #[derive(Debug)]
 pub struct LyricLine {
     pub sid: ScopeId,
     pub verse: usize,
     pub tokens: Vec<LyricToken>,
-    pub anchor: Option<LyricAnchor>,
+    pub anchor: Option<Range>,
 }
 
 #[derive(Debug)]
@@ -22,7 +25,6 @@ impl LyricToken {
 
 pub type LyricChunk = SymbolRef<LyricChunkKind>;
 pub type LyricOperator = SymbolRef<LyricOperatorKind>;
-pub type LyricAnchor = SymbolRef<LyricOperatorKind>;
 pub type LyricString = SymbolRef<LyricStringKind>;
 
 #[derive(Debug, Clone, Copy)]

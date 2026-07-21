@@ -62,14 +62,8 @@ pub enum DiagnosticKind {
     MismatchedPulseAccent(PulseAccent, PulseAccent, Range),
     #[error("trailing lyric, no solfa column matched")]
     TrailingLyric(Vec<Range>),
-    #[error("splits contains a null value")]
-    NullSplitValue,
-    #[error("splits don't match voices")]
-    SplitVoiceMismatch(Option<Range>),
     #[error("voice distribution doesn't match splits")]
     InvalidVoiceDistribution(Range),
-    #[error("'splits' have not been defined")]
-    UndefinedSplitsMetadata(Range),
     #[error("expected {0} verses, got {1}")]
     VerseMismatch(usize, usize, Range),
     #[error("'verses' metadata has not been defined")]
@@ -80,6 +74,10 @@ pub enum DiagnosticKind {
     UndefinedTimeParameter(Range),
     #[error("parameter override should be done at the top level")]
     NonTopLevelParamsOverride(Range),
+    #[error("missing lyrics operator and anchor")]
+    ExpectedLyricJoin(Range),
+    #[error("lyrics join is unused (must be followed by a section)")]
+    UnusedLyricJoin(Range),
 }
 
 impl DiagnosticKind {
@@ -109,15 +107,14 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidNoteProlongation => "E022",
             DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E023",
             DiagnosticKind::TrailingLyric(_) => "E024",
-            DiagnosticKind::NullSplitValue => "E025",
-            DiagnosticKind::SplitVoiceMismatch(_) => "E026",
-            DiagnosticKind::InvalidVoiceDistribution(_) => "E027",
-            DiagnosticKind::UndefinedSplitsMetadata(_) => "E028",
-            DiagnosticKind::VerseMismatch(_, _, _) => "E029",
-            DiagnosticKind::UndefinedVersesMetadata(_) => "E030",
-            DiagnosticKind::UndefinedVoiceMetadata(_) => "E031",
-            DiagnosticKind::UndefinedTimeParameter(_) => "E032",
-            DiagnosticKind::NonTopLevelParamsOverride(_) => "E033",
+            DiagnosticKind::InvalidVoiceDistribution(_) => "E025",
+            DiagnosticKind::VerseMismatch(_, _, _) => "E026",
+            DiagnosticKind::UndefinedVersesMetadata(_) => "E027",
+            DiagnosticKind::UndefinedVoiceMetadata(_) => "E028",
+            DiagnosticKind::UndefinedTimeParameter(_) => "E029",
+            DiagnosticKind::NonTopLevelParamsOverride(_) => "E030",
+            DiagnosticKind::ExpectedLyricJoin(_) => "E031",
+            DiagnosticKind::UnusedLyricJoin(_) => "E032",
         }
     }
 
@@ -147,7 +144,8 @@ impl DiagnosticKind {
                     range: *range,
                 }]
             }
-            DiagnosticKind::VoiceCountMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::InvalidVoiceDistribution(range)
+            | DiagnosticKind::VoiceCountMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
                 message: "voices defined here".to_string(),
                 range: *range,
             }],
@@ -158,19 +156,8 @@ impl DiagnosticKind {
                     range: *r,
                 })
                 .collect(),
-            DiagnosticKind::SplitVoiceMismatch(Some(range))
-            | DiagnosticKind::InvalidVoiceDistribution(range) => {
-                vec![DiagnosticRelatedInfo {
-                    message: "splits defined here".to_string(),
-                    range: *range,
-                }]
-            }
             DiagnosticKind::VerseMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
                 message: "verses defined here".to_string(),
-                range: *range,
-            }],
-            DiagnosticKind::UndefinedSplitsMetadata(range) => vec![DiagnosticRelatedInfo {
-                message: "consider adding 'splits' metadata".to_string(),
                 range: *range,
             }],
             DiagnosticKind::UndefinedVersesMetadata(range) => vec![DiagnosticRelatedInfo {
@@ -187,6 +174,14 @@ impl DiagnosticKind {
             }],
             DiagnosticKind::NonTopLevelParamsOverride(range) => vec![DiagnosticRelatedInfo {
                 message: "set parameter override here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::ExpectedLyricJoin(range) => vec![DiagnosticRelatedInfo {
+                message: "next section here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::UnusedLyricJoin(range) => vec![DiagnosticRelatedInfo {
+                message: "consider adding a next section".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),

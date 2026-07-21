@@ -27,7 +27,6 @@ Sample Partition
 [#] composer="Bob"
 [#] description="Lorem Ipsum."
 [#] voices={"S","T","A","B"}
-[#] splits={2,2}
 [#] verses={2}
 [#] release={2026}
 

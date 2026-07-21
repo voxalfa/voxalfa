@@ -5,7 +5,10 @@ pub mod utils;
 use lyrics::LyricLineIR;
 use solfa::SolfaLineIR;
 
-use crate::{ast::symbols::ScopeId, ir::solfa::PulseIR};
+use crate::{
+    ast::{symbols::ScopeId, types::Voice},
+    ir::solfa::PulseIR,
+};
 
 #[derive(Debug, Default)]
 pub struct DocumentIR {
@@ -14,7 +17,19 @@ pub struct DocumentIR {
 
 #[derive(Debug, Default)]
 pub struct SectionIR {
+    pub sid: ScopeId,
     pub sub_sections: Vec<SubSectionIR>,
+}
+
+impl SectionIR {
+    pub fn get_lyrics(&self, voice: &Voice) -> Option<&[LyricLineIR]> {
+        self.sub_sections.iter().find_map(|s| {
+            s.solfa
+                .iter()
+                .any(|s| s.voice == *voice)
+                .then_some(s.lyrics.as_slice())
+        })
+    }
 }
 
 #[derive(Debug, Default)]
