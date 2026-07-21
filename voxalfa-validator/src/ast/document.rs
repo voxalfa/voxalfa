@@ -1,5 +1,5 @@
 use crate::ast::{
-    body::Body,
+    body::{Body, Section},
     header::Header,
     symbols::SymbolRef,
     types::{TimeSignature, Voice},
@@ -33,7 +33,12 @@ impl Document {
         self.header.metadata.verses.as_ref()
     }
 
-    pub fn time_signature(&self) -> Option<&SymbolRef<TimeSignature>> {
-        self.header.params.time.as_ref()
+    pub fn time_signature(&self, section: &Section) -> Option<SymbolRef<TimeSignature>> {
+        section
+            .params
+            .time
+            .as_ref()
+            .or(self.header.params.time.as_ref())
+            .cloned()
     }
 }

@@ -14,7 +14,7 @@ use crate::{
             Comment, Field, FieldAssign, ScopeId, ScopeKind, SymbolId, SymbolKind, SymbolRef,
             SymbolTree,
         },
-        types::Voice,
+        types::{TimeSignature, Voice},
     },
     diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
     ir::{
@@ -152,9 +152,7 @@ impl<'a> DocumentValidator<'a> {
 
         for child in node.named_children(&mut node.walk()) {
             if child.kind_id() == node_types::SUB_SECTION {
-                let result = self.resolve_sub_section(child, sid);
-
-                section.sub_sections.push(result);
+                self.handle_section_node(child, sid, &mut section);
             }
         }
 
@@ -573,7 +571,7 @@ impl<'a> DocumentValidator<'a> {
         Some(PulseToken { sid, value: kind })
     }
 
-    fn resolve_sub_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> SubSection {
+    fn handle_section_node(&mut self, node: Node<'_>, parent_sid: ScopeId, section: &mut Section) {
         let sid = self
             .tree
             .add_scope(ScopeKind::SubSection, node.range(), parent_sid.into());
@@ -583,7 +581,7 @@ impl<'a> DocumentValidator<'a> {
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::PARAMETER_LINE => {
-                    self.handle_assignment_node(child, sid, &mut result.params)
+                    self.handle_sction_param_node(child, parent_sid, section);
                 }
                 node_types::DYNAMICS_LINE => {
                     self.handle_assignment_node(child, sid, &mut result.dynamics)
@@ -594,7 +592,25 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        result
+        section.sub_sections.push(result);
+    }
+
+    fn handle_sction_param_node(
+        &mut self,
+        node: Node<'_>,
+        section_sid: ScopeId,
+        section: &mut Section,
+    ) {
+        if section.sub_sections.len() > 0 {
+            let context_range = self.tree.get_scope_range(section.sid).start();
+
+            self.report_error(
+                node.range(),
+                DiagnosticKind::NonTopLevelParamsOverride(context_range),
+            );
+        }
+
+        self.handle_assignment_node(node, section_sid, &mut section.params)
     }
 
     fn validate_header(&mut self, header: &Header) {
@@ -620,7 +636,7 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn validate_pulses(&mut self, section: &Section) {
-        let time_signature = self.document.time_signature().cloned();
+        let time_signature = self.document.time_signature(section);
 
         let solfa = section
             .sub_sections
@@ -645,62 +661,75 @@ impl<'a> DocumentValidator<'a> {
             }
 
             if let Some(time_signature) = &time_signature {
-                let pulse_len = line.pulses.len();
-                let mut count = 0;
-                let mut offset = 0;
+                self.validate_time_signature(line, time_signature);
+            } else {
+                let range = self.tree.get_scope_range(line.sid);
+                let context_range = self.tree.get_scope_range(self.document.header.sid);
 
-                while count < pulse_len {
-                    if count == 0 && offset == pulse_len {
-                        break;
-                    }
-
-                    let pulse = &line.pulses[offset % pulse_len];
-
-                    offset += 1;
-
-                    if count == 0 && pulse.accent.value != PulseAccent::Strong {
-                        continue;
-                    }
-
-                    let position = count % time_signature.value.top;
-                    let expected = time_signature.value.get_accent(position);
-
-                    if pulse.accent.value != expected {
-                        let range = self.tree.get_symbol_range(pulse.accent.sid);
-                        let context_range = self.tree.get_symbol_range(time_signature.sid);
-
-                        self.report_error(
-                            range,
-                            DiagnosticKind::MismatchedPulseAccent(
-                                expected,
-                                pulse.accent.value,
-                                context_range,
-                            ),
-                        );
-                    }
-
-                    count += 1;
-                }
-
-                let measure_columns = count % time_signature.value.top;
-
-                if measure_columns != 0 {
-                    let measure_start = &line.pulses[pulse_len - measure_columns];
-                    let measure_end = &line.pulses[pulse_len - 1];
-                    let start_range = self.tree.get_scope_range(measure_start.sid);
-                    let end_range = self.tree.get_scope_range(measure_end.sid);
-                    let context_range = self.tree.get_symbol_range(time_signature.sid);
-
-                    self.report_error(
-                        start_range.merge(end_range),
-                        DiagnosticKind::MeasureColumnMismatch(
-                            time_signature.value.top,
-                            measure_columns,
-                            context_range,
-                        ),
-                    );
-                }
+                self.report_error(range, DiagnosticKind::UndefinedTimeParameter(context_range));
             }
+        }
+    }
+
+    fn validate_time_signature(
+        &mut self,
+        line: &SolfaLine,
+        time_signature: &SymbolRef<TimeSignature>,
+    ) {
+        let pulse_len = line.pulses.len();
+        let mut count = 0;
+        let mut offset = 0;
+
+        while count < pulse_len {
+            if count == 0 && offset == pulse_len {
+                break;
+            }
+
+            let pulse = &line.pulses[offset % pulse_len];
+
+            offset += 1;
+
+            if count == 0 && pulse.accent.value != PulseAccent::Strong {
+                continue;
+            }
+
+            let position = count % time_signature.value.top;
+            let expected = time_signature.value.get_accent(position);
+
+            if pulse.accent.value != expected {
+                let range = self.tree.get_symbol_range(pulse.accent.sid);
+                let context_range = self.tree.get_symbol_range(time_signature.sid);
+
+                self.report_error(
+                    range,
+                    DiagnosticKind::MismatchedPulseAccent(
+                        expected,
+                        pulse.accent.value,
+                        context_range,
+                    ),
+                );
+            }
+
+            count += 1;
+        }
+
+        let measure_columns = count % time_signature.value.top;
+
+        if measure_columns != 0 {
+            let measure_start = &line.pulses[pulse_len - measure_columns];
+            let measure_end = &line.pulses[pulse_len - 1];
+            let start_range = self.tree.get_scope_range(measure_start.sid);
+            let end_range = self.tree.get_scope_range(measure_end.sid);
+            let context_range = self.tree.get_symbol_range(time_signature.sid);
+
+            self.report_error(
+                start_range.merge(end_range),
+                DiagnosticKind::MeasureColumnMismatch(
+                    time_signature.value.top,
+                    measure_columns,
+                    context_range,
+                ),
+            );
         }
     }
 

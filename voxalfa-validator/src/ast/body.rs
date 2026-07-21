@@ -22,6 +22,7 @@ impl Body {
 pub struct Section {
     pub sid: ScopeId,
     pub sub_sections: Vec<SubSection>,
+    pub params: CompositionParams,
 }
 
 impl Section {
@@ -36,7 +37,6 @@ impl Section {
 #[derive(Debug, Default)]
 pub struct SubSection {
     pub sid: ScopeId,
-    pub params: CompositionParams,
     pub dynamics: Dynamics,
     pub solfa: Vec<SolfaLine>,
     pub lyrics: Vec<LyricLine>,

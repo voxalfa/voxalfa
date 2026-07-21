@@ -72,10 +72,14 @@ pub enum DiagnosticKind {
     UndefinedSplitsMetadata(Range),
     #[error("expected {0} verses, got {1}")]
     VerseMismatch(usize, usize, Range),
-    #[error("'verses' have not been defined")]
+    #[error("'verses' metadata has not been defined")]
     UndefinedVersesMetadata(Range),
-    #[error("'voices' have not been defined")]
+    #[error("'voices' metadata has not been defined")]
     UndefinedVoiceMetadata(Range),
+    #[error("'time' parameter has not been defined")]
+    UndefinedTimeParameter(Range),
+    #[error("parameter override should be done at the top level")]
+    NonTopLevelParamsOverride(Range),
 }
 
 impl DiagnosticKind {
@@ -112,6 +116,8 @@ impl DiagnosticKind {
             DiagnosticKind::VerseMismatch(_, _, _) => "E029",
             DiagnosticKind::UndefinedVersesMetadata(_) => "E030",
             DiagnosticKind::UndefinedVoiceMetadata(_) => "E031",
+            DiagnosticKind::UndefinedTimeParameter(_) => "E032",
+            DiagnosticKind::NonTopLevelParamsOverride(_) => "E033",
         }
     }
 
@@ -173,6 +179,14 @@ impl DiagnosticKind {
             }],
             DiagnosticKind::UndefinedVoiceMetadata(range) => vec![DiagnosticRelatedInfo {
                 message: "consider adding 'voice' metadata".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::UndefinedTimeParameter(range) => vec![DiagnosticRelatedInfo {
+                message: "consider adding 'time' parameter".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::NonTopLevelParamsOverride(range) => vec![DiagnosticRelatedInfo {
+                message: "set parameter override here".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),

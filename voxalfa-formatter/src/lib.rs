@@ -82,13 +82,18 @@ impl<'a> Formatter<'a> {
 
     fn process_body(&mut self) {
         for (section_idx, section) in self.source.ir.sections.iter().enumerate() {
+            let section_data = &self.source.document.body.sections[section_idx];
+
+            self.append_separators("\n\n");
+            self.process_params(&section_data.params);
+
             for (sub_idx, sub) in section.sub_sections.iter().enumerate() {
-                let section_data = &self.source.document.body.sections[section_idx];
                 let sub_data = &section_data.sub_sections[sub_idx];
 
-                self.append_separators("\n\n");
+                if sub_idx > 0 {
+                    self.append_separators("\n\n");
+                }
 
-                self.process_params(&sub_data.params);
                 self.process_dynamics(&sub_data.dynamics);
 
                 for solfa in &sub.solfa {
@@ -118,6 +123,7 @@ impl<'a> Formatter<'a> {
         self.append_assignement("#", meta.composer.as_ref());
         self.append_assignement("#", meta.voices.as_ref());
         self.append_assignement("#", meta.splits.as_ref());
+        self.append_assignement("#", meta.verses.as_ref());
         self.append_assignement("#", meta.description.as_ref());
         self.append_assignement("#", meta.release.as_ref());
 
