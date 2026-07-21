@@ -21,6 +21,10 @@ impl Document {
             .copied()
     }
 
+    pub fn voices(&self) -> Option<&SymbolRef<Vec<Voice>>> {
+        self.header.metadata.voices.as_ref()
+    }
+
     pub fn splits(&self) -> Option<&SymbolRef<Vec<usize>>> {
         self.header.metadata.splits.as_ref()
     }

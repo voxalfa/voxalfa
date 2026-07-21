@@ -388,7 +388,10 @@ impl<'a> DocumentValidator<'a> {
             } else if sub_id > 0 {
                 let context_range = self.tree.get_scope_range(self.document.header.sid);
 
-                self.report_error(range, DiagnosticKind::UndefinedSplits(context_range));
+                self.report_error(
+                    range,
+                    DiagnosticKind::UndefinedSplitsMetadata(context_range),
+                );
             }
 
             self.validate_sub_section_ir(sub_section);
@@ -412,7 +415,10 @@ impl<'a> DocumentValidator<'a> {
         } else if sub_section.lyrics.len() > 0 {
             let context_range = self.tree.get_scope_range(self.document.header.sid);
 
-            self.report_error(range, DiagnosticKind::UndefinedVerses(context_range));
+            self.report_error(
+                range,
+                DiagnosticKind::UndefinedVersesMetadata(context_range),
+            );
         }
 
         for lyric_line in &sub_section.lyrics {
@@ -704,7 +710,7 @@ impl<'a> DocumentValidator<'a> {
         };
 
         let range = self.tree.get_scope_range(section.sid);
-        let expected = voices.value.len();
+        let expected_len = voices.value.len();
         let context_range = self.tree.get_symbol_range(voices.sid);
 
         let voices = section
@@ -713,21 +719,37 @@ impl<'a> DocumentValidator<'a> {
             .flat_map(|sub| sub.solfa.iter().map(|s| &s.voice))
             .collect::<Vec<_>>();
 
-        for (id, voice) in voices.iter().enumerate() {
-            if let Some(expected) = self.document.get_voice(id) {
-                let range = self.tree.get_symbol_range(voice.sid);
-
-                if voice.value != expected {
-                    self.report_error(range, DiagnosticKind::VoiceMismatch(expected, voice.value));
-                }
-            }
-        }
-
-        if voices.len() != expected {
+        if voices.len() != expected_len {
             self.report_error(
                 range,
-                DiagnosticKind::VoiceCountMismatch(expected, voices.len(), context_range),
+                DiagnosticKind::VoiceCountMismatch(expected_len, voices.len(), context_range),
             );
+        }
+
+        for (id, voice) in voices.iter().enumerate() {
+            let range = self.tree.get_symbol_range(voice.sid);
+
+            if let Some(voices) = &self.document.voices() {
+                if let Some(expected_voice) = voices.value.get(id) {
+                    if voice.value != *expected_voice {
+                        self.report_error(
+                            range,
+                            DiagnosticKind::VoiceMismatch(*expected_voice, voice.value),
+                        );
+                    }
+                } else {
+                    let context_range = self.tree.get_symbol_range(voices.sid);
+
+                    self.report_error(
+                        range,
+                        DiagnosticKind::UndefinedVoice(voice.value, context_range),
+                    );
+                }
+            } else {
+                let context_range = self.tree.get_scope_range(self.document.header.sid);
+
+                self.report_error(range, DiagnosticKind::UndefinedVoiceMetadata(context_range));
+            }
         }
     }
 

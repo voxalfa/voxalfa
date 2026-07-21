@@ -38,9 +38,9 @@ pub enum DiagnosticKind {
     InvalidDynamicParams(usize),
     #[error("invalid voice '{0}'")]
     InvalidVoice(String),
-    #[error("undefined voice '{0}'")]
-    UndefinedVoice(String),
-    #[error("expected '{0:?}', got '{1:?}")]
+    #[error("undefined voice '{0:?}'")]
+    UndefinedVoice(Voice, Range),
+    #[error("expected '{0:?}', got '{1:?}'")]
     VoiceMismatch(Voice, Voice),
     #[error("invalid note distribution")]
     InvalidNoteDistribution,
@@ -68,12 +68,14 @@ pub enum DiagnosticKind {
     SplitVoiceMismatch(Option<Range>),
     #[error("voice distribution doesn't match splits")]
     InvalidVoiceDistribution(Range),
-    #[error("splits have not been defined")]
-    UndefinedSplits(Range),
+    #[error("'splits' have not been defined")]
+    UndefinedSplitsMetadata(Range),
     #[error("expected {0} verses, got {1}")]
     VerseMismatch(usize, usize, Range),
-    #[error("verses have not been defined")]
-    UndefinedVerses(Range),
+    #[error("'verses' have not been defined")]
+    UndefinedVersesMetadata(Range),
+    #[error("'voices' have not been defined")]
+    UndefinedVoiceMetadata(Range),
 }
 
 impl DiagnosticKind {
@@ -91,7 +93,7 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidDynamic(_) => "E010",
             DiagnosticKind::InvalidDynamicParams(_) => "E011",
             DiagnosticKind::InvalidVoice(_) => "E012",
-            DiagnosticKind::UndefinedVoice(_) => "E013",
+            DiagnosticKind::UndefinedVoice(_, _) => "E013",
             DiagnosticKind::VoiceMismatch(_, _) => "E014",
             DiagnosticKind::InvalidNoteDistribution => "E015",
             DiagnosticKind::MeasureColumnMismatch(_, _, _) => "E016",
@@ -106,9 +108,10 @@ impl DiagnosticKind {
             DiagnosticKind::NullSplitValue => "E025",
             DiagnosticKind::SplitVoiceMismatch(_) => "E026",
             DiagnosticKind::InvalidVoiceDistribution(_) => "E027",
-            DiagnosticKind::UndefinedSplits(_) => "E028",
+            DiagnosticKind::UndefinedSplitsMetadata(_) => "E028",
             DiagnosticKind::VerseMismatch(_, _, _) => "E029",
-            DiagnosticKind::UndefinedVerses(_) => "E030",
+            DiagnosticKind::UndefinedVersesMetadata(_) => "E030",
+            DiagnosticKind::UndefinedVoiceMetadata(_) => "E031",
         }
     }
 
@@ -160,12 +163,16 @@ impl DiagnosticKind {
                 message: "verses defined here".to_string(),
                 range: *range,
             }],
-            DiagnosticKind::UndefinedSplits(range) => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::UndefinedSplitsMetadata(range) => vec![DiagnosticRelatedInfo {
                 message: "consider adding 'splits' metadata".to_string(),
                 range: *range,
             }],
-            DiagnosticKind::UndefinedVerses(range) => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::UndefinedVersesMetadata(range) => vec![DiagnosticRelatedInfo {
                 message: "consider adding 'verses' metadata".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::UndefinedVoiceMetadata(range) => vec![DiagnosticRelatedInfo {
+                message: "consider adding 'voice' metadata".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),
