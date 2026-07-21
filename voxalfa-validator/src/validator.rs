@@ -819,15 +819,13 @@ impl<'a> DocumentValidator<'a> {
                     tokens.push(LyricToken::Column(column));
                 }
             } else if let Some(operator) = self.resolve_lyric_operator(child, scope_id) {
-                match tokens.last() {
+                if tokens.last().is_some_and(|t| t.is_operator())
+                    && matches!(operator.value, LyricOperatorKind::Space)
+                {
+
                     // ignore trailing spaces after another opeartor
-                    Some(LyricToken::Operator(SymbolRef {
-                        value: LyricOperatorKind::Space,
-                        ..
-                    })) => {}
-                    _ => {
-                        tokens.push(LyricToken::Operator(operator));
-                    }
+                } else {
+                    tokens.push(LyricToken::Operator(operator));
                 }
             }
         }
