@@ -2,8 +2,7 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
     ast::{
-        body::{Body, Section, SubSection},
-        document::Document,
+        body::{Section, SubSection},
         header::Header,
         lyrics::{
             LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind,
@@ -37,7 +36,7 @@ use crate::{
 pub struct DocumentValidator<'a> {
     pub source: &'a [u8],
     pub tree: SymbolTree,
-    pub document: Document,
+    pub header: Header,
     pub ir: DocumentIR,
     pub diagnostics: Vec<Diagnostic>,
 }
@@ -46,7 +45,7 @@ impl<'a> DocumentValidator<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source: source.as_bytes(),
-            document: Document::default(),
+            header: Header::default(),
             tree: SymbolTree::default(),
             ir: DocumentIR::default(),
             diagnostics: Vec::default(),
@@ -63,7 +62,7 @@ impl<'a> DocumentValidator<'a> {
 
         ValidatorOutput {
             tree: self.tree,
-            document: self.document,
+            header: self.header,
             ir: self.ir,
             diagnostics: self.diagnostics,
         }
@@ -95,7 +94,7 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        self.document.header = header;
+        self.header = header;
     }
 
     fn handle_assignment_node<T: FieldAssign>(
@@ -120,27 +119,27 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn handle_body_node(&mut self, node: Node<'_>) {
-        let sid = self.tree.add_scope(ScopeKind::Header, node.range(), None);
-        let mut body = Body::new(sid);
+        let body_sid = self.tree.add_scope(ScopeKind::Body, node.range(), None);
+        let mut sections = Vec::new();
 
         for child in node.named_children(&mut node.walk()) {
             if child.kind_id() == node_types::SECTION {
-                let section = self.resolve_section(child, body.sid);
-                let section_ir = self.build_section_ir(&section);
+                let section = self.resolve_section(child, body_sid);
 
-                // FIXME: merge the first two validations into the last???
                 self.validate_pulses(&section);
                 self.validate_voices(&section);
-                self.validte_section_ir(&section_ir);
 
-                body.sections.push(section);
-                self.ir.sections.push(section_ir);
+                sections.push(section);
             }
         }
 
-        self.validate_lyrics_join(&body.sections);
+        self.validate_lyrics_join(&sections);
 
-        self.document.body = body;
+        // strip away unused data and transform raw token streams into structured data
+        self.ir.sections = sections
+            .into_iter()
+            .map(|s| self.build_section_ir(s))
+            .collect();
     }
 
     fn resolve_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> Section {
@@ -159,29 +158,34 @@ impl<'a> DocumentValidator<'a> {
         section
     }
 
-    fn build_section_ir(&mut self, section: &Section) -> SectionIR {
+    fn build_section_ir(&mut self, section: Section) -> SectionIR {
         let sub_sections = section
             .sub_sections
-            .iter()
+            .into_iter()
             .map(|s| self.build_sub_section_ir(s))
             .collect::<Vec<_>>();
 
-        SectionIR {
+        let result = SectionIR {
             sid: section.sid,
+            params: section.params,
             sub_sections,
-        }
+        };
+
+        self.validte_section_ir(&result);
+
+        result
     }
 
-    fn build_sub_section_ir(&mut self, section: &SubSection) -> SubSectionIR {
+    fn build_sub_section_ir(&mut self, section: SubSection) -> SubSectionIR {
         let solfa = section
             .solfa
-            .iter()
+            .into_iter()
             .map(|s| self.build_solfa_line_ir(s))
             .collect::<Vec<_>>();
 
         let lyrics = section
             .lyrics
-            .iter()
+            .into_iter()
             .map(|l| self.build_lyric_line_ir(l))
             .collect();
 
@@ -189,13 +193,14 @@ impl<'a> DocumentValidator<'a> {
 
         SubSectionIR {
             sid: section.sid,
+            dynamics: section.dynamics,
             views,
             solfa,
             lyrics,
         }
     }
 
-    fn build_solfa_line_ir(&mut self, line: &SolfaLine) -> SolfaLineIR {
+    fn build_solfa_line_ir(&mut self, line: SolfaLine) -> SolfaLineIR {
         let mut line_ir = SolfaLineIR::new(line.sid, line.voice.value);
         let mut underline_buffer = UnderlineBuffer::default();
 
@@ -280,11 +285,11 @@ impl<'a> DocumentValidator<'a> {
             })
     }
 
-    fn build_lyric_line_ir(&mut self, line: &LyricLine) -> LyricLineIR {
+    fn build_lyric_line_ir(&mut self, line: LyricLine) -> LyricLineIR {
         let mut line_ir = LyricLineIR::new(&line);
         let mut underline_buffer = UnderlineBuffer::default();
 
-        for token in &line.tokens {
+        for token in line.tokens {
             match token {
                 LyricToken::Column(column) => {
                     let column_ir = self.build_lyric_column_ir(column, &mut underline_buffer);
@@ -307,13 +312,13 @@ impl<'a> DocumentValidator<'a> {
 
     fn build_lyric_column_ir(
         &mut self,
-        column: &LyricColumn,
+        column: LyricColumn,
         underline_buffer: &mut UnderlineBuffer,
     ) -> LyricColumnIR {
         let mut column_ir = LyricColumnIR::new(column.sid, column.span);
 
-        for chunk in &column.chunks {
-            match &chunk.value {
+        for chunk in column.chunks {
+            match chunk.value {
                 LyricChunkKind::Space => column_ir.operators.push(LyricOperatorKind::Space),
                 LyricChunkKind::Newline => column_ir.operators.push(LyricOperatorKind::Newline),
                 LyricChunkKind::Placeholder => column_ir.placeholder = true,
@@ -329,7 +334,7 @@ impl<'a> DocumentValidator<'a> {
 
     fn build_lyric_string_ir(
         &mut self,
-        chunks: &[LyricString],
+        chunks: Vec<LyricString>,
         underline_buffer: &mut UnderlineBuffer,
     ) -> Vec<LyricStringIR> {
         let mut partials = Vec::new();
@@ -381,7 +386,7 @@ impl<'a> DocumentValidator<'a> {
     fn validate_sub_section_ir(&mut self, sub_section: &SubSectionIR) {
         let range = self.tree.get_scope_range(sub_section.sid);
 
-        if let Some(verses) = self.document.verses() {
+        if let Some(verses) = &self.header.metadata.verses {
             let value = sub_section.lyrics.len();
 
             if value != verses.value {
@@ -392,8 +397,8 @@ impl<'a> DocumentValidator<'a> {
                     DiagnosticKind::VerseMismatch(verses.value, value, context_range),
                 );
             }
-        } else if sub_section.lyrics.len() > 0 {
-            let context_range = self.tree.get_scope_range(self.document.header.sid);
+        } else if !sub_section.lyrics.is_empty() {
+            let context_range = self.tree.get_scope_range(self.header.sid);
 
             self.report_error(
                 range,
@@ -583,7 +588,7 @@ impl<'a> DocumentValidator<'a> {
         section_sid: ScopeId,
         section: &mut Section,
     ) {
-        if section.sub_sections.len() > 0 {
+        if !section.sub_sections.is_empty() {
             let context_range = self.tree.get_scope_range(section.sid).start();
 
             self.report_error(
@@ -596,7 +601,7 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn validate_pulses(&mut self, section: &Section) {
-        let time_signature = self.document.time_signature(section);
+        let time_signature = self.header.params.time.clone();
 
         let solfa = section
             .sub_sections
@@ -624,7 +629,7 @@ impl<'a> DocumentValidator<'a> {
                 self.validate_time_signature(line, time_signature);
             } else {
                 let range = self.tree.get_scope_range(line.sid);
-                let context_range = self.tree.get_scope_range(self.document.header.sid);
+                let context_range = self.tree.get_scope_range(self.header.sid);
 
                 self.report_error(range, DiagnosticKind::UndefinedTimeParameter(context_range));
             }
@@ -694,7 +699,7 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn validate_voices(&mut self, section: &Section) {
-        let Some(voices) = &self.document.header.metadata.voices else {
+        let Some(voices) = &self.header.metadata.voices else {
             return;
         };
 
@@ -718,7 +723,7 @@ impl<'a> DocumentValidator<'a> {
         for (id, voice) in voices.iter().enumerate() {
             let range = self.tree.get_symbol_range(voice.sid);
 
-            if let Some(voices) = &self.document.voices() {
+            if let Some(voices) = &self.header.metadata.voices {
                 if let Some(expected_voice) = voices.value.get(id) {
                     if voice.value != *expected_voice {
                         self.report_error(
@@ -735,7 +740,7 @@ impl<'a> DocumentValidator<'a> {
                     );
                 }
             } else {
-                let context_range = self.tree.get_scope_range(self.document.header.sid);
+                let context_range = self.tree.get_scope_range(self.header.sid);
 
                 self.report_error(range, DiagnosticKind::UndefinedVoiceMetadata(context_range));
             }

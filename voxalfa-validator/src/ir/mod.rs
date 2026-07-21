@@ -6,7 +6,7 @@ use lyrics::LyricLineIR;
 use solfa::SolfaLineIR;
 
 use crate::{
-    ast::{symbols::ScopeId, types::Voice},
+    ast::{dynamics::Dynamics, params::CompositionParams, symbols::ScopeId, types::Voice},
     ir::solfa::PulseIR,
 };
 
@@ -19,6 +19,7 @@ pub struct DocumentIR {
 pub struct SectionIR {
     pub sid: ScopeId,
     pub sub_sections: Vec<SubSectionIR>,
+    pub params: CompositionParams,
 }
 
 impl SectionIR {
@@ -35,6 +36,7 @@ impl SectionIR {
 #[derive(Debug, Default)]
 pub struct SubSectionIR {
     pub sid: ScopeId,
+    pub dynamics: Dynamics,
     pub views: Vec<PulseView>,
     pub solfa: Vec<SolfaLineIR>,
     pub lyrics: Vec<LyricLineIR>,

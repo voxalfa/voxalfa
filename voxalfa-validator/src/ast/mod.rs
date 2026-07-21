@@ -1,5 +1,4 @@
 pub mod body;
-pub mod document;
 pub mod dynamics;
 pub mod header;
 pub mod lyrics;

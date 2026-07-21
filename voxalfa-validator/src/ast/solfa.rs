@@ -1,6 +1,9 @@
-use crate::ast::{
-    symbols::{ScopeId, SymbolRef},
-    types::Voice,
+use crate::{
+    ast::{
+        symbols::{ScopeId, SymbolRef},
+        types::Voice,
+    },
+    render::RenderType,
 };
 
 #[derive(Debug)]
@@ -61,7 +64,7 @@ impl PulseTokenKind {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BaseNote {
     D,
     R,
@@ -103,7 +106,7 @@ impl TryFrom<&str> for BaseNote {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum NoteVariation {
     #[default]
     Base,
@@ -145,5 +148,21 @@ impl std::fmt::Display for Note {
         };
 
         write!(f, "{}{variation_str}{suffix}", self.base)
+    }
+}
+
+impl Note {
+    pub fn width(&self, render_type: RenderType) -> usize {
+        let mut result = 1;
+
+        if self.variation != NoteVariation::Base {
+            result += 1;
+        }
+
+        if render_type == RenderType::Text && self.octave != 0 {
+            result += 2;
+        }
+
+        result
     }
 }

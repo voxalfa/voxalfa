@@ -74,21 +74,19 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_header(&mut self) {
-        self.process_metadata(&self.source.document.header.metadata);
-        self.process_params(&self.source.document.header.params);
+        self.process_metadata(&self.source.header.metadata);
+        self.process_params(&self.source.header.params);
 
         self.append_separators("---");
     }
 
     fn process_body(&mut self) {
         for (section_idx, section) in self.source.ir.sections.iter().enumerate() {
-            let section_data = &self.source.document.body.sections[section_idx];
-
             self.append_separators("\n\n");
-            self.process_params(&section_data.params);
+            self.process_params(&section.params);
 
             for (sub_idx, sub) in section.sub_sections.iter().enumerate() {
-                let sub_data = &section_data.sub_sections[sub_idx];
+                let sub_data = &section.sub_sections[sub_idx];
 
                 if sub_idx > 0 {
                     self.append_separators("\n\n");
@@ -100,8 +98,11 @@ impl<'a> Formatter<'a> {
                     self.process_solfa(solfa);
                 }
 
-                for (verse, lyrics) in sub.lyrics.iter().enumerate() {
-                    self.process_lyrics(&sub.views, lyrics, verse + 1);
+                for (lyrics_idx, lyrics) in sub.lyrics.iter().enumerate() {
+                    let verse = lyrics_idx + 1;
+                    let is_last_section = section_idx == self.source.ir.sections.len() - 1;
+
+                    self.process_lyrics(&sub.views, lyrics, verse, is_last_section);
                 }
 
                 if sub_idx != section.sub_sections.len() - 1 {
@@ -202,7 +203,13 @@ impl<'a> Formatter<'a> {
         buffer
     }
 
-    fn process_lyrics(&mut self, views: &[PulseView], line: &LyricLineIR, verse: usize) {
+    fn process_lyrics(
+        &mut self,
+        views: &[PulseView],
+        line: &LyricLineIR,
+        verse: usize,
+        is_last_section: bool,
+    ) {
         let mut buffer = format!("[{verse}] ");
         let mut view_idx = 0;
         let mut view_offset = 0;
@@ -234,19 +241,22 @@ impl<'a> Formatter<'a> {
             }
 
             let filler = match operator {
-                Some(LyricOperatorKind::Concat) => '_',
-                Some(LyricOperatorKind::Newline) => '\\',
-                _ => ' ',
+                Some(LyricOperatorKind::Concat) => "_",
+                Some(LyricOperatorKind::Newline) => "\\",
+                _ => "",
             };
 
-            let padded_str = format!(
-                "{lyric_str}{filler:<w$}",
-                w = width.saturating_sub(lyric_str.chars().count())
-            );
+            let padding = if is_last_section && lyric_idx == last_lyric_idx {
+                0
+            } else {
+                width.saturating_sub(lyric_str.chars().count())
+            };
+
+            let padded_str = format!("{lyric_str}{filler:<padding$}");
 
             buffer.push_str(&padded_str);
 
-            if lyric_idx == last_lyric_idx && operator.is_some() && line.anchor {
+            if lyric_idx == last_lyric_idx && line.anchor {
                 buffer.push_str("..");
             }
         }

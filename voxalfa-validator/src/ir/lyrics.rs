@@ -56,7 +56,7 @@ impl LyricColumnIR {
     }
 
     pub fn add_chunk(&mut self, strings: Vec<LyricStringIR>) {
-        let partials = strings
+        let primitives = strings
             .into_iter()
             .map(|s| LyricPrimitive {
                 underline: UnderlineMarker::default(),
@@ -64,9 +64,7 @@ impl LyricColumnIR {
             })
             .collect();
 
-        self.chunks.push(LyricChunkIR {
-            primitives: partials,
-        });
+        self.chunks.push(LyricChunkIR { primitives });
     }
 }
 
