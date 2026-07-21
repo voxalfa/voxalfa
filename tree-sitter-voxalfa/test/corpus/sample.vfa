@@ -120,12 +120,6 @@ Sample Partition
     (metadata_line
       (parameter_assignment
         name: (identifier)
-        value: (list
-          (integer)
-          (integer))))
-    (metadata_line
-      (parameter_assignment
-        name: (identifier)
         value: (integer)))
     (metadata_line
       (parameter_assignment
