@@ -7,7 +7,7 @@ use crate::{
         solfa::PulseColumnKind,
     },
     render::RenderType,
-    timeline::Timeline,
+    timeline::TimelineMap,
 };
 
 #[derive(Debug)]
@@ -16,7 +16,7 @@ pub struct ValidatorOutput {
     pub header: Header,
     pub ir: DocumentIR,
     pub diagnostics: Vec<Diagnostic>,
-    pub timeline: Timeline,
+    pub map: TimelineMap,
 }
 
 impl ValidatorOutput {

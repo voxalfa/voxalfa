@@ -25,11 +25,13 @@ impl UnderlineBuffer {
         self.current_sid = Some(sid);
 
         if let Some(start) = self.current_pos.take() {
-            self.current_sid = None;
-            self.results.push(UnderlineRange {
-                start,
-                end: position + self.offset,
-            });
+            let end = position + self.offset;
+
+            // discard empty targets
+            if start != end {
+                self.current_sid = None;
+                self.results.push(UnderlineRange { start, end });
+            }
         } else {
             self.current_pos = Some(position + self.offset);
         }

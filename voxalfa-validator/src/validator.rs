@@ -24,7 +24,7 @@ use crate::{
         utils::{BeatBuffer, UnderlineBuffer},
     },
     output::ValidatorOutput,
-    timeline::{DynamicsBuffer, Timeline},
+    timeline::{DynamicsBuffer, TimelineMap},
     ts_utils::{
         context::TSContext,
         generated::node_types,
@@ -41,7 +41,7 @@ pub struct DocumentValidator<'a> {
     pub header: Header,
     pub ir: DocumentIR,
     pub diagnostics: Vec<Diagnostic>,
-    pub timeline: Timeline,
+    pub map: TimelineMap,
 }
 
 impl<'a> DocumentValidator<'a> {
@@ -52,7 +52,7 @@ impl<'a> DocumentValidator<'a> {
             tree: SymbolTree::default(),
             ir: DocumentIR::default(),
             diagnostics: Vec::default(),
-            timeline: Timeline::default(),
+            map: TimelineMap::default(),
         }
     }
 
@@ -69,7 +69,7 @@ impl<'a> DocumentValidator<'a> {
             header: self.header,
             ir: self.ir,
             diagnostics: self.diagnostics,
-            timeline: self.timeline,
+            map: self.map,
         }
     }
 
@@ -372,9 +372,9 @@ impl<'a> DocumentValidator<'a> {
             .map(|first| first.pulses.iter().map(PulseView::new).collect::<Vec<_>>())
             .unwrap_or_default();
 
-        for (pulse_idx, view) in views.iter_mut().enumerate() {
+        for (pulse_id, view) in views.iter_mut().enumerate() {
             for current in solfa.iter().skip(1) {
-                let pulse = current.pulses.get(pulse_idx);
+                let pulse = current.pulses.get(pulse_id);
 
                 if let Some(pulse) = pulse {
                     view.add(pulse);
@@ -800,22 +800,22 @@ impl<'a> DocumentValidator<'a> {
     fn validate_sections(&mut self, sections: &[SectionIR]) {
         let mut buffer = DynamicsBuffer::default();
 
-        for (section_idx, section) in sections.iter().enumerate() {
+        for (section_id, section) in sections.iter().enumerate() {
             self.validte_section(section);
 
             if section.merge {
-                self.validate_section_merge(section_idx, &sections);
+                self.validate_section_merge(section_id, &sections);
             } else {
                 buffer.init_section();
             }
 
-            for (sub_idx, sub_section) in section.items.iter().enumerate() {
-                let dynamics = self.resolve_root_dynamics(section_idx, sub_idx, sections);
+            for (sub_id, sub_section) in section.items.iter().enumerate() {
+                let dynamics = self.resolve_root_dynamics(section_id, sub_id, sections);
 
                 if let Some(dynamics) = dynamics {
                     buffer.process(sub_section, dynamics);
 
-                    let next_section = sections.get(section_idx + 1);
+                    let next_section = sections.get(section_id + 1);
 
                     if next_section.is_some_and(|s| !s.merge) || next_section.is_none() {
                         self.validate_dynamics_buffer(dynamics, &mut buffer);
@@ -825,9 +825,9 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
-    fn validate_section_merge(&mut self, section_idx: usize, sections: &[SectionIR]) {
-        let current = &sections[section_idx];
-        let root = sections[..section_idx].iter().rev().find(|s| !s.merge);
+    fn validate_section_merge(&mut self, section_id: usize, sections: &[SectionIR]) {
+        let current = &sections[section_id];
+        let root = sections[..section_id].iter().rev().find(|s| !s.merge);
 
         if let Some(root) = root {
             let current_dist = root.items.iter().map(|sub| sub.solfa.len());
@@ -856,20 +856,20 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        self.timeline.dynamics.extend(buffer.drain());
+        self.map.extend_from_buffer(buffer);
     }
 
     fn resolve_root_dynamics(
         &self,
-        section_idx: usize,
-        sub_idx: usize,
+        section_id: usize,
+        sub_id: usize,
         sections: &'a [SectionIR],
     ) -> Option<&'a Dynamics> {
-        sections[..=section_idx]
+        sections[..=section_id]
             .iter()
             .rev()
             .find(|s| !s.merge)
-            .and_then(|s| s.items.get(sub_idx).map(|sub| &sub.dynamics))
+            .and_then(|s| s.items.get(sub_id).map(|sub| &sub.dynamics))
     }
 
     fn resolve_lyric_line(

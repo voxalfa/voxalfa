@@ -101,7 +101,7 @@ impl TryFrom<&str> for KeyAccidental {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub enum Voice {
     S,
     A,

@@ -52,14 +52,14 @@ impl<'a> Formatter<'a> {
     fn finalize<W: Write>(self, writer: &mut W) -> Result<(), io::Error> {
         let mut lines = self.lines.into_iter().peekable();
 
-        while let Some((line_idx, line)) = lines.next() {
+        while let Some((line_id, line)) = lines.next() {
             writer.write_all(line.as_bytes())?;
 
-            if let Some(separator) = self.separators.get(&line_idx) {
+            if let Some(separator) = self.separators.get(&line_id) {
                 writer.write_all(separator.as_bytes())?;
             } else {
-                if let Some((next_line_idx, _)) = lines.peek()
-                    && next_line_idx - line_idx > 1
+                if let Some((next_line_id, _)) = lines.peek()
+                    && next_line_id - line_id > 1
                 {
                     writer.write_all(b"\n")?;
                 }
@@ -81,14 +81,14 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_body(&mut self) {
-        for (section_idx, section) in self.source.ir.sections.iter().enumerate() {
+        for (section_id, section) in self.source.ir.sections.iter().enumerate() {
             self.append_separators("\n\n");
             self.process_params(&section.params);
 
-            for (sub_idx, sub) in section.items.iter().enumerate() {
-                let sub_data = &section.items[sub_idx];
+            for (sub_id, sub) in section.items.iter().enumerate() {
+                let sub_data = &section.items[sub_id];
 
-                if sub_idx > 0 {
+                if sub_id > 0 {
                     self.append_separators("\n\n");
                 }
 
@@ -98,19 +98,19 @@ impl<'a> Formatter<'a> {
                     self.process_solfa(solfa);
                 }
 
-                for (lyrics_idx, lyrics) in sub.lyrics.iter().enumerate() {
-                    let verse = lyrics_idx + 1;
-                    let is_last_section = section_idx == self.source.ir.sections.len() - 1;
+                for (lyrics_id, lyrics) in sub.lyrics.iter().enumerate() {
+                    let verse = lyrics_id + 1;
+                    let is_last_section = section_id == self.source.ir.sections.len() - 1;
 
                     self.process_lyrics(&sub.views, lyrics, verse, is_last_section);
                 }
 
-                if sub_idx != section.items.len() - 1 {
+                if sub_id != section.items.len() - 1 {
                     self.append_separators("\n\n++");
                 }
             }
 
-            if section_idx != self.source.ir.sections.len() - 1 {
+            if section_id != self.source.ir.sections.len() - 1 {
                 self.append_separators("\n\n--");
             }
         }
@@ -158,7 +158,7 @@ impl<'a> Formatter<'a> {
 
     fn process_solfa(&mut self, solfa: &SolfaLineIR) {
         let scope = self.source.tree.get_scope(solfa.sid);
-        let line_idx = scope.range.start_point.row;
+        let line_id = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
         let mut buffer = format!("[{:?}] ", solfa.voice);
 
@@ -170,7 +170,7 @@ impl<'a> Formatter<'a> {
 
         buffer.push_str("||");
 
-        self.lines.insert(line_idx, buffer);
+        self.lines.insert(line_id, buffer);
     }
 
     fn format_pulse(&mut self, pulse: &PulseIR) -> String {
@@ -213,22 +213,22 @@ impl<'a> Formatter<'a> {
         is_last_section: bool,
     ) {
         let mut buffer = format!("[{verse}] ");
-        let mut view_idx = 0;
+        let mut view_id = 0;
         let mut view_offset = 0;
 
         let scope = self.source.tree.get_scope(line.sid);
-        let line_idx = scope.range.start_point.row;
-        let last_lyric_idx = line.columns.len() - 1;
+        let line_id = scope.range.start_point.row;
+        let last_lyric_id = line.columns.len() - 1;
 
-        for (lyric_idx, lyric_col) in line.columns.iter().enumerate() {
+        for (lyric_id, lyric_col) in line.columns.iter().enumerate() {
             let lyric_str = self.resolve_lyric_column(lyric_col);
-            let operator = line.operators.get(lyric_idx);
+            let operator = line.operators.get(lyric_id);
 
             let mut span_value = lyric_col.span;
             let mut width = 0;
 
             while span_value != 0 {
-                let view = &views[view_idx];
+                let view = &views[view_id];
                 let widths = view.resolve_widths(self.col_width, self.col_factor);
 
                 width += widths[view_offset];
@@ -237,7 +237,7 @@ impl<'a> Formatter<'a> {
 
                 if view_offset >= widths.len() {
                     // width += self.col_width * self.col_factor - widths.iter().sum::<usize>();
-                    view_idx += 1;
+                    view_id += 1;
                     view_offset = 0;
                 }
             }
@@ -248,7 +248,7 @@ impl<'a> Formatter<'a> {
                 _ => "",
             };
 
-            let padding = if is_last_section && lyric_idx == last_lyric_idx {
+            let padding = if is_last_section && lyric_id == last_lyric_id {
                 0
             } else {
                 width.saturating_sub(lyric_str.chars().count())
@@ -258,12 +258,12 @@ impl<'a> Formatter<'a> {
 
             buffer.push_str(&padded_str);
 
-            if lyric_idx == last_lyric_idx && line.anchor {
+            if lyric_id == last_lyric_id && line.anchor {
                 buffer.push_str("..");
             }
         }
 
-        self.lines.insert(line_idx, buffer);
+        self.lines.insert(line_id, buffer);
     }
 
     fn resolve_lyric_column(&self, column: &LyricColumnIR) -> String {
@@ -277,7 +277,7 @@ impl<'a> Formatter<'a> {
             buffer.push('(');
         }
 
-        for (idx, chunk) in column.chunks.iter().enumerate() {
+        for (id, chunk) in column.chunks.iter().enumerate() {
             for primitve in &chunk.primitives {
                 if primitve.underline.left {
                     buffer.push('`');
@@ -295,7 +295,7 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            if let Some(operator) = column.operators.get(idx) {
+            if let Some(operator) = column.operators.get(id) {
                 let operator_char = match operator {
                     LyricOperatorKind::Space => ' ',
                     LyricOperatorKind::Newline => '\\',
@@ -320,13 +320,13 @@ impl<'a> Formatter<'a> {
     fn process_comments(&mut self) {
         for comment in &self.source.tree.comments {
             let symbol = self.source.tree.get_symbol(comment.sid);
-            let line_idx = symbol.range.start_point.row;
+            let line_id = symbol.range.start_point.row;
 
-            if let Some(line) = self.lines.get_mut(&line_idx) {
+            if let Some(line) = self.lines.get_mut(&line_id) {
                 line.push(' ');
                 line.push_str(&comment.value);
             } else {
-                self.lines.insert(line_idx, comment.value.clone());
+                self.lines.insert(line_id, comment.value.clone());
             }
         }
     }
@@ -351,17 +351,17 @@ impl<'a> Formatter<'a> {
         let value_symbol = self.source.tree.get_symbol(symbol.sid);
         let scope = self.source.tree.get_scope(value_symbol.scope);
         let key_symbol = self.source.tree.get_symbol(scope.symbols[0]);
-        let line_idx = scope.range.start_point.row;
+        let line_id = scope.range.start_point.row;
 
         let key_str = key_symbol.kind.as_key_unchecked();
         let value_str = symbol.value.format(false);
         let assignment_str = format!("{key_str}={value_str}");
 
-        if let Some(line) = self.lines.get_mut(&line_idx) {
+        if let Some(line) = self.lines.get_mut(&line_id) {
             line.push_str(&format!(" | {assignment_str}"));
         } else {
             self.lines
-                .insert(line_idx, format!("[{prefix}] {assignment_str}"));
+                .insert(line_id, format!("[{prefix}] {assignment_str}"));
         }
     }
 

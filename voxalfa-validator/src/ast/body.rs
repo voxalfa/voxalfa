@@ -22,6 +22,7 @@ impl Section {
 
 #[derive(Debug, Default)]
 pub struct SubSection {
+    pub id: usize,
     pub sid: ScopeId,
     pub dynamics: Dynamics,
     pub solfa: Vec<SolfaLine>,
