@@ -20,7 +20,12 @@ export default grammar({
     _header_line: ($) =>
       choice($.metadata_line, $.parameter_line, $._linebreak),
 
-    body: ($) => sep1("--", $.section),
+    body: ($) => sep1($._section_separator, $.section),
+
+    _section_separator: ($) => choice($.section_split, $.section_merge),
+
+    section_split: () => "--",
+    section_merge: () => "<<",
 
     section: ($) => sep1("++", $.sub_section),
 

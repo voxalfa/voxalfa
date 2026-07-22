@@ -8,6 +8,7 @@ pub struct Section {
     pub sid: ScopeId,
     pub sub_sections: Vec<SubSection>,
     pub params: CompositionParams,
+    pub merge: bool,
 }
 
 impl Section {

@@ -34,6 +34,8 @@ pub struct HeaderMetadata {
     pub verses: Field<usize>,
     pub description: Field<String>,
     pub release: Field<usize>,
+    pub language: Field<String>,
+    pub tags: Field<Vec<String>>,
 }
 
 impl FieldAssign for HeaderMetadata {
@@ -46,6 +48,8 @@ impl FieldAssign for HeaderMetadata {
             "verses" => context.assign_field(data, &mut self.verses),
             "description" => context.assign_field(data, &mut self.description),
             "release" => context.assign_field(data, &mut self.release),
+            "language" => context.assign_field(data, &mut self.language),
+            "tags" => context.assign_field(data, &mut self.tags),
             _ => {
                 context.report_error(
                     data.full_range,

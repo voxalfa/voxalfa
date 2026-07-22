@@ -126,6 +126,8 @@ impl<'a> Formatter<'a> {
         self.append_assignement("#", meta.verses.as_ref());
         self.append_assignement("#", meta.description.as_ref());
         self.append_assignement("#", meta.release.as_ref());
+        self.append_assignement("#", meta.language.as_ref());
+        self.append_assignement("#", meta.tags.as_ref());
 
         if checkpoint != self.last_line() {
             self.append_separators("\n\n");

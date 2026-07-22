@@ -20,6 +20,7 @@ pub struct SectionIR {
     pub sid: ScopeId,
     pub sub_sections: Vec<SubSectionIR>,
     pub params: CompositionParams,
+    pub merge: bool,
 }
 
 impl SectionIR {

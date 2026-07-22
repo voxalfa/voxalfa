@@ -10,6 +10,14 @@
         {
           "type": "section",
           "named": true
+        },
+        {
+          "type": "section_merge",
+          "named": true
+        },
+        {
+          "type": "section_split",
+          "named": true
         }
       ]
     }
@@ -683,10 +691,6 @@
     "named": false
   },
   {
-    "type": "--",
-    "named": false
-  },
-  {
     "type": "---",
     "named": false
   },
@@ -780,6 +784,14 @@
   },
   {
     "type": "prolonged_note",
+    "named": true
+  },
+  {
+    "type": "section_merge",
+    "named": true
+  },
+  {
+    "type": "section_split",
     "named": true
   },
   {

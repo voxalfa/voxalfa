@@ -149,9 +149,15 @@ impl<'a> DocumentValidator<'a> {
 
         let mut section = Section::new(sid);
 
+        if let Some(prev) = node.prev_sibling() {
+            if prev.kind_id() == node_types::SECTION_MERGE {
+                section.merge = true;
+            }
+        }
+
         for child in node.named_children(&mut node.walk()) {
             if child.kind_id() == node_types::SUB_SECTION {
-                self.handle_section_node(child, sid, &mut section);
+                self.handle_sub_section_node(child, sid, &mut section);
             }
         }
 
@@ -168,6 +174,7 @@ impl<'a> DocumentValidator<'a> {
         let result = SectionIR {
             sid: section.sid,
             params: section.params,
+            merge: section.merge,
             sub_sections,
         };
 
@@ -558,7 +565,12 @@ impl<'a> DocumentValidator<'a> {
         Some(PulseToken { sid, value: kind })
     }
 
-    fn handle_section_node(&mut self, node: Node<'_>, parent_sid: ScopeId, section: &mut Section) {
+    fn handle_sub_section_node(
+        &mut self,
+        node: Node<'_>,
+        parent_sid: ScopeId,
+        section: &mut Section,
+    ) {
         let sid = self
             .tree
             .add_scope(ScopeKind::SubSection, node.range(), parent_sid.into());
