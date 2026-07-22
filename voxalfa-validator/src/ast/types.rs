@@ -123,7 +123,7 @@ impl TryFrom<&str> for Voice {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum DynamicKind {
     P,
     MP,
@@ -138,6 +138,15 @@ pub enum DynamicKind {
     Seg,
     Cre,
     Dec,
+}
+
+impl DynamicKind {
+    pub fn expected_params(self) -> usize {
+        match self {
+            DynamicKind::Cre | DynamicKind::Dec => 2,
+            _ => 1,
+        }
+    }
 }
 
 impl TryFrom<&str> for DynamicKind {
@@ -168,6 +177,16 @@ pub struct Dynamic {
     pub kind: DynamicKind,
     pub start: f32,
     pub end: f32,
+}
+
+impl Dynamic {
+    pub fn is_mark(&self) -> bool {
+        self.start == self.end
+    }
+
+    pub fn is_range(&self) -> bool {
+        self.start < self.end
+    }
 }
 
 #[cfg(test)]

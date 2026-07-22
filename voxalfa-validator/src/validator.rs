@@ -3,6 +3,7 @@ use tree_sitter::{Node, QueryCursor, StreamingIterator};
 use crate::{
     ast::{
         body::{Section, SubSection},
+        dynamics::Dynamics,
         header::Header,
         lyrics::{
             LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind,
@@ -23,6 +24,7 @@ use crate::{
         utils::{BeatBuffer, UnderlineBuffer},
     },
     output::ValidatorOutput,
+    timeline::{DynamicsBuffer, Timeline},
     ts_utils::{
         context::TSContext,
         generated::node_types,
@@ -39,6 +41,7 @@ pub struct DocumentValidator<'a> {
     pub header: Header,
     pub ir: DocumentIR,
     pub diagnostics: Vec<Diagnostic>,
+    pub timeline: Timeline,
 }
 
 impl<'a> DocumentValidator<'a> {
@@ -49,6 +52,7 @@ impl<'a> DocumentValidator<'a> {
             tree: SymbolTree::default(),
             ir: DocumentIR::default(),
             diagnostics: Vec::default(),
+            timeline: Timeline::default(),
         }
     }
 
@@ -65,6 +69,7 @@ impl<'a> DocumentValidator<'a> {
             header: self.header,
             ir: self.ir,
             diagnostics: self.diagnostics,
+            timeline: self.timeline,
         }
     }
 
@@ -793,16 +798,30 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn validate_sections(&mut self, sections: &[SectionIR]) {
+        let mut buffer = DynamicsBuffer::default();
+
         for (section_idx, section) in sections.iter().enumerate() {
             self.validte_section(section);
 
             if section.merge {
                 self.validate_section_merge(section_idx, &sections);
+            } else {
+                buffer.init_section();
             }
 
-            // TODO: dynamics valdaition
-            // for (sub_idx, sub_section) in section.items.iter().enumerate() {
-            // }
+            for (sub_idx, sub_section) in section.items.iter().enumerate() {
+                let dynamics = self.resolve_root_dynamics(section_idx, sub_idx, sections);
+
+                if let Some(dynamics) = dynamics {
+                    buffer.process(sub_section, dynamics);
+
+                    let next_section = sections.get(section_idx + 1);
+
+                    if next_section.is_some_and(|s| !s.merge) || next_section.is_none() {
+                        self.validate_dynamics_buffer(dynamics, &mut buffer);
+                    }
+                }
+            }
         }
     }
 
@@ -821,6 +840,36 @@ impl<'a> DocumentValidator<'a> {
                 self.report_error(range, DiagnosticKind::InvalidSectionMerge(context_range));
             }
         }
+    }
+
+    fn validate_dynamics_buffer(&mut self, dynamics: &Dynamics, buffer: &mut DynamicsBuffer) {
+        if buffer.is_empty() {
+            return;
+        }
+
+        for (id, dynamic) in dynamics.value.iter().enumerate() {
+            if !buffer.has_processed(id) {
+                self.report_error(
+                    self.tree.get_symbol_range(dynamic.sid),
+                    DiagnosticKind::UnmatchedDynamic,
+                );
+            }
+        }
+
+        self.timeline.dynamics.extend(buffer.drain());
+    }
+
+    fn resolve_root_dynamics(
+        &self,
+        section_idx: usize,
+        sub_idx: usize,
+        sections: &'a [SectionIR],
+    ) -> Option<&'a Dynamics> {
+        sections[..=section_idx]
+            .iter()
+            .rev()
+            .find(|s| !s.merge)
+            .and_then(|s| s.items.get(sub_idx).map(|sub| &sub.dynamics))
     }
 
     fn resolve_lyric_line(

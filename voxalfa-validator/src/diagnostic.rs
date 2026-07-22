@@ -80,6 +80,8 @@ pub enum DiagnosticKind {
     UnusedLyricJoin(Range),
     #[error("merged section structure does not match previous")]
     InvalidSectionMerge(Range),
+    #[error("dynamic is unmatched")]
+    UnmatchedDynamic,
 }
 
 impl DiagnosticKind {
@@ -118,6 +120,7 @@ impl DiagnosticKind {
             DiagnosticKind::ExpectedLyricJoin(_) => "E031",
             DiagnosticKind::UnusedLyricJoin(_) => "E032",
             DiagnosticKind::InvalidSectionMerge(_) => "E033",
+            DiagnosticKind::UnmatchedDynamic => "E034",
         }
     }
 

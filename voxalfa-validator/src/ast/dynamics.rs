@@ -22,10 +22,7 @@ impl FieldAssign for Dynamics {
                 .parse_node::<Vec<_>>(data.value_node)
                 .unwrap_or_default();
 
-            let expected_params = match kind {
-                DynamicKind::Cre | DynamicKind::Dec => 2,
-                _ => 1,
-            };
+            let expected_params = kind.expected_params();
 
             if params.len() != expected_params {
                 context.report_error(
