@@ -78,6 +78,8 @@ pub enum DiagnosticKind {
     ExpectedLyricJoin(Range),
     #[error("lyrics join is unused (must be followed by a section)")]
     UnusedLyricJoin(Range),
+    #[error("merged section structure does not match previous")]
+    InvalidSectionMerge(Range),
 }
 
 impl DiagnosticKind {
@@ -115,6 +117,7 @@ impl DiagnosticKind {
             DiagnosticKind::NonTopLevelParamsOverride(_) => "E030",
             DiagnosticKind::ExpectedLyricJoin(_) => "E031",
             DiagnosticKind::UnusedLyricJoin(_) => "E032",
+            DiagnosticKind::InvalidSectionMerge(_) => "E033",
         }
     }
 
@@ -182,6 +185,10 @@ impl DiagnosticKind {
             }],
             DiagnosticKind::UnusedLyricJoin(range) => vec![DiagnosticRelatedInfo {
                 message: "consider adding a next section".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::InvalidSectionMerge(range) => vec![DiagnosticRelatedInfo {
+                message: "root section defined here".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),

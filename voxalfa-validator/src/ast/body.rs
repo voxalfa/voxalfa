@@ -6,7 +6,7 @@ use crate::ast::{
 #[derive(Debug, Default)]
 pub struct Section {
     pub sid: ScopeId,
-    pub sub_sections: Vec<SubSection>,
+    pub items: Vec<SubSection>,
     pub params: CompositionParams,
     pub merge: bool,
 }

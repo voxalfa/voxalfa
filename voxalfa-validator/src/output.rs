@@ -29,7 +29,7 @@ impl ValidatorOutput {
         self.ir
             .sections
             .iter()
-            .flat_map(|s| &s.sub_sections)
+            .flat_map(|s| &s.items)
             .flat_map(|s| &s.solfa)
             .flat_map(|s| s.pulses.iter().map(|p| p.factor).max())
             .max()
@@ -77,7 +77,7 @@ impl ValidatorOutput {
         self.ir
             .sections
             .iter()
-            .flat_map(|s| &s.sub_sections)
+            .flat_map(|s| &s.items)
             .flat_map(|s| &s.lyrics)
             .flat_map(|l| &l.columns)
             .map(|col| self.resolve_lyric_column_width(col, render_type))
@@ -89,7 +89,7 @@ impl ValidatorOutput {
         self.ir
             .sections
             .iter()
-            .flat_map(|s| &s.sub_sections)
+            .flat_map(|s| &s.items)
             .flat_map(|s| &s.solfa)
             .flat_map(|s| &s.pulses)
             .flat_map(|p| &p.columns)

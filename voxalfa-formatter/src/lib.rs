@@ -85,8 +85,8 @@ impl<'a> Formatter<'a> {
             self.append_separators("\n\n");
             self.process_params(&section.params);
 
-            for (sub_idx, sub) in section.sub_sections.iter().enumerate() {
-                let sub_data = &section.sub_sections[sub_idx];
+            for (sub_idx, sub) in section.items.iter().enumerate() {
+                let sub_data = &section.items[sub_idx];
 
                 if sub_idx > 0 {
                     self.append_separators("\n\n");
@@ -105,7 +105,7 @@ impl<'a> Formatter<'a> {
                     self.process_lyrics(&sub.views, lyrics, verse, is_last_section);
                 }
 
-                if sub_idx != section.sub_sections.len() - 1 {
+                if sub_idx != section.items.len() - 1 {
                     self.append_separators("\n\n++");
                 }
             }

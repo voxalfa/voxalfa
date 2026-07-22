@@ -18,14 +18,14 @@ pub struct DocumentIR {
 #[derive(Debug, Default)]
 pub struct SectionIR {
     pub sid: ScopeId,
-    pub sub_sections: Vec<SubSectionIR>,
+    pub items: Vec<SubSectionIR>,
     pub params: CompositionParams,
     pub merge: bool,
 }
 
 impl SectionIR {
     pub fn get_lyrics(&self, voice: &Voice) -> Option<&[LyricLineIR]> {
-        self.sub_sections.iter().find_map(|s| {
+        self.items.iter().find_map(|s| {
             s.solfa
                 .iter()
                 .any(|s| s.voice == *voice)

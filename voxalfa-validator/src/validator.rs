@@ -136,10 +136,14 @@ impl<'a> DocumentValidator<'a> {
         self.validate_lyrics_join(&sections);
 
         // strip away unused data and transform raw token streams into structured data
-        self.ir.sections = sections
+        let sections_ir = sections
             .into_iter()
             .map(|s| self.build_section_ir(s))
-            .collect();
+            .collect::<Vec<_>>();
+
+        self.validate_sections(&sections_ir);
+
+        self.ir.sections = sections_ir;
     }
 
     fn resolve_section(&mut self, node: Node<'_>, parent_sid: ScopeId) -> Section {
@@ -165,22 +169,18 @@ impl<'a> DocumentValidator<'a> {
     }
 
     fn build_section_ir(&mut self, section: Section) -> SectionIR {
-        let sub_sections = section
-            .sub_sections
+        let blocks = section
+            .items
             .into_iter()
             .map(|s| self.build_sub_section_ir(s))
             .collect::<Vec<_>>();
 
-        let result = SectionIR {
+        SectionIR {
             sid: section.sid,
             params: section.params,
             merge: section.merge,
-            sub_sections,
-        };
-
-        self.validte_section_ir(&result);
-
-        result
+            items: blocks,
+        }
     }
 
     fn build_sub_section_ir(&mut self, section: SubSection) -> SubSectionIR {
@@ -384,8 +384,8 @@ impl<'a> DocumentValidator<'a> {
         views
     }
 
-    fn validte_section_ir(&mut self, section: &SectionIR) {
-        for sub_section in &section.sub_sections {
+    fn validte_section(&mut self, section: &SectionIR) {
+        for sub_section in &section.items {
             self.validate_sub_section_ir(sub_section);
         }
     }
@@ -591,7 +591,7 @@ impl<'a> DocumentValidator<'a> {
             }
         }
 
-        section.sub_sections.push(result);
+        section.items.push(result);
     }
 
     fn handle_sction_param_node(
@@ -600,7 +600,7 @@ impl<'a> DocumentValidator<'a> {
         section_sid: ScopeId,
         section: &mut Section,
     ) {
-        if !section.sub_sections.is_empty() {
+        if !section.items.is_empty() {
             let context_range = self.tree.get_scope_range(section.sid).start();
 
             self.report_error(
@@ -616,7 +616,7 @@ impl<'a> DocumentValidator<'a> {
         let time_signature = self.header.params.time.clone();
 
         let solfa = section
-            .sub_sections
+            .items
             .iter()
             .flat_map(|s| &s.solfa)
             .collect::<Vec<_>>();
@@ -720,7 +720,7 @@ impl<'a> DocumentValidator<'a> {
         let context_range = self.tree.get_symbol_range(voices.sid);
 
         let voices = section
-            .sub_sections
+            .items
             .iter()
             .flat_map(|sub| sub.solfa.iter().map(|s| &s.voice))
             .collect::<Vec<_>>();
@@ -762,7 +762,7 @@ impl<'a> DocumentValidator<'a> {
     fn validate_lyrics_join(&mut self, sections: &[Section]) {
         for (id, section) in sections.iter().enumerate() {
             if let Some(next_section) = sections.get(id + 1) {
-                for line in section.sub_sections.iter().flat_map(|s| &s.lyrics) {
+                for line in section.items.iter().flat_map(|s| &s.lyrics) {
                     if line.anchor.is_none() {
                         let range = self.tree.get_scope_range(line.sid);
                         let context_range = self.tree.get_scope_range(next_section.sid);
@@ -774,7 +774,7 @@ impl<'a> DocumentValidator<'a> {
                     }
                 }
             } else {
-                for line in section.sub_sections.iter().flat_map(|s| &s.lyrics) {
+                for line in section.items.iter().flat_map(|s| &s.lyrics) {
                     if let Some((anchor_range, LyricToken::Operator(op))) =
                         line.anchor.zip(line.tokens.last())
                     {
@@ -788,6 +788,37 @@ impl<'a> DocumentValidator<'a> {
                         );
                     }
                 }
+            }
+        }
+    }
+
+    fn validate_sections(&mut self, sections: &[SectionIR]) {
+        for (section_idx, section) in sections.iter().enumerate() {
+            self.validte_section(section);
+
+            if section.merge {
+                self.validate_section_merge(section_idx, &sections);
+            }
+
+            // TODO: dynamics valdaition
+            // for (sub_idx, sub_section) in section.items.iter().enumerate() {
+            // }
+        }
+    }
+
+    fn validate_section_merge(&mut self, section_idx: usize, sections: &[SectionIR]) {
+        let current = &sections[section_idx];
+        let root = sections[..section_idx].iter().rev().find(|s| !s.merge);
+
+        if let Some(root) = root {
+            let current_dist = root.items.iter().map(|sub| sub.solfa.len());
+            let target_dist = current.items.iter().map(|sub| sub.solfa.len());
+
+            if !current_dist.eq(target_dist) {
+                let range = self.tree.get_scope_range(current.sid);
+                let context_range = self.tree.get_scope_range(root.sid);
+
+                self.report_error(range, DiagnosticKind::InvalidSectionMerge(context_range));
             }
         }
     }

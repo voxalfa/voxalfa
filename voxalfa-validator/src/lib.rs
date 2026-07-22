@@ -4,6 +4,7 @@ pub mod error;
 pub mod ir;
 pub mod output;
 pub mod render;
+pub mod timeline;
 pub mod ts_utils;
 pub mod validator;
 
