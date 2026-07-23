@@ -1,9 +1,6 @@
 mod primitives;
 
-use std::{
-    collections::BTreeMap,
-    io::{self, Write},
-};
+use std::io::{self, Write};
 
 use voxalfa_validator::{
     ast::{
@@ -17,27 +14,75 @@ use voxalfa_validator::{
     },
     output::FinalOutput,
     render::RenderType,
+    ts_utils::range::RangeUtil,
 };
 
 use crate::primitives::Formattable;
+
+#[derive(Debug, Clone, Copy)]
+pub enum Assignment {
+    Metadata,
+    Params,
+    Dynamics,
+}
+
+impl Assignment {
+    fn prefix(self) -> &'static str {
+        match self {
+            Assignment::Metadata => "#",
+            Assignment::Params => "$",
+            Assignment::Dynamics => "^",
+        }
+    }
+
+    fn rank(self) -> LineRank {
+        match self {
+            Assignment::Metadata => LineRank::Metadata,
+            Assignment::Params => LineRank::Params,
+            Assignment::Dynamics => LineRank::Dynamics,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LineRank {
+    #[default]
+    Unspecified,
+    Metadata,
+    Params,
+    Dynamics,
+    Solfa,
+    Lyrics,
+    Delimiter,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PartialLine {
+    pub scope: usize,
+    pub rank: LineRank,
+    pub line_id: usize,
+    pub index: usize,
+    pub content: String,
+}
 
 #[derive(Debug)]
 pub struct Formatter<'a> {
     col_width: usize,
     col_factor: usize,
     source: &'a FinalOutput,
-    lines: BTreeMap<usize, String>,
-    separators: BTreeMap<usize, String>,
+    partials: Vec<PartialLine>,
+    mergable_lines: Vec<usize>,
+    current_scope: usize,
 }
 
-// TODO: line ranking and sorting for unified formatting outputs
 impl<'a> Formatter<'a> {
     pub fn new(source: &'a FinalOutput) -> Self {
         Self {
             col_width: source.resolve_column_width(RenderType::Text) + 1,
             col_factor: source.resolve_column_factor(),
-            lines: BTreeMap::new(),
-            separators: BTreeMap::new(),
+            partials: Vec::new(),
+            mergable_lines: Vec::new(),
+            current_scope: 0,
             source,
         }
     }
@@ -45,29 +90,30 @@ impl<'a> Formatter<'a> {
     pub fn format<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
         self.process_metadata(&self.source.header.metadata);
         self.process_params(&self.source.header.params);
+        self.push_delimiter();
         self.process_body();
-        self.process_extra_symbols();
+        self.process_comments();
 
         self.finalize(writer)
     }
 
-    fn finalize<W: Write>(self, writer: &mut W) -> Result<(), io::Error> {
-        let mut lines = self.lines.into_iter().peekable();
+    fn finalize<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
+        self.partials.sort();
 
-        while let Some((line_id, line)) = lines.next() {
-            writer.write_all(line.as_bytes())?;
+        let mut lines = self.partials.into_iter().peekable();
 
-            if let Some(separator) = self.separators.get(&line_id) {
-                writer.write_all(separator.as_bytes())?;
-            } else {
-                if let Some((next_line_id, _)) = lines.peek()
-                    && next_line_id - line_id > 1
-                {
-                    writer.write_all(b"\n")?;
-                }
+        while let Some(line) = lines.next() {
+            writer.write_all(line.content.as_bytes())?;
 
-                if lines.peek().is_some() {
-                    writer.write_all(b"\n")?;
+            if let Some(next) = lines.peek() {
+                if next.rank != line.rank {
+                    writer.write_all(b"\n\n")?;
+                } else {
+                    match next.line_id.saturating_sub(line.line_id) {
+                        0 => {} // Same line
+                        1 => writer.write_all(b"\n")?,
+                        _ => writer.write_all(b"\n\n")?,
+                    }
                 }
             }
         }
@@ -79,50 +125,53 @@ impl<'a> Formatter<'a> {
         for (section_id, section) in self.source.ir.sections.iter().enumerate() {
             self.process_params(&section.params);
 
-            for (sub_id, sub) in section.items.iter().enumerate() {
-                let sub_data = &section.items[sub_id];
+            for sub_section in &section.items {
+                self.process_dynamics(&sub_section.dynamics);
 
-                self.process_dynamics(&sub_data.dynamics);
-
-                for solfa in &sub.solfa {
+                for solfa in &sub_section.solfa {
                     self.process_solfa(solfa);
                 }
 
-                for (lyrics_id, lyrics) in sub.lyrics.iter().enumerate() {
+                for (lyrics_id, lyrics) in sub_section.lyrics.iter().enumerate() {
                     let verse = lyrics_id + 1;
                     let is_last_section = section_id == self.source.ir.sections.len() - 1;
 
-                    self.process_lyrics(&sub.views, lyrics, verse, is_last_section);
+                    self.process_lyrics(&sub_section.views, lyrics, verse, is_last_section);
                 }
             }
+
+            self.push_delimiter();
         }
+
+        self.push_delimiter();
     }
 
     fn process_metadata(&mut self, meta: &HeaderMetadata) {
-        self.append_assignement("#", meta.title.as_ref());
-        self.append_assignement("#", meta.author.as_ref());
-        self.append_assignement("#", meta.composer.as_ref());
-        self.append_assignement("#", meta.voices.as_ref());
-        self.append_assignement("#", meta.verses.as_ref());
-        self.append_assignement("#", meta.description.as_ref());
-        self.append_assignement("#", meta.release.as_ref());
-        self.append_assignement("#", meta.language.as_ref());
-        self.append_assignement("#", meta.tags.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.title.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.author.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.composer.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.voices.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.verses.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.description.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.release.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.language.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.tags.as_ref());
     }
 
     fn process_params(&mut self, params: &CompositionParams) {
-        self.append_assignement("$", params.key.as_ref());
-        self.append_assignement("$", params.time.as_ref());
-        self.append_assignement("$", params.bpm.as_ref());
+        self.add_assignment(Assignment::Params, params.key.as_ref());
+        self.add_assignment(Assignment::Params, params.time.as_ref());
+        self.add_assignment(Assignment::Params, params.bpm.as_ref());
     }
 
     fn process_dynamics(&mut self, dynamics: &Dynamics) {
         for dynamic in &dynamics.value {
-            self.append_assignement("^", Some(dynamic));
+            self.add_assignment(Assignment::Dynamics, Some(dynamic));
         }
     }
 
     fn process_solfa(&mut self, solfa: &SolfaLineIR) {
+        let rank = LineRank::Solfa;
         let scope = self.source.tree.get_scope(solfa.sid);
         let line_id = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
@@ -136,7 +185,7 @@ impl<'a> Formatter<'a> {
 
         buffer.push_str("||");
 
-        self.lines.insert(line_id, buffer);
+        self.push_line(rank, line_id, buffer);
     }
 
     fn format_pulse(&mut self, pulse: &PulseIR) -> String {
@@ -185,6 +234,7 @@ impl<'a> Formatter<'a> {
         let scope = self.source.tree.get_scope(line.sid);
         let line_id = scope.range.start_point.row;
         let last_lyric_id = line.columns.len() - 1;
+        let rank = LineRank::Lyrics;
 
         for (lyric_id, lyric_col) in line.columns.iter().enumerate() {
             let lyric_str = self.resolve_lyric_column(lyric_col);
@@ -229,7 +279,7 @@ impl<'a> Formatter<'a> {
             }
         }
 
-        self.lines.insert(line_id, buffer);
+        self.push_line(rank, line_id, buffer);
     }
 
     fn resolve_lyric_column(&self, column: &LyricColumnIR) -> String {
@@ -283,39 +333,36 @@ impl<'a> Formatter<'a> {
         buffer
     }
 
-    fn process_extra_symbols(&mut self) {
-        for delimiter in &self.source.delimiters {
-            let mut buffer = String::new();
-
-            if delimiter.line > 0 && self.lines.get(&(delimiter.line - 1)).is_some() {
-                buffer.push('\n');
-            }
-
-            buffer.push_str(&delimiter.kind.to_string());
-
-            if self.lines.get(&(delimiter.line + 1)).is_some() {
-                buffer.push('\n');
-            }
-
-            self.lines.insert(delimiter.line, buffer);
-        }
-
+    fn process_comments(&mut self) {
         for comment in &self.source.tree.comments {
-            let symbol = self.source.tree.get_symbol(comment.sid);
-            let line_id = symbol.range.start_point.row;
+            let line_id = self.source.tree.get_symbol_range(comment.sid).line();
 
-            if let Some(line) = self.lines.get_mut(&line_id) {
-                line.push(' ');
-                line.push_str(&comment.value);
-            } else {
-                self.lines.insert(line_id, comment.value.clone());
-            }
+            let nearest = self
+                .partials
+                .iter()
+                .find(|p| p.line_id >= line_id)
+                .or_else(|| self.partials.iter().max_by_key(|p| p.line_id));
+
+            let (scope, rank) = nearest.map(|p| (p.scope, p.rank)).unwrap_or_default();
+
+            let content = match self.mergable_lines.contains(&line_id) {
+                true => format!(" {}", comment.value),
+                false => comment.value.clone(),
+            };
+
+            self.partials.push(PartialLine {
+                index: self.partials.len(),
+                scope,
+                rank,
+                line_id,
+                content,
+            });
         }
     }
 
-    fn append_assignement<F: Formattable>(
+    fn add_assignment<F: Formattable>(
         &mut self,
-        prefix: &str,
+        kind: Assignment,
         symbol_ref: Option<&SymbolRef<F>>,
     ) {
         let Some(symbol) = symbol_ref else { return };
@@ -329,11 +376,40 @@ impl<'a> Formatter<'a> {
         let value_str = symbol.value.format(false);
         let assignment_str = format!("{key_str}={value_str}");
 
-        if let Some(line) = self.lines.get_mut(&line_id) {
-            line.push_str(&format!(" | {assignment_str}"));
-        } else {
-            self.lines
-                .insert(line_id, format!("[{prefix}] {assignment_str}"));
+        let prefix = kind.prefix();
+        let rank = kind.rank();
+
+        let content = match self.mergable_lines.contains(&line_id) {
+            true => format!(" | {assignment_str}"),
+            false => format!("[{prefix}] {assignment_str}"),
+        };
+
+        self.push_line(rank, line_id, content);
+    }
+
+    fn push_line(&mut self, rank: LineRank, line_id: usize, content: String) {
+        self.partials.push(PartialLine {
+            scope: self.current_scope,
+            index: self.partials.len(),
+            rank,
+            line_id,
+            content,
+        });
+
+        self.mergable_lines.push(line_id);
+    }
+
+    fn push_delimiter(&mut self) {
+        if let Some(delimiter) = self.source.delimiters.get(self.current_scope) {
+            self.partials.push(PartialLine {
+                scope: self.current_scope,
+                rank: LineRank::Delimiter,
+                line_id: delimiter.line,
+                content: delimiter.kind.to_string(),
+                index: self.partials.len(),
+            });
+
+            self.current_scope += 1;
         }
     }
 }
