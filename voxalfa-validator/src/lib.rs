@@ -4,7 +4,7 @@ use crate::{
     ir::builder::IRBuilder,
     output::FinalOutput,
     ts_utils::context::TSContext,
-    validator::{Validator, ValidatorOutput},
+    validation::validator::{Validator, ValidatorOutput},
 };
 
 pub mod ast;
@@ -13,9 +13,8 @@ pub mod error;
 pub mod ir;
 pub mod output;
 pub mod render;
-pub mod timeline;
 pub mod ts_utils;
-pub mod validator;
+pub mod validation;
 
 pub struct MultiStepValidator {
     ts_context: TSContext,

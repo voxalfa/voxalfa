@@ -13,8 +13,9 @@ use crate::{
         types::{DiagnosticKind, ReportStage},
     },
     ir::{BodyIR, SectionIR, SubSectionIR},
-    timeline::{DynamicsBuffer, TimelineMap},
+    output::TimelineMap,
     ts_utils::range::RangeUtil,
+    validation::timeline::DynamicsBuffer,
 };
 
 #[derive(Debug)]
