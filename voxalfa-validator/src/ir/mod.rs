@@ -1,3 +1,4 @@
+pub mod builder;
 pub mod lyrics;
 pub mod solfa;
 pub mod utils;
@@ -11,7 +12,7 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
-pub struct DocumentIR {
+pub struct BodyIR {
     pub sections: Vec<SectionIR>,
 }
 

@@ -2,7 +2,7 @@ use crate::{
     ast::{header::Header, symbols::SymbolTree},
     diagnostic::Diagnostic,
     ir::{
-        DocumentIR,
+        BodyIR,
         lyrics::{LyricColumnIR, LyricPrimitive, LyricStringIR},
         solfa::PulseColumnKind,
     },
@@ -14,7 +14,7 @@ use crate::{
 pub struct ValidatorOutput {
     pub tree: SymbolTree,
     pub header: Header,
-    pub ir: DocumentIR,
+    pub ir: BodyIR,
     pub diagnostics: Vec<Diagnostic>,
     pub map: TimelineMap,
 }

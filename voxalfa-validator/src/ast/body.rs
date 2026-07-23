@@ -4,6 +4,21 @@ use crate::ast::{
 };
 
 #[derive(Debug, Default)]
+pub struct Body {
+    pub sid: ScopeId,
+    pub sections: Vec<Section>,
+}
+
+impl Body {
+    pub fn new(sid: ScopeId) -> Self {
+        Self {
+            sid,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Section {
     pub sid: ScopeId,
     pub items: Vec<SubSection>,
