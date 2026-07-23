@@ -1,4 +1,5 @@
 mod primitives;
+mod types;
 
 use std::io::{self, Write};
 
@@ -17,53 +18,10 @@ use voxalfa_validator::{
     ts_utils::range::RangeUtil,
 };
 
-use crate::primitives::Formattable;
-
-#[derive(Debug, Clone, Copy)]
-pub enum Assignment {
-    Metadata,
-    Params,
-    Dynamics,
-}
-
-impl Assignment {
-    fn prefix(self) -> &'static str {
-        match self {
-            Assignment::Metadata => "#",
-            Assignment::Params => "$",
-            Assignment::Dynamics => "^",
-        }
-    }
-
-    fn rank(self) -> LineRank {
-        match self {
-            Assignment::Metadata => LineRank::Metadata,
-            Assignment::Params => LineRank::Params,
-            Assignment::Dynamics => LineRank::Dynamics,
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LineRank {
-    #[default]
-    Unspecified,
-    Metadata,
-    Params,
-    Dynamics,
-    Solfa,
-    Lyrics,
-    Delimiter,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PartialLine {
-    pub scope: usize,
-    pub rank: LineRank,
-    pub line_id: usize,
-    pub index: usize,
-    pub content: String,
-}
+use crate::{
+    primitives::Formattable,
+    types::{Assignment, LineRank, PartialLine},
+};
 
 #[derive(Debug)]
 pub struct Formatter<'a> {
@@ -171,7 +129,6 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_solfa(&mut self, solfa: &SolfaLineIR) {
-        let rank = LineRank::Solfa;
         let scope = self.source.tree.get_scope(solfa.sid);
         let line_id = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
@@ -185,7 +142,7 @@ impl<'a> Formatter<'a> {
 
         buffer.push_str("||");
 
-        self.push_line(rank, line_id, buffer);
+        self.push_line(LineRank::Solfa, line_id, buffer);
     }
 
     fn format_pulse(&mut self, pulse: &PulseIR) -> String {
