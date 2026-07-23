@@ -337,11 +337,15 @@ impl<'a> Formatter<'a> {
         for comment in &self.source.tree.comments {
             let line_id = self.source.tree.get_symbol_range(comment.sid).line();
 
-            let nearest = self
-                .partials
-                .iter()
-                .find(|p| p.line_id >= line_id)
-                .or_else(|| self.partials.iter().max_by_key(|p| p.line_id));
+            let nearest = self.partials.iter().min_by_key(|p| {
+                if p.line_id == line_id {
+                    (0, 0) // Priority 0: exact inline match
+                } else if p.line_id > line_id {
+                    (1, p.line_id - line_id) // priority 1: closest line after comment
+                } else {
+                    (2, line_id - p.line_id) // priority 2: closest line before comment (EOF fallback)
+                }
+            });
 
             let (scope, rank) = nearest.map(|p| (p.scope, p.rank)).unwrap_or_default();
 
