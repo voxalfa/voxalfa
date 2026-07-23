@@ -30,6 +30,7 @@ pub struct Formatter<'a> {
     separators: BTreeMap<usize, String>,
 }
 
+// TODO: line ranking and sorting for unified formatting outputs
 impl<'a> Formatter<'a> {
     pub fn new(source: &'a FinalOutput) -> Self {
         Self {
@@ -42,9 +43,10 @@ impl<'a> Formatter<'a> {
     }
 
     pub fn format<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
-        self.process_header();
+        self.process_metadata(&self.source.header.metadata);
+        self.process_params(&self.source.header.params);
         self.process_body();
-        self.process_comments();
+        self.process_extra_symbols();
 
         self.finalize(writer)
     }
@@ -73,24 +75,12 @@ impl<'a> Formatter<'a> {
         Ok(())
     }
 
-    fn process_header(&mut self) {
-        self.process_metadata(&self.source.header.metadata);
-        self.process_params(&self.source.header.params);
-
-        self.append_separators("---");
-    }
-
     fn process_body(&mut self) {
         for (section_id, section) in self.source.ir.sections.iter().enumerate() {
-            self.append_separators("\n\n");
             self.process_params(&section.params);
 
             for (sub_id, sub) in section.items.iter().enumerate() {
                 let sub_data = &section.items[sub_id];
-
-                if sub_id > 0 {
-                    self.append_separators("\n\n");
-                }
 
                 self.process_dynamics(&sub_data.dynamics);
 
@@ -104,21 +94,11 @@ impl<'a> Formatter<'a> {
 
                     self.process_lyrics(&sub.views, lyrics, verse, is_last_section);
                 }
-
-                if sub_id != section.items.len() - 1 {
-                    self.append_separators("\n\n++");
-                }
-            }
-
-            if section_id != self.source.ir.sections.len() - 1 {
-                self.append_separators("\n\n--");
             }
         }
     }
 
     fn process_metadata(&mut self, meta: &HeaderMetadata) {
-        let checkpoint = self.last_line();
-
         self.append_assignement("#", meta.title.as_ref());
         self.append_assignement("#", meta.author.as_ref());
         self.append_assignement("#", meta.composer.as_ref());
@@ -128,31 +108,17 @@ impl<'a> Formatter<'a> {
         self.append_assignement("#", meta.release.as_ref());
         self.append_assignement("#", meta.language.as_ref());
         self.append_assignement("#", meta.tags.as_ref());
-
-        if checkpoint != self.last_line() {
-            self.append_separators("\n\n");
-        }
     }
 
     fn process_params(&mut self, params: &CompositionParams) {
-        let checkpoint = self.last_line();
-
         self.append_assignement("$", params.key.as_ref());
         self.append_assignement("$", params.time.as_ref());
         self.append_assignement("$", params.bpm.as_ref());
-
-        if checkpoint != self.last_line() {
-            self.append_separators("\n\n");
-        }
     }
 
     fn process_dynamics(&mut self, dynamics: &Dynamics) {
         for dynamic in &dynamics.value {
             self.append_assignement("^", Some(dynamic));
-        }
-
-        if !dynamics.value.is_empty() {
-            self.append_separators("\n\n");
         }
     }
 
@@ -317,7 +283,23 @@ impl<'a> Formatter<'a> {
         buffer
     }
 
-    fn process_comments(&mut self) {
+    fn process_extra_symbols(&mut self) {
+        for delimiter in &self.source.delimiters {
+            let mut buffer = String::new();
+
+            if delimiter.line > 0 && self.lines.get(&(delimiter.line - 1)).is_some() {
+                buffer.push('\n');
+            }
+
+            buffer.push_str(&delimiter.kind.to_string());
+
+            if self.lines.get(&(delimiter.line + 1)).is_some() {
+                buffer.push('\n');
+            }
+
+            self.lines.insert(delimiter.line, buffer);
+        }
+
         for comment in &self.source.tree.comments {
             let symbol = self.source.tree.get_symbol(comment.sid);
             let line_id = symbol.range.start_point.row;
@@ -328,16 +310,6 @@ impl<'a> Formatter<'a> {
             } else {
                 self.lines.insert(line_id, comment.value.clone());
             }
-        }
-    }
-
-    fn append_separators(&mut self, separator: &str) {
-        let key = self.last_line();
-
-        if let Some(value) = self.separators.get_mut(&key) {
-            *value = value.to_owned() + separator;
-        } else {
-            self.separators.insert(key, separator.to_string());
         }
     }
 
@@ -363,12 +335,5 @@ impl<'a> Formatter<'a> {
             self.lines
                 .insert(line_id, format!("[{prefix}] {assignment_str}"));
         }
-    }
-
-    fn last_line(&self) -> usize {
-        self.lines
-            .last_key_value()
-            .map(|(&k, _)| k)
-            .unwrap_or_default()
     }
 }

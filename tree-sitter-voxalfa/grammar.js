@@ -13,21 +13,25 @@ export default grammar({
   extras: ($) => [$.inline_comment, $.language_directive, $._space],
 
   rules: {
-    source_file: ($) => seq(optional($.header), "---", optional($.body)),
+    source_file: ($) =>
+      seq(optional($.header), $.header_delimiter, optional($.body)),
 
     header: ($) => repeat1($._header_line),
+    header_delimiter: () => "---",
 
     _header_line: ($) =>
       choice($.metadata_line, $.parameter_line, $._linebreak),
 
     body: ($) => sep1($._section_separator, $.section),
 
-    _section_separator: ($) => choice($.section_split, $.section_merge),
+    _section_separator: ($) =>
+      choice($.section_split_delimiter, $.section_merge_delimiter),
 
-    section_split: () => "--",
-    section_merge: () => "<<",
+    section_split_delimiter: () => "--",
+    section_merge_delimiter: () => "<<",
+    sub_section_delimiter: () => "++",
 
-    section: ($) => sep1("++", $.sub_section),
+    section: ($) => sep1($.sub_section_delimiter, $.sub_section),
 
     sub_section: ($) => repeat1($._section_line),
 

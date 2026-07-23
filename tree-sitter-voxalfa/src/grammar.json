@@ -18,8 +18,8 @@
           ]
         },
         {
-          "type": "STRING",
-          "value": "---"
+          "type": "SYMBOL",
+          "name": "header_delimiter"
         },
         {
           "type": "CHOICE",
@@ -41,6 +41,10 @@
         "type": "SYMBOL",
         "name": "_header_line"
       }
+    },
+    "header_delimiter": {
+      "type": "STRING",
+      "value": "---"
     },
     "_header_line": {
       "type": "CHOICE",
@@ -89,21 +93,25 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "section_split"
+          "name": "section_split_delimiter"
         },
         {
           "type": "SYMBOL",
-          "name": "section_merge"
+          "name": "section_merge_delimiter"
         }
       ]
     },
-    "section_split": {
+    "section_split_delimiter": {
       "type": "STRING",
       "value": "--"
     },
-    "section_merge": {
+    "section_merge_delimiter": {
       "type": "STRING",
       "value": "<<"
+    },
+    "sub_section_delimiter": {
+      "type": "STRING",
+      "value": "++"
     },
     "section": {
       "type": "SEQ",
@@ -118,8 +126,8 @@
             "type": "SEQ",
             "members": [
               {
-                "type": "STRING",
-                "value": "++"
+                "type": "SYMBOL",
+                "name": "sub_section_delimiter"
               },
               {
                 "type": "SYMBOL",

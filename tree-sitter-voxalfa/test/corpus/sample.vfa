@@ -138,6 +138,7 @@ Sample Partition
       (parameter_assignment
         name: (identifier)
         value: (integer))))
+  (header_delimiter)
   (body
     (section
       (sub_section
@@ -384,6 +385,7 @@ Sample Partition
               lyric: (lyric_placeholder))
             (space_operator))
           anchor: (lyric_anchor)))
+      (sub_section_delimiter)
       (sub_section
         (solfa_line
           voice: (identifier)

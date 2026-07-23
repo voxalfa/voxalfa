@@ -4,6 +4,7 @@ pub trait RangeUtil {
     fn start(&self) -> Range;
     fn end(&self) -> Range;
     fn merge(&self, other: Self) -> Range;
+    fn line(&self) -> usize;
 }
 
 impl RangeUtil for Range {
@@ -32,5 +33,9 @@ impl RangeUtil for Range {
             start_point: self.end_point,
             end_point: self.end_point,
         }
+    }
+
+    fn line(&self) -> usize {
+        self.start_point.row
     }
 }

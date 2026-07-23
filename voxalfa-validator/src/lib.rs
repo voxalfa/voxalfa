@@ -53,6 +53,7 @@ impl MultiStepValidator {
             tree: parser_out.tree,
             header: parser_out.header,
             ir: builder_out.body,
+            delimiters: parser_out.delimiters,
             timelines,
             diagnostics,
         }

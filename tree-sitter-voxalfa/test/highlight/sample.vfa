@@ -16,7 +16,6 @@
 [$] key={"C"} | time={4,4} | bpm={100}
 
 ---
-; ^ punctuation.delimiter
 
 [^] p={1} | cre={3,6}
 
@@ -33,4 +32,4 @@
 ;         ^ punctuation.bracket
 ;                     ^ punctuation.bracket
 ;                                                                     ^ constant.builtin
-;                                                       ^ operator
+;                                                     ^ operator

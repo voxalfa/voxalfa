@@ -10,7 +10,8 @@ use crate::{
         },
         solfa::{Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
         symbols::{
-            Comment, Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree,
+            Comment, Delimiter, DelimiterKind, Field, FieldAssign, ScopeId, ScopeKind, SymbolKind,
+            SymbolRef, SymbolTree,
         },
         types::Voice,
     },
@@ -33,6 +34,7 @@ pub struct ParserOutput {
     pub body: Body,
     pub tree: SymbolTree,
     pub reporter: DiagnosticReporter,
+    pub delimiters: Vec<Delimiter>,
 }
 
 #[derive(Debug)]
@@ -40,6 +42,7 @@ pub struct Parser<'a> {
     source: &'a [u8],
     header: Header,
     body: Body,
+    delimiters: Vec<Delimiter>,
     pub(crate) tree: SymbolTree,
     pub(crate) reporter: DiagnosticReporter,
 }
@@ -51,6 +54,7 @@ impl<'a> Parser<'a> {
             header: Header::default(),
             body: Body::default(),
             tree: SymbolTree::default(),
+            delimiters: Vec::new(),
             reporter: DiagnosticReporter::new(ReportStage::Parsing),
         }
     }
@@ -68,6 +72,7 @@ impl<'a> Parser<'a> {
             body: self.body,
             tree: self.tree,
             reporter: self.reporter,
+            delimiters: self.delimiters,
         }
     }
 
@@ -76,6 +81,7 @@ impl<'a> Parser<'a> {
             match child.kind_id() {
                 node_types::HEADER => self.handle_header_node(child),
                 node_types::BODY => self.handle_body_node(child),
+                node_types::HEADER_DELIMITER => self.add_delimiter(child, DelimiterKind::Header),
                 _ => {}
             }
         }
@@ -104,8 +110,15 @@ impl<'a> Parser<'a> {
         self.body.sid = self.tree.add_scope(ScopeKind::Body, node.range(), None);
 
         for child in node.named_children(&mut node.walk()) {
-            if child.kind_id() == node_types::SECTION {
-                self.handle_section_node(child);
+            match child.kind_id() {
+                node_types::SECTION_SPLIT_DELIMITER => {
+                    self.add_delimiter(child, DelimiterKind::SectionSplit)
+                }
+                node_types::SECTION_MERGE_DELIMITER => {
+                    self.add_delimiter(child, DelimiterKind::SectionMerge)
+                }
+                node_types::SECTION => self.handle_section_node(child),
+                _ => {}
             }
         }
     }
@@ -118,14 +131,18 @@ impl<'a> Parser<'a> {
         let mut section = Section::new(sid);
 
         if let Some(prev) = node.prev_sibling()
-            && prev.kind_id() == node_types::SECTION_MERGE
+            && prev.kind_id() == node_types::SECTION_MERGE_DELIMITER
         {
             section.merge = true;
         }
 
         for child in node.named_children(&mut node.walk()) {
-            if child.kind_id() == node_types::SUB_SECTION {
-                self.handle_sub_section_node(child, sid, &mut section);
+            match child.kind_id() {
+                node_types::SUB_SECTION => self.handle_sub_section_node(child, sid, &mut section),
+                node_types::SUB_SECTION_DELIMITER => {
+                    self.add_delimiter(child, DelimiterKind::SubSection)
+                }
+                _ => {}
             }
         }
 
@@ -566,6 +583,13 @@ impl<'a> Parser<'a> {
             key_range: key_node.range(),
             value_range: value_node.range(),
         })
+    }
+
+    fn add_delimiter(&mut self, node: Node<'_>, kind: DelimiterKind) {
+        self.delimiters.push(Delimiter {
+            kind,
+            line: node.range().line(),
+        });
     }
 
     pub(crate) fn parse_node<T: ParseNode>(&mut self, node: Node<'_>) -> Option<T> {

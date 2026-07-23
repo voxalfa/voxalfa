@@ -152,3 +152,28 @@ pub type Field<T> = Option<SymbolRef<T>>;
 pub trait FieldAssign {
     fn assign_field(&mut self, data: AssignmentData, context: &mut Parser);
 }
+
+#[derive(Debug)]
+pub struct Delimiter {
+    pub kind: DelimiterKind,
+    pub line: usize,
+}
+
+#[derive(Debug)]
+pub enum DelimiterKind {
+    Header,
+    SectionSplit,
+    SectionMerge,
+    SubSection,
+}
+
+impl std::fmt::Display for DelimiterKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DelimiterKind::Header => write!(f, "---"),
+            DelimiterKind::SectionSplit => write!(f, "--"),
+            DelimiterKind::SectionMerge => write!(f, "<<"),
+            DelimiterKind::SubSection => write!(f, "++"),
+        }
+    }
+}

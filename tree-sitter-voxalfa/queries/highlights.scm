@@ -44,7 +44,6 @@
 ] @punctuation.bracket
 
 [
- "---"
  ","
 ] @punctuation.delimiter
 

@@ -12,11 +12,11 @@
           "named": true
         },
         {
-          "type": "section_merge",
+          "type": "section_merge_delimiter",
           "named": true
         },
         {
-          "type": "section_split",
+          "type": "section_split_delimiter",
           "named": true
         }
       ]
@@ -494,6 +494,10 @@
         {
           "type": "sub_section",
           "named": true
+        },
+        {
+          "type": "sub_section_delimiter",
+          "named": true
         }
       ]
     }
@@ -546,7 +550,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
+      "required": true,
       "types": [
         {
           "type": "body",
@@ -554,6 +558,10 @@
         },
         {
           "type": "header",
+          "named": true
+        },
+        {
+          "type": "header_delimiter",
           "named": true
         }
       ]
@@ -683,15 +691,7 @@
     "named": false
   },
   {
-    "type": "++",
-    "named": false
-  },
-  {
     "type": ",",
-    "named": false
-  },
-  {
-    "type": "---",
     "named": false
   },
   {
@@ -737,6 +737,10 @@
   {
     "type": "false",
     "named": false
+  },
+  {
+    "type": "header_delimiter",
+    "named": true
   },
   {
     "type": "identifier",
@@ -787,11 +791,11 @@
     "named": true
   },
   {
-    "type": "section_merge",
+    "type": "section_merge_delimiter",
     "named": true
   },
   {
-    "type": "section_split",
+    "type": "section_split_delimiter",
     "named": true
   },
   {
@@ -800,6 +804,10 @@
   },
   {
     "type": "space_operator",
+    "named": true
+  },
+  {
+    "type": "sub_section_delimiter",
     "named": true
   },
   {

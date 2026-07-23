@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::{header::Header, symbols::SymbolTree, types::DynamicKind},
+    ast::{
+        header::Header,
+        symbols::{Delimiter, SymbolTree},
+        types::DynamicKind,
+    },
     diagnostics::types::Diagnostic,
     ir::{
         BodyIR,
@@ -19,6 +23,7 @@ pub struct FinalOutput {
     pub ir: BodyIR,
     pub diagnostics: Vec<Diagnostic>,
     pub timelines: TimelineMap,
+    pub delimiters: Vec<Delimiter>,
 }
 
 impl FinalOutput {
