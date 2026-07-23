@@ -15,7 +15,7 @@ use voxalfa_validator::{
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseIR, SolfaLineIR},
     },
-    output::ValidatorOutput,
+    output::FinalOutput,
     render::RenderType,
 };
 
@@ -25,13 +25,13 @@ use crate::primitives::Formattable;
 pub struct Formatter<'a> {
     col_width: usize,
     col_factor: usize,
-    source: &'a ValidatorOutput,
+    source: &'a FinalOutput,
     lines: BTreeMap<usize, String>,
     separators: BTreeMap<usize, String>,
 }
 
 impl<'a> Formatter<'a> {
-    pub fn new(source: &'a ValidatorOutput) -> Self {
+    pub fn new(source: &'a FinalOutput) -> Self {
         Self {
             col_width: source.resolve_column_width(RenderType::Text) + 1,
             col_factor: source.resolve_column_factor(),

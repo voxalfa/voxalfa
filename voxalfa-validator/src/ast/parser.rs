@@ -9,11 +9,15 @@ use crate::{
             LyricSpecialChar, LyricString, LyricStringKind, LyricToken,
         },
         solfa::{Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
-        symbols::{Comment, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree},
+        symbols::{
+            Comment, Field, FieldAssign, ScopeId, ScopeKind, SymbolKind, SymbolRef, SymbolTree,
+        },
         types::Voice,
     },
-    diagnostic::DiagnosticKind,
-    reporter::DiagnosticReporter,
+    diagnostics::{
+        reporter::DiagnosticReporter,
+        types::{DiagnosticKind, ReportStage},
+    },
     ts_utils::{
         context::TSContext,
         generated::node_types,
@@ -24,12 +28,20 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Parser<'a> {
-    pub source: &'a [u8],
-    pub tree: SymbolTree,
+pub struct ParserOutput {
     pub header: Header,
     pub body: Body,
+    pub tree: SymbolTree,
     pub reporter: DiagnosticReporter,
+}
+
+#[derive(Debug)]
+pub struct Parser<'a> {
+    source: &'a [u8],
+    header: Header,
+    body: Body,
+    pub(crate) tree: SymbolTree,
+    pub(crate) reporter: DiagnosticReporter,
 }
 
 impl<'a> Parser<'a> {
@@ -39,16 +51,23 @@ impl<'a> Parser<'a> {
             header: Header::default(),
             body: Body::default(),
             tree: SymbolTree::default(),
-            reporter: DiagnosticReporter::default(),
+            reporter: DiagnosticReporter::new(ReportStage::Parsing),
         }
     }
 
-    pub fn parse(&mut self, context: &mut TSContext) {
+    pub fn parse(mut self, context: &mut TSContext) -> ParserOutput {
         if let Some(tree) = context.parse(self.source) {
             let root = tree.root_node();
 
             self.handle_root_node(root);
             self.handle_query(root, context);
+        }
+
+        ParserOutput {
+            header: self.header,
+            body: self.body,
+            tree: self.tree,
+            reporter: self.reporter,
         }
     }
 
@@ -98,10 +117,10 @@ impl<'a> Parser<'a> {
 
         let mut section = Section::new(sid);
 
-        if let Some(prev) = node.prev_sibling() {
-            if prev.kind_id() == node_types::SECTION_MERGE {
-                section.merge = true;
-            }
+        if let Some(prev) = node.prev_sibling()
+            && prev.kind_id() == node_types::SECTION_MERGE
+        {
+            section.merge = true;
         }
 
         for child in node.named_children(&mut node.walk()) {
@@ -450,12 +469,12 @@ impl<'a> Parser<'a> {
             (Some(node), Some(LyricToken::Column(_))) => self
                 .reporter
                 .error(node.range(), DiagnosticKind::SyntaxError),
-            (None, Some(LyricToken::Operator(operator))) => {
-                if operator.value != LyricOperatorKind::Space {
-                    let range = self.tree.get_symbol_range(operator.sid);
-                    self.reporter
-                        .error(range, DiagnosticKind::ExpectedLyricAnchor);
-                }
+            (None, Some(LyricToken::Operator(operator)))
+                if operator.value != LyricOperatorKind::Space =>
+            {
+                let range = self.tree.get_symbol_range(operator.sid);
+                self.reporter
+                    .error(range, DiagnosticKind::ExpectedLyricAnchor);
             }
             (Some(node), Some(LyricToken::Operator(_))) => {
                 return Some(node.range());
@@ -524,8 +543,7 @@ impl<'a> Parser<'a> {
                     .add_scope(ScopeKind::Assignment, child.range(), root_sid.into());
 
             if let Some(source) = self.resolve_assignment_data(child, scope_id) {
-                // FIXME
-                // params.assign_field(source, self);
+                params.assign_field(source, self);
             }
         }
     }
@@ -550,11 +568,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    #[inline]
     pub(crate) fn parse_node<T: ParseNode>(&mut self, node: Node<'_>) -> Option<T> {
-        // FIXME
-        // T::parse_node(node, self)
-        todo!()
+        T::parse_node(node, self)
     }
 
     pub(crate) fn resolve_node_string(&mut self, node: Node<'_>) -> Option<String> {
@@ -565,5 +580,35 @@ impl<'a> Parser<'a> {
                     .error(node.range(), DiagnosticKind::InvalidUTF8(*e))
             })
             .ok()
+    }
+
+    pub(crate) fn assign_field<T: ParseNode>(
+        &mut self,
+        data: AssignmentData,
+        field: &mut Field<T>,
+    ) {
+        if let Some(value) = field {
+            let name = data.key_name.clone();
+            let scope = self.tree.resolve_scope(value.sid);
+
+            self.reporter.warning(
+                data.full_range,
+                DiagnosticKind::KeyReassignment(name, scope.range),
+            );
+        }
+
+        let _ = self.tree.add_symbol(
+            SymbolKind::Key(data.key_name.clone()),
+            data.key_range,
+            data.scope_id,
+        );
+
+        let sid = self
+            .tree
+            .add_symbol(T::symbol_kind(), data.value_range, data.scope_id);
+
+        *field = self
+            .parse_node(data.value_node)
+            .map(|value| SymbolRef { sid, value });
     }
 }

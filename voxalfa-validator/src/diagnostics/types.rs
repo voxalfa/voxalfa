@@ -10,6 +10,7 @@ pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub kind: DiagnosticKind,
     pub range: Range,
+    pub stage: ReportStage,
 }
 
 #[derive(Debug, Error, Clone)]
@@ -221,4 +222,11 @@ impl Diagnostic {
 pub struct DiagnosticRelatedInfo {
     pub message: String,
     pub range: Range,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ReportStage {
+    Parsing,
+    IRBuild,
+    Validation,
 }

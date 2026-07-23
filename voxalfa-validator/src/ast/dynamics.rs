@@ -1,20 +1,21 @@
 use crate::{
     ast::{
+        parser::Parser,
         symbols::{FieldAssign, SymbolKind, SymbolRef, Value},
         types::{Dynamic, DynamicKind},
     },
-    diagnostic::DiagnosticKind,
+    diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
-    validator::DocumentValidator,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Dynamics {
     pub value: Vec<SymbolRef<Dynamic>>,
 }
 
+// FIXME: move to parser.rs?
 impl FieldAssign for Dynamics {
-    fn assign_field(&mut self, data: AssignmentData, context: &mut DocumentValidator) {
+    fn assign_field(&mut self, data: AssignmentData, context: &mut Parser) {
         let name = data.key_name.clone();
 
         if let Ok(kind) = DynamicKind::try_from(name.as_str()) {
@@ -25,7 +26,7 @@ impl FieldAssign for Dynamics {
             let expected_params = kind.expected_params();
 
             if params.len() != expected_params {
-                context.report_error(
+                context.reporter.error(
                     data.value_range,
                     DiagnosticKind::InvalidDynamicParams(expected_params),
                 );
@@ -51,7 +52,7 @@ impl FieldAssign for Dynamics {
                 self.value.push(SymbolRef { sid, value });
             }
         } else {
-            context.report_error(
+            context.reporter.error(
                 data.full_range,
                 DiagnosticKind::InvalidDynamic(name.clone()),
             );

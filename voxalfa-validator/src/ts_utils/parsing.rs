@@ -2,22 +2,22 @@ use tree_sitter::Node;
 
 use crate::{
     ast::{
+        parser::Parser,
         solfa::{BaseNote, Note, NoteVariation},
         symbols::{SymbolKind, Value},
         types::{Key, TimeSignature, Voice},
     },
-    diagnostic::DiagnosticKind,
+    diagnostics::types::DiagnosticKind,
     ts_utils::generated::node_types,
-    validator::DocumentValidator,
 };
 
 pub trait ParseNode: Sized {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self>;
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self>;
     fn symbol_kind() -> SymbolKind;
 }
 
 impl ParseNode for usize {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let range = node.range();
 
         if node.kind_id() == node_types::INTEGER {
@@ -28,9 +28,13 @@ impl ParseNode for usize {
                 return Some(value);
             }
 
-            context.report_error(range, DiagnosticKind::InvalidType("integer"));
+            context
+                .reporter
+                .error(range, DiagnosticKind::InvalidType("integer"));
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("integer", node.kind()));
+            context
+                .reporter
+                .error(range, DiagnosticKind::ExpectedType("integer", node.kind()));
         }
 
         None
@@ -42,7 +46,7 @@ impl ParseNode for usize {
 }
 
 impl ParseNode for f32 {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let range = node.range();
 
         if matches!(node.kind_id(), node_types::INTEGER | node_types::FLOAT) {
@@ -53,9 +57,13 @@ impl ParseNode for f32 {
                 return Some(value);
             }
 
-            context.report_error(range, DiagnosticKind::InvalidType("float"));
+            context
+                .reporter
+                .error(range, DiagnosticKind::InvalidType("float"));
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("float", node.kind()));
+            context
+                .reporter
+                .error(range, DiagnosticKind::ExpectedType("float", node.kind()));
         }
 
         None
@@ -67,7 +75,7 @@ impl ParseNode for f32 {
 }
 
 impl ParseNode for String {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let range = node.range();
 
         if node.kind_id() == node_types::STRING {
@@ -76,7 +84,9 @@ impl ParseNode for String {
 
             Some(value)
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("string", node.kind()));
+            context
+                .reporter
+                .error(range, DiagnosticKind::ExpectedType("string", node.kind()));
             None
         }
     }
@@ -87,7 +97,7 @@ impl ParseNode for String {
 }
 
 impl ParseNode for bool {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let range = node.range();
 
         if node.kind_id() == node_types::BOOLEAN {
@@ -98,7 +108,9 @@ impl ParseNode for bool {
                 _ => Some(false),
             }
         } else {
-            context.report_error(range, DiagnosticKind::ExpectedType("boolean", node.kind()));
+            context
+                .reporter
+                .error(range, DiagnosticKind::ExpectedType("boolean", node.kind()));
             None
         }
     }
@@ -109,13 +121,15 @@ impl ParseNode for bool {
 }
 
 impl ParseNode for Key {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let text = context.parse_node::<String>(node)?;
 
         if let Ok(res) = Key::try_from(text.as_str()) {
             Some(res)
         } else {
-            context.report_error(node.range(), DiagnosticKind::InvalidType("key"));
+            context
+                .reporter
+                .error(node.range(), DiagnosticKind::InvalidType("key"));
             None
         }
     }
@@ -126,13 +140,15 @@ impl ParseNode for Key {
 }
 
 impl ParseNode for Voice {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let text = context.parse_node::<String>(node)?;
 
         if let Ok(res) = Voice::try_from(text.as_str()) {
             Some(res)
         } else {
-            context.report_error(node.range(), DiagnosticKind::InvalidType("voice"));
+            context
+                .reporter
+                .error(node.range(), DiagnosticKind::InvalidType("voice"));
             None
         }
     }
@@ -143,11 +159,13 @@ impl ParseNode for Voice {
 }
 
 impl ParseNode for TimeSignature {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let value = context.parse_node::<Vec<_>>(node)?;
 
         if value.len() != 2 || value[0] == 0 || value[1] == 0 {
-            context.report_error(node.range(), DiagnosticKind::InvalidTimeSignature);
+            context
+                .reporter
+                .error(node.range(), DiagnosticKind::InvalidTimeSignature);
             None
         } else {
             Some(TimeSignature {
@@ -163,7 +181,7 @@ impl ParseNode for TimeSignature {
 }
 
 impl<T: ParseNode> ParseNode for Vec<T> {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         if node.kind_id() == node_types::LIST {
             let mut result = Vec::new();
 
@@ -185,7 +203,7 @@ impl<T: ParseNode> ParseNode for Vec<T> {
 }
 
 impl ParseNode for Note {
-    fn parse_node(node: Node<'_>, context: &mut DocumentValidator) -> Option<Self> {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
         let base_node = node.child_by_field_name("base")?;
         let variation_node = node.child_by_field_name("variation");
         let octave_node = node.child_by_field_name("octave");

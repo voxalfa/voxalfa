@@ -1,76 +1,89 @@
-use tree_sitter::{Node, QueryCursor, StreamingIterator};
-
 use crate::{
     ast::{
-        body::{Section, SubSection},
+        body::{Body, Section},
         dynamics::Dynamics,
         header::Header,
-        lyrics::{
-            LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind,
-            LyricSpecialChar, LyricString, LyricStringKind, LyricToken,
-        },
-        solfa::{Note, Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
-        symbols::{
-            Comment, Field, FieldAssign, ScopeId, ScopeKind, SymbolId, SymbolKind, SymbolRef,
-            SymbolTree,
-        },
-        types::{TimeSignature, Voice},
+        lyrics::LyricToken,
+        solfa::{PulseAccent, SolfaLine},
+        symbols::{SymbolRef, SymbolTree},
+        types::TimeSignature,
     },
-    diagnostic::{Diagnostic, DiagnosticKind, DiagnosticLevel},
-    ir::{
-        BodyIR, PulseView, SectionIR, SubSectionIR,
-        lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
-        solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
-        utils::{BeatBuffer, UnderlineBuffer},
+    diagnostics::{
+        reporter::DiagnosticReporter,
+        types::{DiagnosticKind, ReportStage},
     },
-    output::ValidatorOutput,
-    reporter::DiagnosticReporter,
+    ir::{BodyIR, SectionIR, SubSectionIR},
     timeline::{DynamicsBuffer, TimelineMap},
-    ts_utils::{
-        context::TSContext,
-        generated::node_types,
-        parsing::ParseNode,
-        range::{Range, RangeUtil},
-        types::AssignmentData,
-    },
+    ts_utils::range::RangeUtil,
 };
 
 #[derive(Debug)]
-pub struct DocumentValidator<'a> {
-    pub source: &'a [u8],
-    pub tree: SymbolTree,
-    pub header: Header,
-    pub ir: BodyIR,
-    pub diagnostics: Vec<Diagnostic>,
-    pub map: TimelineMap,
+pub struct ValidatorOutput {
+    pub timelines: TimelineMap,
     pub reporter: DiagnosticReporter,
 }
 
-impl<'a> DocumentValidator<'a> {
-    pub fn new(source: &'a str) -> Self {
+#[derive(Debug)]
+pub struct Validator<'a> {
+    pub tree: &'a SymbolTree,
+    pub header: &'a Header,
+    pub reporter: DiagnosticReporter,
+    pub timelines: TimelineMap,
+}
+
+impl<'a> Validator<'a> {
+    pub fn new(tree: &'a SymbolTree, header: &'a Header) -> Self {
         Self {
-            source: source.as_bytes(),
-            header: Header::default(),
-            tree: SymbolTree::default(),
-            ir: BodyIR::default(),
-            diagnostics: Vec::default(),
-            map: TimelineMap::default(),
+            reporter: DiagnosticReporter::new(ReportStage::Validation),
+            timelines: TimelineMap::default(),
+            header,
+            tree,
         }
     }
 
-    pub fn validate(mut self, context: &mut TSContext) -> ValidatorOutput {
+    pub fn validate_body(&mut self, body: &Body) {
+        for section in &body.sections {
+            self.validate_pulses(section);
+            self.validate_voices(section);
+        }
+
+        self.validate_lyrics_join(&body.sections);
+    }
+
+    pub fn validate_body_ir(&mut self, body: &BodyIR) {
+        let mut buffer = DynamicsBuffer::default();
+
+        for (section_id, section) in body.sections.iter().enumerate() {
+            for sub_section in &section.items {
+                self.validate_sub_section_ir(sub_section);
+            }
+
+            if section.merge {
+                self.validate_section_merge(section_id, &body.sections);
+            } else {
+                buffer.init_section();
+            }
+
+            for (sub_id, sub_section) in section.items.iter().enumerate() {
+                let dynamics = self.resolve_root_dynamics(section_id, sub_id, &body.sections);
+
+                if let Some(dynamics) = dynamics {
+                    buffer.process(sub_section, dynamics);
+
+                    let next_section = body.sections.get(section_id + 1);
+
+                    if next_section.is_some_and(|s| !s.merge) || next_section.is_none() {
+                        self.validate_dynamics_buffer(dynamics, &mut buffer);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn finalize(self) -> ValidatorOutput {
         ValidatorOutput {
-            tree: self.tree,
-            header: self.header,
-            ir: self.ir,
-            diagnostics: self.diagnostics,
-            map: self.map,
-        }
-    }
-
-    fn validate_section(&mut self, section: &SectionIR) {
-        for sub_section in &section.items {
-            self.validate_sub_section_ir(sub_section);
+            timelines: self.timelines,
+            reporter: self.reporter,
         }
     }
 
@@ -83,7 +96,7 @@ impl<'a> DocumentValidator<'a> {
             if value != verses.value {
                 let context_range = self.tree.get_symbol_range(verses.sid);
 
-                self.report_error(
+                self.reporter.error(
                     range,
                     DiagnosticKind::VerseMismatch(verses.value, value, context_range),
                 );
@@ -91,7 +104,7 @@ impl<'a> DocumentValidator<'a> {
         } else if !sub_section.lyrics.is_empty() {
             let context_range = self.tree.get_scope_range(self.header.sid);
 
-            self.report_error(
+            self.reporter.error(
                 range,
                 DiagnosticKind::UndefinedVersesMetadata(context_range),
             );
@@ -112,7 +125,8 @@ impl<'a> DocumentValidator<'a> {
                         .map(|s| self.tree.get_scope_range(s.sid))
                         .collect();
 
-                    self.report_error(range, DiagnosticKind::TrailingLyric(context_ranges));
+                    self.reporter
+                        .error(range, DiagnosticKind::TrailingLyric(context_ranges));
                 }
             }
         }
@@ -136,7 +150,7 @@ impl<'a> DocumentValidator<'a> {
                     let range = self.tree.get_scope_range(line.sid);
                     let context_range = self.tree.get_scope_range(first.sid);
 
-                    self.report_error(
+                    self.reporter.error(
                         range,
                         DiagnosticKind::PulseCountMismatch(first_len, current_len, context_range),
                     );
@@ -149,7 +163,8 @@ impl<'a> DocumentValidator<'a> {
                 let range = self.tree.get_scope_range(line.sid);
                 let context_range = self.tree.get_scope_range(self.header.sid);
 
-                self.report_error(range, DiagnosticKind::UndefinedTimeParameter(context_range));
+                self.reporter
+                    .error(range, DiagnosticKind::UndefinedTimeParameter(context_range));
             }
         }
     }
@@ -183,7 +198,7 @@ impl<'a> DocumentValidator<'a> {
                 let range = self.tree.get_symbol_range(pulse.accent.sid);
                 let context_range = self.tree.get_symbol_range(time_signature.sid);
 
-                self.report_error(
+                self.reporter.error(
                     range,
                     DiagnosticKind::MismatchedPulseAccent(
                         expected,
@@ -205,7 +220,7 @@ impl<'a> DocumentValidator<'a> {
             let end_range = self.tree.get_scope_range(measure_end.sid);
             let context_range = self.tree.get_symbol_range(time_signature.sid);
 
-            self.report_error(
+            self.reporter.error(
                 start_range.merge(end_range),
                 DiagnosticKind::MeasureColumnMismatch(
                     time_signature.value.top,
@@ -232,7 +247,7 @@ impl<'a> DocumentValidator<'a> {
             .collect::<Vec<_>>();
 
         if voices.len() != expected_len {
-            self.report_error(
+            self.reporter.error(
                 range,
                 DiagnosticKind::VoiceCountMismatch(expected_len, voices.len(), context_range),
             );
@@ -244,7 +259,7 @@ impl<'a> DocumentValidator<'a> {
             if let Some(voices) = &self.header.metadata.voices {
                 if let Some(expected_voice) = voices.value.get(id) {
                     if voice.value != *expected_voice {
-                        self.report_error(
+                        self.reporter.error(
                             range,
                             DiagnosticKind::VoiceMismatch(*expected_voice, voice.value),
                         );
@@ -252,7 +267,7 @@ impl<'a> DocumentValidator<'a> {
                 } else {
                     let context_range = self.tree.get_symbol_range(voices.sid);
 
-                    self.report_error(
+                    self.reporter.error(
                         range,
                         DiagnosticKind::UndefinedVoice(voice.value, context_range),
                     );
@@ -260,7 +275,8 @@ impl<'a> DocumentValidator<'a> {
             } else {
                 let context_range = self.tree.get_scope_range(self.header.sid);
 
-                self.report_error(range, DiagnosticKind::UndefinedVoiceMetadata(context_range));
+                self.reporter
+                    .error(range, DiagnosticKind::UndefinedVoiceMetadata(context_range));
             }
         }
     }
@@ -273,7 +289,7 @@ impl<'a> DocumentValidator<'a> {
                         let range = self.tree.get_scope_range(line.sid);
                         let context_range = self.tree.get_scope_range(next_section.sid);
 
-                        self.report_error(
+                        self.reporter.error(
                             range.end(),
                             DiagnosticKind::ExpectedLyricJoin(context_range),
                         );
@@ -288,38 +304,8 @@ impl<'a> DocumentValidator<'a> {
                         let range = operator_range.merge(anchor_range);
                         let context_range = self.tree.get_scope_range(section.sid);
 
-                        self.report_error(
-                            range,
-                            DiagnosticKind::UnusedLyricJoin(context_range.end()),
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    fn validate_sections(&mut self, sections: &[SectionIR]) {
-        let mut buffer = DynamicsBuffer::default();
-
-        for (section_id, section) in sections.iter().enumerate() {
-            self.validate_section(section);
-
-            if section.merge {
-                self.validate_section_merge(section_id, &sections);
-            } else {
-                buffer.init_section();
-            }
-
-            for (sub_id, sub_section) in section.items.iter().enumerate() {
-                let dynamics = self.resolve_root_dynamics(section_id, sub_id, sections);
-
-                if let Some(dynamics) = dynamics {
-                    buffer.process(sub_section, dynamics);
-
-                    let next_section = sections.get(section_id + 1);
-
-                    if next_section.is_some_and(|s| !s.merge) || next_section.is_none() {
-                        self.validate_dynamics_buffer(dynamics, &mut buffer);
+                        self.reporter
+                            .error(range, DiagnosticKind::UnusedLyricJoin(context_range.end()));
                     }
                 }
             }
@@ -338,7 +324,8 @@ impl<'a> DocumentValidator<'a> {
                 let range = self.tree.get_scope_range(current.sid);
                 let context_range = self.tree.get_scope_range(root.sid);
 
-                self.report_error(range, DiagnosticKind::InvalidSectionMerge(context_range));
+                self.reporter
+                    .error(range, DiagnosticKind::InvalidSectionMerge(context_range));
             }
         }
     }
@@ -350,14 +337,14 @@ impl<'a> DocumentValidator<'a> {
 
         for (id, dynamic) in dynamics.value.iter().enumerate() {
             if !buffer.has_processed(id) {
-                self.report_error(
+                self.reporter.error(
                     self.tree.get_symbol_range(dynamic.sid),
                     DiagnosticKind::UnmatchedDynamic,
                 );
             }
         }
 
-        self.map.extend_from_buffer(buffer);
+        self.timelines.extend_from_buffer(buffer);
     }
 
     fn resolve_root_dynamics(

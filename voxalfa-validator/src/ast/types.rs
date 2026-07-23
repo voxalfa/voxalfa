@@ -22,7 +22,7 @@ impl TimeSignature {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Key {
     pub base: BaseKey,
     pub accidental: KeyAccidental,
@@ -53,7 +53,7 @@ impl TryFrom<&str> for Key {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum BaseKey {
     C,
     D,
@@ -81,7 +81,7 @@ impl TryFrom<&str> for BaseKey {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum KeyAccidental {
     #[default]
     Neutral,
@@ -172,7 +172,7 @@ impl TryFrom<&str> for DynamicKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Dynamic {
     pub kind: DynamicKind,
     pub start: f32,

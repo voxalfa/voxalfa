@@ -1,6 +1,6 @@
 use crate::{
+    ast::parser::Parser,
     ts_utils::{range::Range, types::AssignmentData},
-    validator::DocumentValidator,
 };
 
 pub type SymbolId = usize;
@@ -150,5 +150,5 @@ impl SymbolTree {
 pub type Field<T> = Option<SymbolRef<T>>;
 
 pub trait FieldAssign {
-    fn assign_field(&mut self, data: AssignmentData, context: &mut DocumentValidator);
+    fn assign_field(&mut self, data: AssignmentData, context: &mut Parser);
 }

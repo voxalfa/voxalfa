@@ -18,8 +18,6 @@
 ---
 ; ^ punctuation.delimiter
 
-[$] repeat={true}
-
 [^] p={1} | cre={3,6}
 
 [S] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
@@ -30,8 +28,8 @@
 [A] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [B] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 
-[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
-[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     .. ; scream
+[1] do    `re`  mi\   (f a) so    la    ti_   i     do_   o.    ~     ~     ..
+[2] do    `re`  mi\   (f a) so    la    ti_   i     do_   o.    ~     ~     .. ; scream
 ;         ^ punctuation.bracket
 ;                     ^ punctuation.bracket
 ;                                                                     ^ constant.builtin

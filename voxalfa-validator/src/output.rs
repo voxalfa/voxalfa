@@ -1,6 +1,6 @@
 use crate::{
     ast::{header::Header, symbols::SymbolTree},
-    diagnostic::Diagnostic,
+    diagnostics::types::Diagnostic,
     ir::{
         BodyIR,
         lyrics::{LyricColumnIR, LyricPrimitive, LyricStringIR},
@@ -11,15 +11,15 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ValidatorOutput {
+pub struct FinalOutput {
     pub tree: SymbolTree,
     pub header: Header,
     pub ir: BodyIR,
     pub diagnostics: Vec<Diagnostic>,
-    pub map: TimelineMap,
+    pub timelines: TimelineMap,
 }
 
-impl ValidatorOutput {
+impl FinalOutput {
     pub fn resolve_column_width(&self, render_type: RenderType) -> usize {
         let max_lyrics_width = self.resolve_max_lyrics_width(render_type);
         let max_note_width = self.resolve_max_note_width(render_type);

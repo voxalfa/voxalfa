@@ -6,9 +6,7 @@ use std::fs::{self, File};
 
 use clap::{Parser, Subcommand};
 use voxalfa_formatter::Formatter;
-use voxalfa_validator::{
-    output::ValidatorOutput, ts_utils::context::TSContext, validator::DocumentValidator,
-};
+use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
 
 use crate::{error::Error, reporter::CliReporter, types::SourceFile};
 
@@ -100,11 +98,9 @@ fn read_files(file_paths: Vec<String>) -> Result<Vec<SourceFile>, Error> {
     Ok(results)
 }
 
-fn parse_file(content: &str) -> Result<ValidatorOutput, Error> {
-    let mut ts_context = TSContext::new()?;
-
-    let validator = DocumentValidator::new(content);
-    let output = validator.validate(&mut ts_context);
+fn parse_file(content: &str) -> Result<FinalOutput, Error> {
+    let mut validator = MultiStepValidator::init()?;
+    let output = validator.process(content);
 
     Ok(output)
 }

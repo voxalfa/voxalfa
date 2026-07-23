@@ -1,4 +1,4 @@
-use crate::{ast::symbols::SymbolId, math::lcm};
+use crate::ast::symbols::SymbolId;
 
 #[derive(Debug, Default)]
 pub struct UnderlineMarker {
@@ -111,6 +111,14 @@ impl BeatBuffer {
             .map(|sub| self.beats.len() * sub.len())
             .collect()
     }
+}
+
+fn gcd(a: usize, b: usize) -> usize {
+    if b > 0 { gcd(b, a % b) } else { a }
+}
+
+fn lcm(a: usize, b: usize) -> usize {
+    (a * b) / gcd(a, b)
 }
 
 #[cfg(test)]

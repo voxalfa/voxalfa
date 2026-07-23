@@ -7,7 +7,7 @@ use codespan_reporting::{
     },
 };
 
-use voxalfa_validator::diagnostic::{Diagnostic, DiagnosticLevel};
+use voxalfa_validator::diagnostics::types::{Diagnostic, DiagnosticLevel};
 
 use crate::types::SourceFile;
 

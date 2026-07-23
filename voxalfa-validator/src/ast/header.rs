@@ -1,12 +1,12 @@
 use crate::{
     ast::{
         params::CompositionParams,
+        parser::Parser,
         symbols::{Field, FieldAssign, ScopeId},
         types::Voice,
     },
-    diagnostic::DiagnosticKind,
+    diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
-    validator::DocumentValidator,
 };
 
 #[derive(Debug, Default)]
@@ -39,7 +39,7 @@ pub struct HeaderMetadata {
 }
 
 impl FieldAssign for HeaderMetadata {
-    fn assign_field(&mut self, data: AssignmentData, context: &mut DocumentValidator) {
+    fn assign_field(&mut self, data: AssignmentData, context: &mut Parser) {
         match data.key_name.as_str() {
             "title" => context.assign_field(data, &mut self.title),
             "author" => context.assign_field(data, &mut self.author),
@@ -51,7 +51,7 @@ impl FieldAssign for HeaderMetadata {
             "language" => context.assign_field(data, &mut self.language),
             "tags" => context.assign_field(data, &mut self.tags),
             _ => {
-                context.report_error(
+                context.reporter.error(
                     data.full_range,
                     DiagnosticKind::UnknownField(data.key_name.clone()),
                 );

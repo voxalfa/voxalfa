@@ -8,31 +8,51 @@ use crate::{
         solfa::{Note, PulseTokenKind, SolfaLine},
         symbols::{ScopeId, SymbolId, SymbolTree},
     },
-    diagnostic::DiagnosticKind,
+    diagnostics::{
+        reporter::DiagnosticReporter,
+        types::{DiagnosticKind, ReportStage},
+    },
     ir::{
         BodyIR, PulseView, SectionIR, SubSectionIR,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
         utils::{BeatBuffer, UnderlineBuffer},
     },
-    reporter::DiagnosticReporter,
     ts_utils::range::RangeUtil,
 };
 
 #[derive(Debug)]
-pub struct IRBuilder {
-    pub tree: SymbolTree,
+pub struct IRBuilderOutput {
+    pub body: BodyIR,
     pub reporter: DiagnosticReporter,
 }
 
-impl IRBuilder {
-    pub fn build(&mut self, body: Body) -> BodyIR {
-        BodyIR {
+#[derive(Debug)]
+pub struct IRBuilder<'a> {
+    pub tree: &'a SymbolTree,
+    pub reporter: DiagnosticReporter,
+}
+
+impl<'a> IRBuilder<'a> {
+    pub fn new(tree: &'a SymbolTree) -> Self {
+        Self {
+            tree,
+            reporter: DiagnosticReporter::new(ReportStage::IRBuild),
+        }
+    }
+
+    pub fn build(mut self, body: Body) -> IRBuilderOutput {
+        let body = BodyIR {
             sections: body
                 .sections
                 .into_iter()
                 .map(|s| self.build_section_ir(s))
                 .collect(),
+        };
+
+        IRBuilderOutput {
+            body,
+            reporter: self.reporter,
         }
     }
 
@@ -45,9 +65,9 @@ impl IRBuilder {
 
         SectionIR {
             sid: section.sid,
-            params: section.params,
             merge: section.merge,
             items: blocks,
+            params: section.params,
         }
     }
 
@@ -194,8 +214,8 @@ impl IRBuilder {
     ) -> LyricColumnIR {
         let mut column_ir = LyricColumnIR::new(column.sid, column.span);
 
-        for chunk in column.chunks {
-            match chunk.value {
+        for chunk in &column.chunks {
+            match &chunk.value {
                 LyricChunkKind::Space => column_ir.operators.push(LyricOperatorKind::Space),
                 LyricChunkKind::Newline => column_ir.operators.push(LyricOperatorKind::Newline),
                 LyricChunkKind::Placeholder => column_ir.placeholder = true,
@@ -211,7 +231,7 @@ impl IRBuilder {
 
     fn build_lyric_string_ir(
         &mut self,
-        chunks: Vec<LyricString>,
+        chunks: &[LyricString],
         underline_buffer: &mut UnderlineBuffer,
     ) -> Vec<LyricStringIR> {
         let mut partials = Vec::new();

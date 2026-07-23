@@ -1,14 +1,14 @@
 use crate::{
     ast::{
+        parser::Parser,
         symbols::{Field, FieldAssign},
         types::{Key, TimeSignature},
     },
-    diagnostic::DiagnosticKind,
+    diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
-    validator::DocumentValidator,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CompositionParams {
     pub key: Field<Key>,
     pub time: Field<TimeSignature>,
@@ -16,13 +16,13 @@ pub struct CompositionParams {
 }
 
 impl FieldAssign for CompositionParams {
-    fn assign_field(&mut self, data: AssignmentData, context: &mut DocumentValidator) {
+    fn assign_field(&mut self, data: AssignmentData, context: &mut Parser) {
         match data.key_name.as_str() {
             "key" => context.assign_field(data, &mut self.key),
             "time" => context.assign_field(data, &mut self.time),
             "bpm" => context.assign_field(data, &mut self.bpm),
             _ => {
-                context.report_error(
+                context.reporter.error(
                     data.full_range,
                     DiagnosticKind::UnknownParameter(data.key_name.clone()),
                 );

@@ -127,7 +127,7 @@ impl DynamicsBuffer {
                     note_index,
                 };
 
-                self.match_dynamics(sub_section.sid, &params, &dynamics);
+                self.match_dynamics(sub_section.sid, dynamics, &params);
 
                 ellapsed = params.note_end;
             }
@@ -139,8 +139,8 @@ impl DynamicsBuffer {
     fn match_dynamics(
         &mut self,
         sub_id: SubSectonId,
-        params: &DynamicMatchParams,
         dynamics: &Dynamics,
+        params: &DynamicMatchParams,
     ) {
         for (id, dynamic) in dynamics.value.iter().enumerate() {
             let start_diff = (dynamic.value.start - params.note_start).abs();
