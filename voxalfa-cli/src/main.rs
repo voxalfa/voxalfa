@@ -4,23 +4,15 @@ mod reporter;
 mod types;
 mod utils;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
-use crate::commands::{check::CheckParams, format::FormatParams};
+use crate::commands::CliCommand;
 
 #[derive(Parser)]
 #[clap(about, version)]
 pub struct Cli {
     #[command(subcommand)]
     command: CliCommand,
-}
-
-#[derive(Subcommand)]
-pub enum CliCommand {
-    /// Format the provided partition files
-    Format(FormatParams),
-    /// Format the provided partition files
-    Check(CheckParams),
 }
 
 fn main() {

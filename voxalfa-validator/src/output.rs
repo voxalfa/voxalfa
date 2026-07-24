@@ -8,8 +8,8 @@ use crate::{
     },
     diagnostics::types::Diagnostic,
     ir::{
-        BodyIR,
-        lyrics::{LyricColumnIR, LyricPrimitive, LyricStringIR},
+        BodyIR, PulseView,
+        lyrics::{LyricColumnIR, LyricLineIR, LyricPrimitive, LyricStringIR},
         solfa::PulseColumnKind,
     },
     render::RenderType,
@@ -28,8 +28,8 @@ pub struct FinalOutput {
 
 impl FinalOutput {
     pub fn resolve_column_width(&self, render_type: RenderType) -> usize {
-        let max_lyrics_width = self.resolve_max_lyrics_width(render_type);
         let max_note_width = self.resolve_max_note_width(render_type);
+        let max_lyrics_width = self.resolve_max_lyrics_width(render_type);
 
         max_lyrics_width.max(max_note_width)
     }
@@ -83,15 +83,52 @@ impl FinalOutput {
     }
 
     fn resolve_max_lyrics_width(&self, render_type: RenderType) -> usize {
+        let max_factor = self.resolve_column_factor();
+
         self.ir
             .sections
             .iter()
             .flat_map(|s| &s.items)
-            .flat_map(|s| &s.lyrics)
-            .flat_map(|l| &l.columns)
+            .flat_map(|s| self.filter_lyric_columns(&s.lyrics, &s.views, max_factor))
             .map(|col| self.resolve_lyric_column_width(col, render_type))
             .max()
             .unwrap_or(1)
+    }
+
+    fn filter_lyric_columns<'a>(
+        &self,
+        lyrics: &'a [LyricLineIR],
+        views: &[PulseView],
+        max_factor: usize,
+    ) -> Vec<&'a LyricColumnIR> {
+        let view_columns = views
+            .iter()
+            .flat_map(|v| {
+                v.durations.iter().map(|d| ViewColumn {
+                    duration: *d,
+                    factor: v.factor,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let mut result = Vec::new();
+
+        for line in lyrics {
+            let mut col_index = 0;
+
+            for lyric_col in &line.columns {
+                let view_col = &view_columns[col_index];
+
+                // TODO: consider out of bounds edge cases
+                if lyric_col.span == 1 && view_col.duration == 1 && view_col.factor == max_factor {
+                    result.push(lyric_col);
+                }
+
+                col_index += lyric_col.span;
+            }
+        }
+
+        result
     }
 
     fn resolve_max_note_width(&self, render_type: RenderType) -> usize {
@@ -114,6 +151,12 @@ impl FinalOutput {
             PulseColumnKind::EmptyNote => 1,
         }
     }
+}
+
+#[derive(Debug)]
+struct ViewColumn {
+    duration: usize,
+    factor: usize,
 }
 
 pub type SubSectonId = usize;

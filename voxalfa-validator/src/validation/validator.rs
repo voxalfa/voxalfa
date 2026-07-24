@@ -142,18 +142,24 @@ impl<'a> Validator<'a> {
             .flat_map(|s| &s.solfa)
             .collect::<Vec<_>>();
 
-        for line in solfa.iter().skip(1) {
-            if let Some(first) = solfa.first() {
-                let first_len = first.pulses.len();
-                let current_len = line.pulses.len();
+        let reference = solfa.iter().max_by_key(|s| s.pulses.len());
 
-                if current_len != first_len {
+        for line in solfa.iter().skip(1) {
+            if let Some(reference) = reference {
+                let current_len = line.pulses.len();
+                let reference_len = reference.pulses.len();
+
+                if current_len != reference.pulses.len() {
                     let range = self.tree.get_scope_range(line.sid);
-                    let context_range = self.tree.get_scope_range(first.sid);
+                    let context_range = self.tree.get_scope_range(reference.sid);
 
                     self.reporter.error(
                         range,
-                        DiagnosticKind::PulseCountMismatch(first_len, current_len, context_range),
+                        DiagnosticKind::PulseCountMismatch(
+                            reference_len,
+                            current_len,
+                            context_range,
+                        ),
                     );
                 }
             }
@@ -180,7 +186,7 @@ impl<'a> Validator<'a> {
         let mut offset = 0;
 
         while count < pulse_len {
-            if count == 0 && offset == pulse_len {
+            if count + offset == pulse_len {
                 break;
             }
 
@@ -199,6 +205,9 @@ impl<'a> Validator<'a> {
                 let range = self.tree.get_symbol_range(pulse.accent.sid);
                 let context_range = self.tree.get_symbol_range(time_signature.sid);
 
+                println!("offset: {offset}");
+                println!("count: {count}");
+
                 self.reporter.error(
                     range,
                     DiagnosticKind::MismatchedPulseAccent(
@@ -210,25 +219,6 @@ impl<'a> Validator<'a> {
             }
 
             count += 1;
-        }
-
-        let measure_columns = count % time_signature.value.top;
-
-        if measure_columns != 0 {
-            let measure_start = &line.pulses[pulse_len - measure_columns];
-            let measure_end = &line.pulses[pulse_len - 1];
-            let start_range = self.tree.get_scope_range(measure_start.sid);
-            let end_range = self.tree.get_scope_range(measure_end.sid);
-            let context_range = self.tree.get_symbol_range(time_signature.sid);
-
-            self.reporter.error(
-                start_range.merge(end_range),
-                DiagnosticKind::MeasureColumnMismatch(
-                    time_signature.value.top,
-                    measure_columns,
-                    context_range,
-                ),
-            );
         }
     }
 

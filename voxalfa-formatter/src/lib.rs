@@ -96,12 +96,10 @@ impl<'a> Formatter<'a> {
 
                     self.process_lyrics(&sub_section.views, lyrics, verse, is_last_section);
                 }
+
+                self.push_delimiter();
             }
-
-            self.push_delimiter();
         }
-
-        self.push_delimiter();
     }
 
     fn process_metadata(&mut self, meta: &HeaderMetadata) {
@@ -148,16 +146,21 @@ impl<'a> Formatter<'a> {
     fn format_pulse(&mut self, pulse: &PulseIR) -> String {
         let mut buffer = String::new();
         let mut clock = 0;
+        let accent = pulse.accent.to_string();
 
         for (step, column) in pulse.columns.iter().enumerate() {
             let lead = match (step, clock, pulse.factor) {
-                (0, _, _) => &pulse.accent.to_string(),
+                (0, _, _) => &accent,
                 (1, 1, 2) | (_, 2, 4) => ".",
                 (1, 3, 4) => ".,",
                 (_, 1, 4) | (_, 3, 4) => ",",
                 _ if step == clock => ",", // n-uplets
                 _ => "",
             };
+
+            if lead.len() > 1 {
+                buffer.pop();
+            }
 
             let prefix_str = if column.underline.left { "`" } else { "" };
             let suffix_str = if column.underline.right { "`" } else { "" };
@@ -195,6 +198,7 @@ impl<'a> Formatter<'a> {
 
         for (lyric_id, lyric_col) in line.columns.iter().enumerate() {
             let lyric_str = self.resolve_lyric_column(lyric_col);
+            let char_count = lyric_str.chars().count();
             let operator = line.operators.get(lyric_id);
 
             let mut span_value = lyric_col.span;
@@ -209,7 +213,7 @@ impl<'a> Formatter<'a> {
                 span_value -= 1;
 
                 if view_offset >= widths.len() {
-                    // width += self.col_width * self.col_factor - widths.iter().sum::<usize>();
+                    width += self.col_width * self.col_factor - widths.iter().sum::<usize>();
                     view_id += 1;
                     view_offset = 0;
                 }
@@ -224,7 +228,7 @@ impl<'a> Formatter<'a> {
             let padding = if is_last_section && lyric_id == last_lyric_id {
                 0
             } else {
-                width.saturating_sub(lyric_str.chars().count())
+                width.saturating_sub(char_count)
             };
 
             let padded_str = format!("{lyric_str}{filler:<padding$}");

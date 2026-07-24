@@ -46,8 +46,6 @@ pub enum DiagnosticKind {
     #[error("invalid note distribution")]
     InvalidNoteDistribution,
     #[error("expected {0} pulses, got {1}")]
-    MeasureColumnMismatch(usize, usize, Range),
-    #[error("expected {0} pulses, got {1}")]
     PulseCountMismatch(usize, usize, Range),
     #[error("expected {0} voices, got {1}")]
     VoiceCountMismatch(usize, usize, Range),
@@ -103,25 +101,24 @@ impl DiagnosticKind {
             DiagnosticKind::UndefinedVoice(_, _) => "E013",
             DiagnosticKind::VoiceMismatch(_, _) => "E014",
             DiagnosticKind::InvalidNoteDistribution => "E015",
-            DiagnosticKind::MeasureColumnMismatch(_, _, _) => "E016",
-            DiagnosticKind::PulseCountMismatch(_, _, _) => "E017",
-            DiagnosticKind::VoiceCountMismatch(_, _, _) => "E018",
-            DiagnosticKind::UnmatchedUnderline => "E019",
-            DiagnosticKind::MismatchedVerseIndex(_, _) => "E020",
-            DiagnosticKind::ExpectedLyricAnchor => "E021",
-            DiagnosticKind::InvalidNoteProlongation => "E022",
-            DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E023",
-            DiagnosticKind::TrailingLyric(_) => "E024",
-            DiagnosticKind::InvalidVoiceDistribution(_) => "E025",
-            DiagnosticKind::VerseMismatch(_, _, _) => "E026",
-            DiagnosticKind::UndefinedVersesMetadata(_) => "E027",
-            DiagnosticKind::UndefinedVoiceMetadata(_) => "E028",
-            DiagnosticKind::UndefinedTimeParameter(_) => "E029",
-            DiagnosticKind::NonTopLevelParamsOverride(_) => "E030",
-            DiagnosticKind::ExpectedLyricJoin(_) => "E031",
-            DiagnosticKind::UnusedLyricJoin(_) => "E032",
-            DiagnosticKind::InvalidSectionMerge(_) => "E033",
-            DiagnosticKind::UnmatchedDynamic => "E034",
+            DiagnosticKind::PulseCountMismatch(_, _, _) => "E016",
+            DiagnosticKind::VoiceCountMismatch(_, _, _) => "E017",
+            DiagnosticKind::UnmatchedUnderline => "E018",
+            DiagnosticKind::MismatchedVerseIndex(_, _) => "E019",
+            DiagnosticKind::ExpectedLyricAnchor => "E020",
+            DiagnosticKind::InvalidNoteProlongation => "E021",
+            DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E022",
+            DiagnosticKind::TrailingLyric(_) => "E023",
+            DiagnosticKind::InvalidVoiceDistribution(_) => "E024",
+            DiagnosticKind::VerseMismatch(_, _, _) => "E025",
+            DiagnosticKind::UndefinedVersesMetadata(_) => "E026",
+            DiagnosticKind::UndefinedVoiceMetadata(_) => "E027",
+            DiagnosticKind::UndefinedTimeParameter(_) => "E028",
+            DiagnosticKind::NonTopLevelParamsOverride(_) => "E029",
+            DiagnosticKind::ExpectedLyricJoin(_) => "E030",
+            DiagnosticKind::UnusedLyricJoin(_) => "E031",
+            DiagnosticKind::InvalidSectionMerge(_) => "E032",
+            DiagnosticKind::UnmatchedDynamic => "E033",
         }
     }
 
@@ -140,14 +137,9 @@ impl DiagnosticKind {
                 message: format!("'{name}' has been assigned here"),
                 range: *range,
             }],
-            DiagnosticKind::MeasureColumnMismatch(_, _, range)
-            | DiagnosticKind::MismatchedPulseAccent(_, _, range) => vec![DiagnosticRelatedInfo {
-                message: "time signature defined here".to_string(),
-                range: *range,
-            }],
             DiagnosticKind::PulseCountMismatch(expected, _, range) => {
                 vec![DiagnosticRelatedInfo {
-                    message: format!("first line has {expected} pulses"),
+                    message: format!("this line has {expected} pulses"),
                     range: *range,
                 }]
             }
