@@ -176,11 +176,9 @@ impl<'a> Formatter<'a> {
             let suffix_str = if column.underline.right { "`" } else { "" };
             let column_str = column.kind.to_string();
 
-            let note = format!("{lead}{prefix_str}{column_str}");
+            let note = format!("{lead}{prefix_str}{column_str}{suffix_str}");
             let total_width = (self.col_width * column.duration * self.col_factor) / pulse.factor;
-            let padding_width = total_width.saturating_sub(suffix_str.len());
-
-            let stretched = format!("{note:<padding_width$}{suffix_str}");
+            let stretched = format!("{note:<total_width$}");
 
             buffer.push_str(&stretched);
 
