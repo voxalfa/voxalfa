@@ -5,7 +5,7 @@ use crate::{
         parser::Parser,
         solfa::{BaseNote, Note, NoteVariation},
         symbols::{SymbolKind, Value},
-        types::{Key, TimeSignature, Voice},
+        types::{Key, Mark, TimeSignature, Voice},
     },
     diagnostics::types::DiagnosticKind,
     ts_utils::generated::node_types,
@@ -226,6 +226,25 @@ impl ParseNode for Note {
             variation,
             octave,
         })
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        SymbolKind::Value(Value::Builtin)
+    }
+}
+
+impl ParseNode for Mark {
+    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
+        let text = context.parse_node::<String>(node)?;
+
+        if let Ok(res) = Mark::try_from(text.as_str()) {
+            Some(res)
+        } else {
+            context
+                .reporter
+                .error(node.range(), DiagnosticKind::InvalidType("marker"));
+            None
+        }
     }
 
     fn symbol_kind() -> SymbolKind {

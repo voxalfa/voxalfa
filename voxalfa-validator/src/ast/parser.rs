@@ -166,6 +166,9 @@ impl<'a> Parser<'a> {
                 node_types::PARAMETER_LINE => {
                     self.handle_section_param_node(child, parent_sid, section);
                 }
+                node_types::METADATA_LINE => {
+                    self.handle_section_metadata_node(child, parent_sid, section);
+                }
                 node_types::DYNAMICS_LINE => {
                     self.handle_assignment_node(child, sid, &mut result.dynamics)
                 }
@@ -194,6 +197,24 @@ impl<'a> Parser<'a> {
         }
 
         self.handle_assignment_node(node, section_sid, &mut section.params)
+    }
+
+    fn handle_section_metadata_node(
+        &mut self,
+        node: Node<'_>,
+        section_sid: ScopeId,
+        section: &mut Section,
+    ) {
+        if !section.items.is_empty() {
+            let context_range = self.tree.get_scope_range(section.sid).start();
+
+            self.reporter.error(
+                node.range(),
+                DiagnosticKind::NonTopLevelSectionMetadata(context_range),
+            );
+        }
+
+        self.handle_assignment_node(node, section_sid, &mut section.metadata)
     }
 
     fn handle_solfa_node(

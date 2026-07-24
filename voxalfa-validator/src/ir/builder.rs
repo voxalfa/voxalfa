@@ -66,8 +66,9 @@ impl<'a> IRBuilder<'a> {
         SectionIR {
             sid: section.sid,
             merge: section.merge,
-            items: blocks,
+            metadata: section.metadata,
             params: section.params,
+            items: blocks,
         }
     }
 

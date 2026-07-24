@@ -7,7 +7,10 @@ use lyrics::LyricLineIR;
 use solfa::SolfaLineIR;
 
 use crate::{
-    ast::{dynamics::Dynamics, params::CompositionParams, symbols::ScopeId, types::Voice},
+    ast::{
+        body::SectionMetadata, dynamics::Dynamics, params::CompositionParams, symbols::ScopeId,
+        types::Voice,
+    },
     ir::solfa::PulseIR,
 };
 
@@ -20,6 +23,7 @@ pub struct BodyIR {
 pub struct SectionIR {
     pub sid: ScopeId,
     pub items: Vec<SubSectionIR>,
+    pub metadata: SectionMetadata,
     pub params: CompositionParams,
     pub merge: bool,
 }

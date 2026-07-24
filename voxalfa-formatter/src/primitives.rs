@@ -1,4 +1,4 @@
-use voxalfa_validator::ast::types::{Dynamic, Key, TimeSignature, Voice};
+use voxalfa_validator::ast::types::{Dynamic, Key, Mark, TimeSignature, Voice};
 
 pub trait Formattable {
     fn format(&self, embedded: bool) -> String;
@@ -61,6 +61,19 @@ impl Formattable for bool {
         } else {
             format!("{{{s}}}")
         }
+    }
+}
+
+impl Formattable for Mark {
+    fn format(&self, _embedded: bool) -> String {
+        let s = match self {
+            Mark::DS => "DS",
+            Mark::DC => "DS",
+            Mark::Segno => "segno",
+            Mark::Coda => "coda",
+        };
+
+        format!("\"{s}\"")
     }
 }
 

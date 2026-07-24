@@ -81,6 +81,8 @@ pub enum DiagnosticKind {
     InvalidSectionMerge(Range),
     #[error("dynamic is unmatched")]
     UnmatchedDynamic,
+    #[error("section metadata should be declared at the top level")]
+    NonTopLevelSectionMetadata(Range),
 }
 
 impl DiagnosticKind {
@@ -119,6 +121,7 @@ impl DiagnosticKind {
             DiagnosticKind::UnusedLyricJoin(_) => "E031",
             DiagnosticKind::InvalidSectionMerge(_) => "E032",
             DiagnosticKind::UnmatchedDynamic => "E033",
+            DiagnosticKind::NonTopLevelSectionMetadata(_) => "E034",
         }
     }
 
@@ -173,6 +176,10 @@ impl DiagnosticKind {
             }],
             DiagnosticKind::NonTopLevelParamsOverride(range) => vec![DiagnosticRelatedInfo {
                 message: "set parameter override here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::NonTopLevelSectionMetadata(range) => vec![DiagnosticRelatedInfo {
+                message: "declare section metadata here".to_string(),
                 range: *range,
             }],
             DiagnosticKind::ExpectedLyricJoin(range) => vec![DiagnosticRelatedInfo {

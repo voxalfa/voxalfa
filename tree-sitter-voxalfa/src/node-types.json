@@ -608,6 +608,10 @@
           "named": true
         },
         {
+          "type": "metadata_line",
+          "named": true
+        },
+        {
           "type": "parameter_line",
           "named": true
         },

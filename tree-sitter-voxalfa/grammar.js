@@ -37,6 +37,7 @@ export default grammar({
 
     _section_line: ($) =>
       choice(
+        $.metadata_line,
         $.parameter_line,
         $.dynamics_line,
         $.solfa_line,

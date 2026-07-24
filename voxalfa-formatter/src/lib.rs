@@ -5,8 +5,8 @@ use std::io::{self, Write};
 
 use voxalfa_validator::{
     ast::{
-        dynamics::Dynamics, header::HeaderMetadata, lyrics::LyricOperatorKind,
-        params::CompositionParams, symbols::SymbolRef,
+        body::SectionMetadata, dynamics::Dynamics, header::HeaderMetadata,
+        lyrics::LyricOperatorKind, params::CompositionParams, symbols::SymbolRef,
     },
     ir::{
         PulseView,
@@ -46,8 +46,10 @@ impl<'a> Formatter<'a> {
     }
 
     pub fn format<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
-        self.process_metadata(&self.source.header.metadata);
-        self.process_params(&self.source.header.params);
+        let header = &self.source.header;
+
+        self.process_metadata(&header.metadata);
+        self.process_params(&header.params);
         self.push_delimiter();
         self.process_body();
         self.process_comments();
@@ -81,6 +83,7 @@ impl<'a> Formatter<'a> {
 
     fn process_body(&mut self) {
         for (section_id, section) in self.source.ir.sections.iter().enumerate() {
+            self.process_section_metadata(&section.metadata);
             self.process_params(&section.params);
 
             for sub_section in &section.items {
@@ -112,6 +115,13 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Metadata, meta.release.as_ref());
         self.add_assignment(Assignment::Metadata, meta.language.as_ref());
         self.add_assignment(Assignment::Metadata, meta.tags.as_ref());
+    }
+
+    fn process_section_metadata(&mut self, params: &SectionMetadata) {
+        self.add_assignment(Assignment::Metadata, params.name.as_ref());
+        self.add_assignment(Assignment::Metadata, params.ending.as_ref());
+        self.add_assignment(Assignment::Metadata, params.head_mark.as_ref());
+        self.add_assignment(Assignment::Metadata, params.tail_mark.as_ref());
     }
 
     fn process_params(&mut self, params: &CompositionParams) {
@@ -309,10 +319,11 @@ impl<'a> Formatter<'a> {
             });
 
             let (scope, rank) = nearest.map(|p| (p.scope, p.rank)).unwrap_or_default();
+            let trimmed = comment.value.trim_end();
 
             let content = match self.mergable_lines.contains(&line_id) {
-                true => format!(" {}", comment.value),
-                false => comment.value.clone(),
+                true => format!(" {trimmed}"),
+                false => trimmed.to_string(),
             };
 
             self.partials.push(PartialLine {

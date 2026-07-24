@@ -241,3 +241,25 @@ mod tests {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum Mark {
+    DS,
+    DC,
+    Segno,
+    Coda,
+}
+
+impl TryFrom<&str> for Mark {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "DS" => Ok(Self::DS),
+            "DC" => Ok(Self::DS),
+            "segno" => Ok(Self::Segno),
+            "coda" => Ok(Self::Coda),
+            _ => Err(()),
+        }
+    }
+}

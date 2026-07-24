@@ -275,6 +275,10 @@ impl<'a> Validator<'a> {
     fn validate_lyrics_join(&mut self, sections: &[Section]) {
         for (id, section) in sections.iter().enumerate() {
             if let Some(next_section) = sections.get(id + 1) {
+                if section.metadata.ending.is_some() {
+                    continue;
+                }
+
                 for line in section.items.iter().flat_map(|s| &s.lyrics) {
                     if line.anchor.is_none() {
                         let range = self.tree.get_scope_range(line.sid);

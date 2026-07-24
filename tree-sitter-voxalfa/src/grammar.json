@@ -150,6 +150,10 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "metadata_line"
+        },
+        {
+          "type": "SYMBOL",
           "name": "parameter_line"
         },
         {
