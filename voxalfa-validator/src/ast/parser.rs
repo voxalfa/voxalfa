@@ -94,10 +94,10 @@ impl<'a> Parser<'a> {
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::METADATA_LINE => {
-                    self.handle_assignment_node(child, sid, &mut header.metadata)
+                    self.handle_local_params_node(child, sid, &mut header.metadata)
                 }
                 node_types::PARAMETER_LINE => {
-                    self.handle_assignment_node(child, sid, &mut header.params)
+                    self.handle_local_params_node(child, sid, &mut header.params)
                 }
                 _ => {}
             }
@@ -164,13 +164,11 @@ impl<'a> Parser<'a> {
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::PARAMETER_LINE => {
-                    self.handle_section_param_node(child, parent_sid, section);
+                    self.handle_global_params_node(child, parent_sid, section);
+                    self.handle_local_params_node(child, sid, &mut result.params)
                 }
                 node_types::METADATA_LINE => {
                     self.handle_section_metadata_node(child, parent_sid, section);
-                }
-                node_types::DYNAMICS_LINE => {
-                    self.handle_assignment_node(child, sid, &mut result.dynamics)
                 }
                 node_types::SOLFA_LINE => self.handle_solfa_node(child, sid, &mut result),
                 node_types::LYRIC_LINE => self.handle_lyric_node(child, sid, &mut result),
@@ -181,7 +179,7 @@ impl<'a> Parser<'a> {
         section.items.push(result);
     }
 
-    fn handle_section_param_node(
+    fn handle_global_params_node(
         &mut self,
         node: Node<'_>,
         section_sid: ScopeId,
@@ -196,7 +194,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        self.handle_assignment_node(node, section_sid, &mut section.params)
+        self.handle_local_params_node(node, section_sid, &mut section.params)
     }
 
     fn handle_section_metadata_node(
@@ -214,7 +212,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        self.handle_assignment_node(node, section_sid, &mut section.metadata)
+        self.handle_local_params_node(node, section_sid, &mut section.metadata)
     }
 
     fn handle_solfa_node(
@@ -261,7 +259,7 @@ impl<'a> Parser<'a> {
     ) -> Option<SymbolRef<Voice>> {
         let voice_node = node.child_by_field_name("voice")?;
         let voice_str = self.resolve_node_string(voice_node)?;
-        let voice = Voice::try_from(voice_str.as_str());
+        let voice = Voice::try_from(voice_str.clone());
 
         let sid = self
             .tree
@@ -327,7 +325,7 @@ impl<'a> Parser<'a> {
             node_types::HALF_DIVISION => PulseTokenKind::HalfDivision,
             node_types::QUARTER_DIVISION => PulseTokenKind::QuarterDivision,
             node_types::UNDERLINE_MARKER => PulseTokenKind::UnderlineMarker,
-            node_types::NOTE => self.parse_node(node).map(PulseTokenKind::Note)?,
+            node_types::NOTE => self.parse_node(node, scope_id).map(PulseTokenKind::Note)?,
             node_types::PROLONGED_NOTE => PulseTokenKind::ProlongedNote,
             _ => return None,
         };
@@ -359,7 +357,7 @@ impl<'a> Parser<'a> {
         let content_node = node.child_by_field_name("content")?;
         let anchor_node = node.child_by_field_name("anchor");
 
-        let verse = self.parse_node(verse_node)?;
+        let verse = self.parse_node(verse_node, scope_id)?;
         let expected_verse = section.lyrics.len() + 1;
         let tokens = self.resolve_lyric_tokens(content_node, scope_id);
         let anchor = self.resolve_lyric_anchor(anchor_node, &tokens);
@@ -440,7 +438,7 @@ impl<'a> Parser<'a> {
         let span = node
             .child_by_field_name("span")
             .and_then(|s| s.child_by_field_name("count"))
-            .and_then(|c| self.parse_node(c))
+            .and_then(|c| self.parse_node(c, scope_id))
             .unwrap_or(1);
 
         Some(LyricColumn { sid, span, chunks })
@@ -565,7 +563,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn handle_assignment_node<T: FieldAssign>(
+    fn handle_local_params_node<T: FieldAssign>(
         &mut self,
         node: Node<'_>,
         parent_sid: ScopeId,
@@ -613,8 +611,12 @@ impl<'a> Parser<'a> {
         });
     }
 
-    pub(crate) fn parse_node<T: ParseNode>(&mut self, node: Node<'_>) -> Option<T> {
-        T::parse_node(node, self)
+    pub(crate) fn parse_node<T: ParseNode>(
+        &mut self,
+        node: Node<'_>,
+        scope_id: ScopeId,
+    ) -> Option<T> {
+        T::parse_node(self, node, scope_id)
     }
 
     pub(crate) fn resolve_node_string(&mut self, node: Node<'_>) -> Option<String> {
@@ -653,7 +655,7 @@ impl<'a> Parser<'a> {
             .add_symbol(T::symbol_kind(), data.value_range, data.scope_id);
 
         *field = self
-            .parse_node(data.value_node)
+            .parse_node(data.value_node, data.scope_id)
             .map(|value| SymbolRef { sid, value });
     }
 }

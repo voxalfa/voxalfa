@@ -26,34 +26,34 @@ Sample Partition
 [#] author={"Foo Bar","Jane Doe"}
 [#] composer="Bob"
 [#] description="Lorem Ipsum."
-[#] voices={"S","T","A","B"}
+[#] voices={S,T,A,B}
 [#] verses={2}
 [#] release={2026}
 
-[$] key="C" | time={4,4} | bpm={100}
+[$] key={C} | time={4,4} | bpm={100}
 
 ---
 
 ; we can override the global parameters inside sections
 ; [$] bpm={80}
 
-[^] p={0} | cre={4,6}
+[$] dynamics={p:0, cre:4..7}
 
 ;   [0]   [1]   [2]   [3]    [4]  [5]  [6]
 ;    p                       <<<<<<<<<<<<<
 [S] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [T] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 
-[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
-[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
+[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     @@
+[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     @@
 
 ++
 
 [A] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [B] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 
-[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     ..
-[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     .. ; anchor comment
+[1] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     @@
+[2] do    `re`  mi\\\\(f a) so    la    ti____i     do____o.    ~     ~     @@ ; anchor comme@@
 
 ; --
 ; more sections...
@@ -86,37 +86,33 @@ Sample Partition
       (parameter_assignment
         name: (identifier)
         value: (string
-          (double_quote_content))))
+          (string_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (list
           (string
-            (double_quote_content))
+            (string_content))
           (string
-            (double_quote_content)))))
+            (string_content)))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (string
-          (double_quote_content))))
+          (string_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (string
-          (double_quote_content))))
+          (string_content))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
         value: (list
-          (string
-            (double_quote_content))
-          (string
-            (double_quote_content))
-          (string
-            (double_quote_content))
-          (string
-            (double_quote_content)))))
+          (builtin)
+          (builtin)
+          (builtin)
+          (builtin))))
     (metadata_line
       (parameter_assignment
         name: (identifier)
@@ -128,8 +124,7 @@ Sample Partition
     (parameter_line
       (parameter_assignment
         name: (identifier)
-        value: (string
-          (double_quote_content)))
+        value: (builtin))
       (parameter_assignment
         name: (identifier)
         value: (list
@@ -144,15 +139,17 @@ Sample Partition
       (sub_section
         (inline_comment)
         (inline_comment)
-        (dynamics_line
-          (parameter_assignment
-            name: (identifier)
-            value: (integer))
+        (parameter_line
           (parameter_assignment
             name: (identifier)
             value: (list
-              (integer)
-              (integer))))
+              (timed_value
+                value: (builtin)
+                start: (integer))
+              (timed_value
+                value: (builtin)
+                start: (integer)
+                end: (integer)))))
         (inline_comment)
         (inline_comment)
         (solfa_line

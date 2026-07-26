@@ -7,17 +7,17 @@
 [#] author={"Foo Bar","Jane Doe"}
 ;          ^ punctuation.bracket
 [#] composer="Bob"
-[#] voices={"S","T","A","B"}
+[#] voices={S,T,A,B}
 [#] verses={2}
 [#] description="Lorem Ipsum."
 [#] release={2026}
 ;            ^ number
 
-[$] key={"C"} | time={4,4} | bpm={100}
+[$] key={C} | time={4,4} | bpm={100}
 
 ---
 
-[^] p={1} | cre={3,6}
+[$] dynamics={p:0, cre:4..7}
 
 [S] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 ;                                                     ^ type.qualifier
@@ -27,8 +27,8 @@
 [A] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 [B] |d    :r    !m    :f    |`s   :l   `!t    :-    |da+1 :-    !     :     ||
 
-[1] do    `re`  mi\   (f a) so    la    ti_   i     do_   o.    ~     ~     ..
-[2] do    `re`  mi\   (f a) so    la    ti_   i     do_   o.    ~     ~     .. ; scream
+[1] do    `re`  mi\   (f a) so    la    ti_   i     do_   o.    ~     ~     @@
+[2] do    `re`  mi\   (f a) so    la    ti_   i     do_   o.    ~     ~     @@ ; scream
 ;         ^ punctuation.bracket
 ;                     ^ punctuation.bracket
 ;                                                                     ^ constant.builtin

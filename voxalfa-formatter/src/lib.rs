@@ -5,8 +5,11 @@ use std::io::{self, Write};
 
 use voxalfa_validator::{
     ast::{
-        body::SectionMetadata, dynamics::Dynamics, header::HeaderMetadata,
-        lyrics::LyricOperatorKind, params::CompositionParams, symbols::SymbolRef,
+        body::SectionMetadata,
+        header::HeaderMetadata,
+        lyrics::LyricOperatorKind,
+        params::{GlobalParams, LocalParams},
+        symbols::SymbolRef,
     },
     ir::{
         PulseView,
@@ -49,7 +52,7 @@ impl<'a> Formatter<'a> {
         let header = &self.source.header;
 
         self.process_metadata(&header.metadata);
-        self.process_params(&header.params);
+        self.process_global_params(&header.params);
         self.push_delimiter();
         self.process_body();
         self.process_comments();
@@ -84,10 +87,10 @@ impl<'a> Formatter<'a> {
     fn process_body(&mut self) {
         for (section_id, section) in self.source.ir.sections.iter().enumerate() {
             self.process_section_metadata(&section.metadata);
-            self.process_params(&section.params);
+            self.process_global_params(&section.params);
 
             for sub_section in &section.items {
-                self.process_dynamics(&sub_section.dynamics);
+                self.process_local_params(&sub_section.params);
 
                 for solfa in &sub_section.solfa {
                     self.process_solfa(solfa);
@@ -120,20 +123,17 @@ impl<'a> Formatter<'a> {
     fn process_section_metadata(&mut self, params: &SectionMetadata) {
         self.add_assignment(Assignment::Metadata, params.name.as_ref());
         self.add_assignment(Assignment::Metadata, params.ending.as_ref());
-        self.add_assignment(Assignment::Metadata, params.head_mark.as_ref());
-        self.add_assignment(Assignment::Metadata, params.tail_mark.as_ref());
     }
 
-    fn process_params(&mut self, params: &CompositionParams) {
+    fn process_global_params(&mut self, params: &GlobalParams) {
         self.add_assignment(Assignment::Params, params.key.as_ref());
         self.add_assignment(Assignment::Params, params.time.as_ref());
-        self.add_assignment(Assignment::Params, params.bpm.as_ref());
+        self.add_assignment(Assignment::Params, params.tempo.as_ref());
+        self.add_assignment(Assignment::Params, params.markers.as_ref());
     }
 
-    fn process_dynamics(&mut self, dynamics: &Dynamics) {
-        for dynamic in &dynamics.value {
-            self.add_assignment(Assignment::Dynamics, Some(dynamic));
-        }
+    fn process_local_params(&mut self, params: &LocalParams) {
+        self.add_assignment(Assignment::Params, params.dynamics.as_ref());
     }
 
     fn process_solfa(&mut self, solfa: &SolfaLineIR) {
@@ -244,7 +244,7 @@ impl<'a> Formatter<'a> {
             buffer.push_str(&padded_str);
 
             if lyric_id == last_lyric_id && line.anchor {
-                buffer.push_str("..");
+                buffer.push_str("@@");
             }
         }
 

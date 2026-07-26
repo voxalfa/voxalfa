@@ -2,7 +2,6 @@
 pub enum Assignment {
     Metadata,
     Params,
-    Dynamics,
 }
 
 impl Assignment {
@@ -10,7 +9,6 @@ impl Assignment {
         match self {
             Assignment::Metadata => "#",
             Assignment::Params => "$",
-            Assignment::Dynamics => "^",
         }
     }
 
@@ -18,7 +16,6 @@ impl Assignment {
         match self {
             Assignment::Metadata => LineRank::Metadata,
             Assignment::Params => LineRank::Params,
-            Assignment::Dynamics => LineRank::Dynamics,
         }
     }
 }
@@ -29,7 +26,6 @@ pub enum LineRank {
     Fallback,
     Metadata,
     Params,
-    Dynamics,
     Solfa,
     Lyrics,
     Delimiter,

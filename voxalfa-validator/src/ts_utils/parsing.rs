@@ -4,20 +4,20 @@ use crate::{
     ast::{
         parser::Parser,
         solfa::{BaseNote, Note, NoteVariation},
-        symbols::{SymbolKind, Value},
-        types::{Key, Mark, TimeSignature, Voice},
+        symbols::{ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
+        types::{Dynamic, Key, Mark, TimeSignature, TimedValue, Voice},
     },
     diagnostics::types::DiagnosticKind,
     ts_utils::generated::node_types,
 };
 
 pub trait ParseNode: Sized {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self>;
+    fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self>;
     fn symbol_kind() -> SymbolKind;
 }
 
 impl ParseNode for usize {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
+    fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self> {
         let range = node.range();
 
         if node.kind_id() == node_types::INTEGER {
@@ -46,7 +46,7 @@ impl ParseNode for usize {
 }
 
 impl ParseNode for f32 {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
+    fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self> {
         let range = node.range();
 
         if matches!(node.kind_id(), node_types::INTEGER | node_types::FLOAT) {
@@ -75,7 +75,7 @@ impl ParseNode for f32 {
 }
 
 impl ParseNode for String {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
+    fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self> {
         let range = node.range();
 
         if node.kind_id() == node_types::STRING {
@@ -97,7 +97,7 @@ impl ParseNode for String {
 }
 
 impl ParseNode for bool {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
+    fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self> {
         let range = node.range();
 
         if node.kind_id() == node_types::BOOLEAN {
@@ -120,58 +120,20 @@ impl ParseNode for bool {
     }
 }
 
-impl ParseNode for Key {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
-        let text = context.parse_node::<String>(node)?;
-
-        if let Ok(res) = Key::try_from(text.as_str()) {
-            Some(res)
-        } else {
-            context
-                .reporter
-                .error(node.range(), DiagnosticKind::InvalidType("key"));
-            None
-        }
-    }
-
-    fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Builtin)
-    }
-}
-
-impl ParseNode for Voice {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
-        let text = context.parse_node::<String>(node)?;
-
-        if let Ok(res) = Voice::try_from(text.as_str()) {
-            Some(res)
-        } else {
-            context
-                .reporter
-                .error(node.range(), DiagnosticKind::InvalidType("voice"));
-            None
-        }
-    }
-
-    fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Builtin)
-    }
-}
-
 impl ParseNode for TimeSignature {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
-        let value = context.parse_node::<Vec<_>>(node)?;
+    fn parse_node(context: &mut Parser, node: Node<'_>, scope_id: ScopeId) -> Option<Self> {
+        let value = context.parse_node::<Vec<SymbolRef<usize>>>(node, scope_id)?;
 
-        if value.len() != 2 || value[0] == 0 || value[1] == 0 {
+        let top = value[0].value;
+        let bottom = value[1].value;
+
+        if value.len() != 2 || top == 0 || bottom == 0 {
             context
                 .reporter
                 .error(node.range(), DiagnosticKind::InvalidTimeSignature);
             None
         } else {
-            Some(TimeSignature {
-                top: value[0],
-                bottom: value[1],
-            })
+            Some(TimeSignature { top, bottom })
         }
     }
 
@@ -180,20 +142,33 @@ impl ParseNode for TimeSignature {
     }
 }
 
-impl<T: ParseNode> ParseNode for Vec<T> {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
+impl<T: ParseNode> ParseNode for Vec<SymbolRef<T>> {
+    fn parse_node(context: &mut Parser, node: Node<'_>, parent_sid: ScopeId) -> Option<Self> {
+        let scope_id = context
+            .tree
+            .add_scope(ScopeKind::List, node.range(), Some(parent_sid));
+
         if node.kind_id() == node_types::LIST {
             let mut result = Vec::new();
 
             for child in node.named_children(&mut node.walk()) {
-                if let Some(value) = context.parse_node(child) {
-                    result.push(value);
+                if let Some(value) = context.parse_node::<T>(child, parent_sid) {
+                    let sid = context
+                        .tree
+                        .add_symbol(T::symbol_kind(), child.range(), scope_id);
+
+                    result.push(SymbolRef { sid, value });
                 }
             }
 
             Some(result)
         } else {
-            context.parse_node(node).map(|v| vec![v])
+            let value = context.parse_node(node, parent_sid)?;
+            let sid = context
+                .tree
+                .add_symbol(T::symbol_kind(), node.range(), scope_id);
+
+            Some(vec![SymbolRef { sid, value }])
         }
     }
 
@@ -203,7 +178,7 @@ impl<T: ParseNode> ParseNode for Vec<T> {
 }
 
 impl ParseNode for Note {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
+    fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self> {
         let base_node = node.child_by_field_name("base")?;
         let variation_node = node.child_by_field_name("variation");
         let octave_node = node.child_by_field_name("octave");
@@ -233,18 +208,79 @@ impl ParseNode for Note {
     }
 }
 
-impl ParseNode for Mark {
-    fn parse_node(node: Node<'_>, context: &mut Parser) -> Option<Self> {
-        let text = context.parse_node::<String>(node)?;
+impl<T: ParseNode> ParseNode for TimedValue<T> {
+    fn parse_node(context: &mut Parser, node: Node<'_>, scope_id: ScopeId) -> Option<Self> {
+        if node.kind_id() == node_types::TIMED_VALUE {
+            let value_node = node.child_by_field_name("value")?;
+            let start_node = node.child_by_field_name("start")?;
+            let end_node = node.child_by_field_name("end");
 
-        if let Ok(res) = Mark::try_from(text.as_str()) {
-            Some(res)
+            let value = context.parse_node(value_node, scope_id)?;
+            let start = context.parse_node(start_node, scope_id)?;
+            let end = end_node.and_then(|n| context.parse_node(n, scope_id));
+
+            Some(TimedValue { start, end, value })
         } else {
+            let value = context.parse_node(node, scope_id)?;
+
+            Some(TimedValue {
+                start: 0.,
+                end: None,
+                value,
+            })
+        }
+    }
+
+    fn symbol_kind() -> SymbolKind {
+        T::symbol_kind()
+    }
+}
+
+pub trait ParseBuiltin: TryFrom<String> {
+    const TYPE_NAME: &'static str;
+}
+
+impl ParseBuiltin for Dynamic {
+    const TYPE_NAME: &'static str = "dynamic";
+}
+
+impl ParseBuiltin for Key {
+    const TYPE_NAME: &'static str = "key";
+}
+
+impl ParseBuiltin for Voice {
+    const TYPE_NAME: &'static str = "voice";
+}
+
+impl ParseBuiltin for Mark {
+    const TYPE_NAME: &'static str = "key";
+}
+
+impl<T> ParseNode for T
+where
+    T: ParseBuiltin,
+{
+    fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self> {
+        let range = node.range();
+
+        if node.kind_id() == node_types::BUILTIN {
+            let text = context.resolve_node_string(node)?;
+
+            if let Ok(res) = T::try_from(text) {
+                return Some(res);
+            }
+
             context
                 .reporter
-                .error(node.range(), DiagnosticKind::InvalidType("marker"));
-            None
+                .error(range, DiagnosticKind::InvalidType(T::TYPE_NAME));
+        } else {
+            context.reporter.error(
+                range,
+                DiagnosticKind::ExpectedType(T::TYPE_NAME, node.kind()),
+            );
         }
+
+        None
     }
 
     fn symbol_kind() -> SymbolKind {

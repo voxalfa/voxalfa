@@ -88,19 +88,31 @@ export default grammar({
     identifier: () => /[a-zA-Z][a-zA-Z_-]*/,
 
     _delimited_value: ($) =>
-      seq("{", field("value", choice($._value_atom, $.list)), "}"),
-    _value_atom: ($) => seq(choice($._number, $.string, $.boolean)),
-
-    list: ($) => seq($._value_atom, ",", sep1(",", $._value_atom)),
-
-    string: ($) =>
-      choice(
-        seq('"', $.double_quote_content, '"'),
-        seq("'", $.single_quote_content, "'"),
+      seq(
+        "{",
+        field("value", choice($._value_primitive, $.list, $.timed_value)),
+        "}",
       ),
 
-    double_quote_content: () => /[^"\n]*/,
-    single_quote_content: () => /[^'\n]*/,
+    _value_primitive: ($) =>
+      seq(choice($._number, $.string, $.boolean, $.builtin)),
+    _value_structured: ($) => choice($._value_primitive, $.timed_value),
+
+    list: ($) => seq($._value_structured, ",", sep1(",", $._value_structured)),
+
+    string: ($) => seq('"', $.string_content, '"'),
+
+    builtin: () => /[a-zA-Z#]+/,
+
+    timed_value: ($) =>
+      seq(
+        field("value", $._value_primitive),
+        ":",
+        field("start", $._number),
+        optional(seq("..", field("end", $._number))),
+      ),
+
+    string_content: () => /[^"\n]*/,
 
     inline_string: () => /[^\n]+/,
 
@@ -161,7 +173,7 @@ export default grammar({
         ),
       ),
 
-    lyric_anchor: () => "..",
+    lyric_anchor: () => "@@",
 
     _lyric_operator: ($) =>
       choice($.concat_operator, $.space_operator, $.newline_operator),

@@ -1,4 +1,14 @@
-use crate::ast::solfa::PulseAccent;
+use crate::ast::{solfa::PulseAccent, symbols::SymbolRef};
+
+pub type List<T> = Vec<SymbolRef<T>>;
+pub type TimedList<T> = List<TimedValue<T>>;
+
+#[derive(Debug, Clone)]
+pub struct TimedValue<T> {
+    pub start: f32,
+    pub end: Option<f32>,
+    pub value: T,
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct TimeSignature {
@@ -40,10 +50,10 @@ impl std::fmt::Display for Key {
     }
 }
 
-impl TryFrom<&str> for Key {
+impl TryFrom<String> for Key {
     type Error = ();
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         let base_str = value.get(..1).ok_or(())?;
         let accidental_str = value.get(1..).ok_or(())?;
         let base = BaseKey::try_from(base_str)?;
@@ -109,11 +119,11 @@ pub enum Voice {
     B,
 }
 
-impl TryFrom<&str> for Voice {
+impl TryFrom<String> for Voice {
     type Error = ();
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
             "S" => Ok(Self::S),
             "A" => Ok(Self::A),
             "T" => Ok(Self::T),
@@ -124,7 +134,7 @@ impl TryFrom<&str> for Voice {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum DynamicKind {
+pub enum Dynamic {
     P,
     MP,
     PP,
@@ -133,27 +143,24 @@ pub enum DynamicKind {
     MF,
     FF,
     FFF,
-    DC,
-    DS,
-    Seg,
     Cre,
     Dec,
 }
 
-impl DynamicKind {
+impl Dynamic {
     pub fn expected_params(self) -> usize {
         match self {
-            DynamicKind::Cre | DynamicKind::Dec => 2,
+            Dynamic::Cre | Dynamic::Dec => 2,
             _ => 1,
         }
     }
 }
 
-impl TryFrom<&str> for DynamicKind {
+impl TryFrom<String> for Dynamic {
     type Error = ();
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
             "p" => Ok(Self::P),
             "mp" => Ok(Self::MP),
             "pp" => Ok(Self::PP),
@@ -162,9 +169,6 @@ impl TryFrom<&str> for DynamicKind {
             "mf" => Ok(Self::MF),
             "ff" => Ok(Self::FF),
             "fff" => Ok(Self::FFF),
-            "dc" => Ok(Self::DC),
-            "ds" => Ok(Self::DS),
-            "seg" => Ok(Self::Seg),
             "cre" => Ok(Self::Cre),
             "dec" => Ok(Self::Dec),
             _ => Err(()),
@@ -172,20 +176,53 @@ impl TryFrom<&str> for DynamicKind {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Dynamic {
-    pub kind: DynamicKind,
-    pub start: f32,
-    pub end: f32,
+impl std::fmt::Display for Dynamic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Dynamic::P => write!(f, "p"),
+            Dynamic::MP => write!(f, "mp"),
+            Dynamic::PP => write!(f, "pp"),
+            Dynamic::PPP => write!(f, "ppp"),
+            Dynamic::F => write!(f, "f"),
+            Dynamic::MF => write!(f, "mf"),
+            Dynamic::FF => write!(f, "ff"),
+            Dynamic::FFF => write!(f, "fff"),
+            Dynamic::Cre => write!(f, "cre"),
+            Dynamic::Dec => write!(f, "dec"),
+        }
+    }
 }
 
-impl Dynamic {
-    pub fn is_mark(&self) -> bool {
-        self.start == self.end
-    }
+#[derive(Debug, Clone, Copy)]
+pub enum Mark {
+    DS,
+    DC,
+    Segno,
+    Coda,
+}
 
-    pub fn is_range(&self) -> bool {
-        self.start < self.end
+impl TryFrom<String> for Mark {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "DS" => Ok(Self::DS),
+            "DC" => Ok(Self::DS),
+            "S" => Ok(Self::Segno),
+            "C" => Ok(Self::Coda),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::fmt::Display for Mark {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Mark::DS => write!(f, "DC"),
+            Mark::DC => write!(f, "DS"),
+            Mark::Segno => write!(f, "S"),
+            Mark::Coda => write!(f, "C"),
+        }
     }
 }
 
@@ -238,28 +275,6 @@ mod tests {
             }
 
             assert_eq!(expected, pulses);
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Mark {
-    DS,
-    DC,
-    Segno,
-    Coda,
-}
-
-impl TryFrom<&str> for Mark {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "DS" => Ok(Self::DS),
-            "DC" => Ok(Self::DS),
-            "segno" => Ok(Self::Segno),
-            "coda" => Ok(Self::Coda),
-            _ => Err(()),
         }
     }
 }

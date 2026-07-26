@@ -1,7 +1,11 @@
-use voxalfa_validator::ast::types::{Dynamic, Key, Mark, TimeSignature, Voice};
+use voxalfa_validator::ast::types::{Dynamic, Key, List, Mark, TimeSignature, TimedValue, Voice};
 
 pub trait Formattable {
     fn format(&self, embedded: bool) -> String;
+
+    fn is_spaced() -> bool {
+        false
+    }
 }
 
 impl Formattable for String {
@@ -21,8 +25,12 @@ impl Formattable for usize {
 }
 
 impl Formattable for Key {
-    fn format(&self, _embedded: bool) -> String {
-        format!("\"{self}\"")
+    fn format(&self, embedded: bool) -> String {
+        if embedded {
+            format!("{self}")
+        } else {
+            format!("{{{self}}}")
+        }
     }
 }
 
@@ -35,19 +43,29 @@ impl Formattable for TimeSignature {
 impl Formattable for Voice {
     fn format(&self, embedded: bool) -> String {
         if embedded {
-            format!("\"{self:?}\"")
+            format!("{self:?}")
         } else {
-            format!("{{\"{self:?}\"}}")
+            format!("{{{self:?}}}")
         }
     }
 }
 
 impl Formattable for Dynamic {
-    fn format(&self, _embedded: bool) -> String {
-        if self.start != self.end {
-            format!("{{{},{}}}", self.start, self.end)
+    fn format(&self, embedded: bool) -> String {
+        if embedded {
+            self.to_string()
         } else {
-            format!("{{{}}}", self.start)
+            format!("{{{self}}}")
+        }
+    }
+}
+
+impl Formattable for Mark {
+    fn format(&self, embedded: bool) -> String {
+        if embedded {
+            self.to_string()
+        } else {
+            format!("{{{self}}}")
         }
     }
 }
@@ -64,31 +82,42 @@ impl Formattable for bool {
     }
 }
 
-impl Formattable for Mark {
-    fn format(&self, _embedded: bool) -> String {
-        let s = match self {
-            Mark::DS => "DS",
-            Mark::DC => "DS",
-            Mark::Segno => "segno",
-            Mark::Coda => "coda",
-        };
-
-        format!("\"{s}\"")
-    }
-}
-
-impl<T: Formattable> Formattable for Vec<T> {
+impl<T: Formattable> Formattable for List<T> {
     fn format(&self, _embedded: bool) -> String {
         if self.len() > 1 {
+            let separator = if T::is_spaced() { ", " } else { "," };
+
             let inner = self
                 .iter()
-                .map(|t| t.format(true))
+                .map(|t| t.value.format(true))
                 .collect::<Vec<_>>()
-                .join(",");
+                .join(separator);
 
             format!("{{{inner}}}")
         } else {
-            self[0].format(false) // list should always have one item
+            self[0].value.format(false) // list should always have one item
         }
+    }
+}
+
+impl<T: Formattable> Formattable for TimedValue<T> {
+    fn format(&self, embedded: bool) -> String {
+        let inner = self.value.format(true);
+
+        let value = match (self.start, self.end) {
+            (0., None) => inner,
+            (start, None) => format!("{inner}:{start}"),
+            (start, Some(end)) => format!("{inner}:{start}..{end}"),
+        };
+
+        if embedded {
+            value
+        } else {
+            format!("{{{value}}}")
+        }
+    }
+
+    fn is_spaced() -> bool {
+        true
     }
 }

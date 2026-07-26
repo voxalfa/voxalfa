@@ -1,12 +1,10 @@
 use crate::{
     ast::{
-        dynamics::Dynamics,
         lyrics::LyricLine,
-        params::CompositionParams,
+        params::{GlobalParams, LocalParams},
         parser::Parser,
         solfa::SolfaLine,
         symbols::{Field, FieldAssign, ScopeId},
-        types::Mark,
     },
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
@@ -32,7 +30,7 @@ pub struct Section {
     pub sid: ScopeId,
     pub items: Vec<SubSection>,
     pub metadata: SectionMetadata,
-    pub params: CompositionParams,
+    pub params: GlobalParams,
     pub merge: bool,
 }
 
@@ -49,8 +47,6 @@ impl Section {
 pub struct SectionMetadata {
     pub name: Field<String>,
     pub ending: Field<usize>,
-    pub head_mark: Field<Vec<Mark>>,
-    pub tail_mark: Field<Vec<Mark>>,
 }
 
 impl FieldAssign for SectionMetadata {
@@ -58,8 +54,6 @@ impl FieldAssign for SectionMetadata {
         match data.key_name.as_str() {
             "name" => context.assign_field(data, &mut self.name),
             "ending" => context.assign_field(data, &mut self.ending),
-            "head-mark" => context.assign_field(data, &mut self.head_mark),
-            "tail-mark" => context.assign_field(data, &mut self.tail_mark),
             _ => {
                 context.reporter.error(
                     data.full_range,
@@ -74,7 +68,7 @@ impl FieldAssign for SectionMetadata {
 pub struct SubSection {
     pub id: usize,
     pub sid: ScopeId,
-    pub dynamics: Dynamics,
+    pub params: LocalParams,
     pub solfa: Vec<SolfaLine>,
     pub lyrics: Vec<LyricLine>,
 }

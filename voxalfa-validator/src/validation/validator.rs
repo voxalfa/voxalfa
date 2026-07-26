@@ -1,21 +1,21 @@
 use crate::{
     ast::{
         body::{Body, Section},
-        dynamics::Dynamics,
         header::Header,
         lyrics::LyricToken,
+        params::LocalParams,
         solfa::{PulseAccent, SolfaLine},
         symbols::{SymbolRef, SymbolTree},
-        types::TimeSignature,
+        types::{TimeSignature, TimedList},
     },
     diagnostics::{
         reporter::DiagnosticReporter,
         types::{DiagnosticKind, ReportStage},
     },
     ir::{BodyIR, SectionIR, SubSectionIR},
-    output::TimelineMap,
+    output::{TimelineMap, ToEventKind},
     ts_utils::range::RangeUtil,
-    validation::timeline::DynamicsBuffer,
+    validation::timeline::EventBuffer,
 };
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ impl<'a> Validator<'a> {
     }
 
     pub fn validate_body_ir(&mut self, body: &BodyIR) {
-        let mut buffer = DynamicsBuffer::default();
+        let mut buffer = EventBuffer::default();
 
         for (section_id, section) in body.sections.iter().enumerate() {
             for sub_section in &section.items {
@@ -65,16 +65,20 @@ impl<'a> Validator<'a> {
                 buffer.init_section();
             }
 
+            // TODO: validate other timed lists
+
             for (sub_id, sub_section) in section.items.iter().enumerate() {
-                let dynamics = self.resolve_root_dynamics(section_id, sub_id, &body.sections);
+                let dynamics = self
+                    .resolve_root_params(section_id, sub_id, &body.sections)
+                    .and_then(|p| p.dynamics.as_ref());
 
                 if let Some(dynamics) = dynamics {
-                    buffer.process(sub_section, dynamics);
+                    buffer.process(sub_section, &dynamics.value);
 
                     let next_section = body.sections.get(section_id + 1);
 
                     if next_section.is_some_and(|s| !s.merge) || next_section.is_none() {
-                        self.validate_dynamics_buffer(dynamics, &mut buffer);
+                        self.validate_event_buffer(&dynamics.value, &mut buffer);
                     }
                 }
             }
@@ -205,9 +209,6 @@ impl<'a> Validator<'a> {
                 let range = self.tree.get_symbol_range(pulse.accent.sid);
                 let context_range = self.tree.get_symbol_range(time_signature.sid);
 
-                println!("offset: {offset}");
-                println!("count: {count}");
-
                 self.reporter.error(
                     range,
                     DiagnosticKind::MismatchedPulseAccent(
@@ -248,11 +249,11 @@ impl<'a> Validator<'a> {
             let range = self.tree.get_symbol_range(voice.sid);
 
             if let Some(voices) = &self.header.metadata.voices {
-                if let Some(expected_voice) = voices.value.get(id) {
-                    if voice.value != *expected_voice {
+                if let Some(expected) = voices.value.get(id) {
+                    if voice.value != expected.value {
                         self.reporter.error(
                             range,
-                            DiagnosticKind::VoiceMismatch(*expected_voice, voice.value),
+                            DiagnosticKind::VoiceMismatch(expected.value, voice.value),
                         );
                     }
                 } else {
@@ -325,12 +326,12 @@ impl<'a> Validator<'a> {
         }
     }
 
-    fn validate_dynamics_buffer(&mut self, dynamics: &Dynamics, buffer: &mut DynamicsBuffer) {
-        if buffer.is_empty() {
-            return;
-        }
-
-        for (id, dynamic) in dynamics.value.iter().enumerate() {
+    fn validate_event_buffer<T: ToEventKind>(
+        &mut self,
+        events: &TimedList<T>,
+        buffer: &mut EventBuffer,
+    ) {
+        for (id, dynamic) in events.iter().enumerate() {
             if !buffer.has_processed(id) {
                 self.reporter.error(
                     self.tree.get_symbol_range(dynamic.sid),
@@ -342,16 +343,16 @@ impl<'a> Validator<'a> {
         self.timelines.extend_from_buffer(buffer);
     }
 
-    fn resolve_root_dynamics(
+    fn resolve_root_params(
         &self,
         section_id: usize,
         sub_id: usize,
         sections: &'a [SectionIR],
-    ) -> Option<&'a Dynamics> {
+    ) -> Option<&'a LocalParams> {
         sections[..=section_id]
             .iter()
             .rev()
             .find(|s| !s.merge)
-            .and_then(|s| s.items.get(sub_id).map(|sub| &sub.dynamics))
+            .and_then(|s| s.items.get(sub_id).map(|sub| &sub.params))
     }
 }

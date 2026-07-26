@@ -1,5 +1,6 @@
 use voxalfa_validator::output::FinalOutput;
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct Converter<'a> {
     source: &'a FinalOutput,

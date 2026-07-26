@@ -4,7 +4,7 @@ use crate::{
     ast::{
         header::Header,
         symbols::{Delimiter, SymbolTree},
-        types::DynamicKind,
+        types::Dynamic,
     },
     diagnostics::types::Diagnostic,
     ir::{
@@ -13,7 +13,7 @@ use crate::{
         solfa::PulseColumnKind,
     },
     render::RenderType,
-    validation::timeline::DynamicsBuffer,
+    validation::timeline::EventBuffer,
 };
 
 #[derive(Debug)]
@@ -182,7 +182,7 @@ pub struct TimelineMap {
 }
 
 impl TimelineMap {
-    pub fn extend_from_buffer(&mut self, buffer: &mut DynamicsBuffer) {
+    pub fn extend_from_buffer(&mut self, buffer: &mut EventBuffer) {
         for partial in buffer.drain() {
             self.timelines
                 .entry(partial.sub_id)
@@ -198,46 +198,61 @@ impl TimelineMap {
 
 #[derive(Debug, Default)]
 pub struct Timeline {
-    events: Vec<(Timestamp, DynamicEvent)>,
+    events: Vec<(Timestamp, Event)>,
 }
 
 impl Timeline {
-    pub fn add_event(&mut self, timestamp: Timestamp, event: DynamicEvent) {
+    pub fn add_event(&mut self, timestamp: Timestamp, event: Event) {
         self.events.push((timestamp, event));
     }
 
-    pub fn get_event(&self, timestamp: Timestamp) -> Option<DynamicEvent> {
+    pub fn get_event(&self, timestamp: Timestamp) -> Option<&Event> {
         self.events
             .binary_search_by(|(ts, _)| ts.cmp(&timestamp))
             .ok()
-            .map(|idx| self.events[idx].1)
+            .map(|idx| &self.events[idx].1)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct DynamicEvent {
-    pub dynamic: DynamicKind,
-    pub kind: DynamicEventKind,
+#[derive(Debug)]
+pub struct Event {
+    pub dispatch: EventDispatch,
+    pub kind: EventKind,
 }
 
-impl DynamicEvent {
-    pub fn start(value: DynamicKind) -> Self {
+impl Event {
+    pub fn start(kind: EventKind) -> Self {
         Self {
-            dynamic: value,
-            kind: DynamicEventKind::Start,
+            dispatch: EventDispatch::Start,
+            kind,
         }
     }
 
-    pub fn end(value: DynamicKind) -> Self {
+    pub fn end(kind: EventKind) -> Self {
         Self {
-            dynamic: value,
-            kind: DynamicEventKind::End,
+            dispatch: EventDispatch::End,
+            kind,
         }
     }
 }
 
+#[derive(Debug)]
+pub enum EventKind {
+    Dynamic(Dynamic),
+}
+
 #[derive(Debug, Clone, Copy)]
-pub enum DynamicEventKind {
+pub enum EventDispatch {
     Start,
     End,
+}
+
+pub trait ToEventKind {
+    fn to_event_kind(&self) -> EventKind;
+}
+
+impl ToEventKind for Dynamic {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Dynamic(*self)
+    }
 }

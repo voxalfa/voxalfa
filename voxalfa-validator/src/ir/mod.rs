@@ -8,7 +8,9 @@ use solfa::SolfaLineIR;
 
 use crate::{
     ast::{
-        body::SectionMetadata, dynamics::Dynamics, params::CompositionParams, symbols::ScopeId,
+        body::SectionMetadata,
+        params::{GlobalParams, LocalParams},
+        symbols::ScopeId,
         types::Voice,
     },
     ir::solfa::PulseIR,
@@ -24,7 +26,7 @@ pub struct SectionIR {
     pub sid: ScopeId,
     pub items: Vec<SubSectionIR>,
     pub metadata: SectionMetadata,
-    pub params: CompositionParams,
+    pub params: GlobalParams,
     pub merge: bool,
 }
 
@@ -42,7 +44,7 @@ impl SectionIR {
 #[derive(Debug, Default)]
 pub struct SubSectionIR {
     pub sid: ScopeId,
-    pub dynamics: Dynamics,
+    pub params: LocalParams,
     pub views: Vec<PulseView>,
     pub solfa: Vec<SolfaLineIR>,
     pub lyrics: Vec<LyricLineIR>,

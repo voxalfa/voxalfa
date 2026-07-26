@@ -61,6 +61,7 @@ pub enum ScopeKind {
     LyricLine,
     LyricsColumn,
     LyricString,
+    List,
 }
 
 #[derive(Debug)]

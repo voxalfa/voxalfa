@@ -89,7 +89,7 @@ impl<'a> IRBuilder<'a> {
 
         SubSectionIR {
             sid: section.sid,
-            dynamics: section.dynamics,
+            params: section.params,
             views,
             solfa,
             lyrics,

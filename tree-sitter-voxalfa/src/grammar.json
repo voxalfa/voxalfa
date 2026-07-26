@@ -467,11 +467,15 @@
             "members": [
               {
                 "type": "SYMBOL",
-                "name": "_value_atom"
+                "name": "_value_primitive"
               },
               {
                 "type": "SYMBOL",
                 "name": "list"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "timed_value"
               }
             ]
           }
@@ -482,7 +486,7 @@
         }
       ]
     },
-    "_value_atom": {
+    "_value_primitive": {
       "type": "SEQ",
       "members": [
         {
@@ -499,8 +503,25 @@
             {
               "type": "SYMBOL",
               "name": "boolean"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "builtin"
             }
           ]
+        }
+      ]
+    },
+    "_value_structured": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_value_primitive"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "timed_value"
         }
       ]
     },
@@ -509,7 +530,7 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "_value_atom"
+          "name": "_value_structured"
         },
         {
           "type": "STRING",
@@ -520,7 +541,7 @@
           "members": [
             {
               "type": "SYMBOL",
-              "name": "_value_atom"
+              "name": "_value_structured"
             },
             {
               "type": "REPEAT",
@@ -533,7 +554,7 @@
                   },
                   {
                     "type": "SYMBOL",
-                    "name": "_value_atom"
+                    "name": "_value_structured"
                   }
                 ]
               }
@@ -543,51 +564,79 @@
       ]
     },
     "string": {
-      "type": "CHOICE",
+      "type": "SEQ",
       "members": [
         {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "STRING",
-              "value": "\""
-            },
-            {
-              "type": "SYMBOL",
-              "name": "double_quote_content"
-            },
-            {
-              "type": "STRING",
-              "value": "\""
-            }
-          ]
+          "type": "STRING",
+          "value": "\""
         },
         {
-          "type": "SEQ",
+          "type": "SYMBOL",
+          "name": "string_content"
+        },
+        {
+          "type": "STRING",
+          "value": "\""
+        }
+      ]
+    },
+    "builtin": {
+      "type": "PATTERN",
+      "value": "[a-zA-Z#]+"
+    },
+    "timed_value": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "value",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_value_primitive"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "FIELD",
+          "name": "start",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_number"
+          }
+        },
+        {
+          "type": "CHOICE",
           "members": [
             {
-              "type": "STRING",
-              "value": "'"
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": ".."
+                },
+                {
+                  "type": "FIELD",
+                  "name": "end",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_number"
+                  }
+                }
+              ]
             },
             {
-              "type": "SYMBOL",
-              "name": "single_quote_content"
-            },
-            {
-              "type": "STRING",
-              "value": "'"
+              "type": "BLANK"
             }
           ]
         }
       ]
     },
-    "double_quote_content": {
+    "string_content": {
       "type": "PATTERN",
       "value": "[^\"\\n]*"
-    },
-    "single_quote_content": {
-      "type": "PATTERN",
-      "value": "[^'\\n]*"
     },
     "inline_string": {
       "type": "PATTERN",
@@ -853,7 +902,7 @@
     },
     "lyric_anchor": {
       "type": "STRING",
-      "value": ".."
+      "value": "@@"
     },
     "_lyric_operator": {
       "type": "CHOICE",

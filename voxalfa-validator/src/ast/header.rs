@@ -1,9 +1,9 @@
 use crate::{
     ast::{
-        params::CompositionParams,
+        params::GlobalParams,
         parser::Parser,
         symbols::{Field, FieldAssign, ScopeId},
-        types::Voice,
+        types::{List, Voice},
     },
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
@@ -13,7 +13,7 @@ use crate::{
 pub struct Header {
     pub sid: ScopeId,
     pub metadata: HeaderMetadata,
-    pub params: CompositionParams,
+    pub params: GlobalParams,
 }
 
 impl Header {
@@ -28,14 +28,14 @@ impl Header {
 #[derive(Debug, Default)]
 pub struct HeaderMetadata {
     pub title: Field<String>,
-    pub author: Field<Vec<String>>,
-    pub composer: Field<Vec<String>>,
-    pub voices: Field<Vec<Voice>>,
+    pub author: Field<List<String>>,
+    pub composer: Field<List<String>>,
+    pub voices: Field<List<Voice>>,
     pub verses: Field<usize>,
     pub description: Field<String>,
     pub release: Field<usize>,
     pub language: Field<String>,
-    pub tags: Field<Vec<String>>,
+    pub tags: Field<List<String>>,
 }
 
 impl FieldAssign for HeaderMetadata {

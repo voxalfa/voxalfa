@@ -1,26 +1,22 @@
 use crate::{
-    ast::dynamics::Dynamics,
+    ast::types::TimedList,
     ir::SubSectionIR,
-    output::{DynamicEvent, SubSectonId, Timestamp},
+    output::{Event, SubSectonId, Timestamp, ToEventKind},
 };
 
 pub const FLOAT_ERROR: f32 = 0.05; // allow 0.3 and 0.7 to match 1/3 and 2/3
 
 #[derive(Debug, Default)]
-pub struct DynamicsBuffer {
+pub struct EventBuffer {
     offset: usize,
     results: Vec<BufferedEvent>,
     processed: Vec<usize>,
 }
 
-impl DynamicsBuffer {
+impl EventBuffer {
     pub fn init_section(&mut self) {
         self.offset = 0;
         self.processed.clear();
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.results.is_empty()
     }
 
     pub fn has_processed(&self, id: usize) -> bool {
@@ -31,8 +27,12 @@ impl DynamicsBuffer {
         self.results.drain(..)
     }
 
-    pub fn process(&mut self, sub_section: &SubSectionIR, dynamics: &Dynamics) {
-        if dynamics.value.is_empty() {
+    pub fn process<T: ToEventKind + std::fmt::Debug>(
+        &mut self,
+        sub_section: &SubSectionIR,
+        events: &TimedList<T>,
+    ) {
+        if events.is_empty() {
             return;
         }
 
@@ -40,14 +40,14 @@ impl DynamicsBuffer {
             let mut ellapsed = self.offset as f32;
 
             for (note_index, &duration) in view.durations.iter().enumerate() {
-                let params = DynamicMatchParams {
+                let params = EventMatchParams {
                     note_start: ellapsed,
                     note_end: ellapsed + (duration as f32 / view.factor as f32),
                     pulse_index,
                     note_index,
                 };
 
-                self.match_dynamics(sub_section.sid, dynamics, &params);
+                self.match_event(sub_section.sid, events, &params);
 
                 ellapsed = params.note_end;
             }
@@ -56,30 +56,30 @@ impl DynamicsBuffer {
         }
     }
 
-    fn match_dynamics(
+    fn match_event<T: ToEventKind>(
         &mut self,
         sub_id: SubSectonId,
-        dynamics: &Dynamics,
-        params: &DynamicMatchParams,
+        events: &TimedList<T>,
+        params: &EventMatchParams,
     ) {
-        for (id, dynamic) in dynamics.value.iter().enumerate() {
-            let start_diff = (dynamic.value.start - params.note_start).abs();
-            let end_diff = (dynamic.value.end - params.note_end).abs();
+        for (id, current) in events.iter().enumerate() {
+            let start_diff = (current.value.start - params.note_start).abs();
+            let end_diff = (current.value.end.unwrap_or_default() - params.note_end).abs();
 
             if start_diff < FLOAT_ERROR {
                 let timestamp = Timestamp::new(params.pulse_index, params.note_index);
-                let event = DynamicEvent::start(dynamic.value.kind);
+                let event = Event::start(current.value.value.to_event_kind());
 
                 self.push_event(sub_id, timestamp, event);
 
-                if dynamic.value.is_mark() {
+                if current.value.end.is_none() {
                     self.processed.push(id);
                 }
             }
 
-            if dynamic.value.is_range() && end_diff < FLOAT_ERROR {
+            if current.value.end.is_some() && end_diff < FLOAT_ERROR {
                 let timestamp = Timestamp::new(params.pulse_index, params.note_index);
-                let event = DynamicEvent::end(dynamic.value.kind);
+                let event = Event::end(current.value.value.to_event_kind());
 
                 self.push_event(sub_id, timestamp, event);
                 self.processed.push(id);
@@ -87,7 +87,7 @@ impl DynamicsBuffer {
         }
     }
 
-    fn push_event(&mut self, sub_id: SubSectonId, timestamp: Timestamp, event: DynamicEvent) {
+    fn push_event(&mut self, sub_id: SubSectonId, timestamp: Timestamp, event: Event) {
         // TODO: watch out repeat flows using seg and DS
         self.results.push(BufferedEvent {
             sub_id,
@@ -101,11 +101,11 @@ impl DynamicsBuffer {
 pub struct BufferedEvent {
     pub sub_id: SubSectonId,
     pub timestamp: Timestamp,
-    pub event: DynamicEvent,
+    pub event: Event,
 }
 
 #[derive(Debug)]
-struct DynamicMatchParams {
+struct EventMatchParams {
     note_start: f32,
     note_end: f32,
     pulse_index: usize,

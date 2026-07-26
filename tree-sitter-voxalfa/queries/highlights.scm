@@ -27,6 +27,8 @@
   (lyric_placeholder)
 ] @constant.builtin
 
+(builtin) @variable
+
 (lyric_special) @character.special
 
 (note
