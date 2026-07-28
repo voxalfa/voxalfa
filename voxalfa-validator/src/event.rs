@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Key, Marker},
+    data_types::{Dynamic, Key, Navigation, Tempo},
     validation::timeline::EventBuffer,
 };
 
@@ -92,7 +92,8 @@ impl Event {
 pub enum EventKind {
     Dynamic(Dynamic),
     Key(Key),
-    Marker(Marker),
+    Navigation(Navigation),
+    Tempo(Tempo),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -125,8 +126,8 @@ impl ToEventKind for Key {
     }
 }
 
-impl ToEventKind for Marker {
+impl ToEventKind for Navigation {
     fn to_event_kind(&self) -> EventKind {
-        EventKind::Marker(*self)
+        EventKind::Navigation(*self)
     }
 }

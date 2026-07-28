@@ -18,6 +18,9 @@ pub mod render;
 pub mod ts_utils;
 pub mod validation;
 
+pub const LIB_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const SUPPORTED_VERSION: &str = "=0.1.0-alpha";
+
 pub struct MultiStepValidator {
     ts_context: TSContext,
 }

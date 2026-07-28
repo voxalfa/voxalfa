@@ -66,7 +66,7 @@ impl<'a> Validator<'a> {
             }
 
             self.validate_timestamps(section.params.key.as_ref());
-            self.validate_timestamps(section.params.markers.as_ref());
+            self.validate_timestamps(section.params.navigation.as_ref());
 
             for (sub_id, sub_section) in section.items.iter().enumerate() {
                 let dynamics = self
@@ -80,7 +80,12 @@ impl<'a> Validator<'a> {
                 let params = &section.params;
 
                 self.check_events(params.key.as_ref(), sub_section, is_last, &mut buffer);
-                self.check_events(params.markers.as_ref(), sub_section, is_last, &mut buffer);
+                self.check_events(
+                    params.navigation.as_ref(),
+                    sub_section,
+                    is_last,
+                    &mut buffer,
+                );
                 self.check_events(dynamics, sub_section, is_last, &mut buffer);
 
                 if sub_id == section.items.len() - 1 {

@@ -63,7 +63,7 @@ Sample Partition
 (source_file
   (header
     (language_directive
-      type: (identifier)
+      name: (identifier)
       value: (inline_string))
     (inline_comment)
     (inline_comment)

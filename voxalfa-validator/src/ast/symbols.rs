@@ -8,6 +8,8 @@ pub type ScopeId = usize;
 pub type LyricStringId = usize;
 pub type Comment = SymbolRef<String>;
 
+pub const ROOT_SCOPE_ID: usize = 0;
+
 #[derive(Debug)]
 pub enum SymbolKind {
     Key(String),
@@ -50,7 +52,9 @@ pub struct SymbolRef<T> {
 
 #[derive(Debug)]
 pub enum ScopeKind {
+    Root,
     Header,
+    DirectiveLine,
     AssignmentLine,
     Assignment,
     Body,
@@ -82,6 +86,10 @@ pub struct SymbolTree {
 }
 
 impl SymbolTree {
+    pub fn init_root(&mut self, range: Range) {
+        self.add_scope(ScopeKind::Root, range, None);
+    }
+
     pub fn add_symbol(&mut self, kind: SymbolKind, range: Range, scope_id: ScopeId) -> SymbolId {
         let id = self.symbols.len();
 
@@ -164,6 +172,7 @@ pub struct Delimiter {
 pub enum DelimiterKind {
     Header,
     SectionSplit,
+    SectionMajor,
     SectionMerge,
     SubSection,
 }
@@ -173,6 +182,7 @@ impl std::fmt::Display for DelimiterKind {
         match self {
             DelimiterKind::Header => write!(f, "---"),
             DelimiterKind::SectionSplit => write!(f, "--"),
+            DelimiterKind::SectionMajor => write!(f, "=="),
             DelimiterKind::SectionMerge => write!(f, "<<"),
             DelimiterKind::SubSection => write!(f, "++"),
         }

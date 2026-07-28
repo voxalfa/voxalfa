@@ -32,6 +32,7 @@ pub struct Section {
     pub metadata: SectionMetadata,
     pub params: SectionParams,
     pub merge: bool,
+    pub major_start: bool,
 }
 
 impl Section {

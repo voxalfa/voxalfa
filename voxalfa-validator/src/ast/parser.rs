@@ -1,8 +1,11 @@
+use semver::{Version, VersionReq};
 use tree_sitter::{Node, QueryCursor, StreamingIterator};
 
 use crate::{
+    SUPPORTED_VERSION,
     ast::{
         body::{Body, Section, SubSection},
+        directives::DirectiveMap,
         header::Header,
         lyrics::{
             LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind,
@@ -10,8 +13,8 @@ use crate::{
         },
         solfa::{Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
         symbols::{
-            Comment, Delimiter, DelimiterKind, Field, FieldAssign, ScopeId, ScopeKind, SymbolKind,
-            SymbolRef, SymbolTree,
+            Comment, Delimiter, DelimiterKind, Field, FieldAssign, ROOT_SCOPE_ID, ScopeId,
+            ScopeKind, SymbolKind, SymbolRef, SymbolTree,
         },
     },
     data_types::Voice,
@@ -45,6 +48,7 @@ pub struct Parser<'a> {
     delimiters: Vec<Delimiter>,
     pub(crate) tree: SymbolTree,
     pub(crate) reporter: DiagnosticReporter,
+    abort: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -56,6 +60,7 @@ impl<'a> Parser<'a> {
             tree: SymbolTree::default(),
             delimiters: Vec::new(),
             reporter: DiagnosticReporter::new(ReportStage::Parsing),
+            abort: false,
         }
     }
 
@@ -63,6 +68,7 @@ impl<'a> Parser<'a> {
         if let Some(tree) = context.parse(self.source) {
             let root = tree.root_node();
 
+            self.tree.init_root(root.range());
             self.handle_root_node(root);
             self.handle_query(root, context);
         }
@@ -84,15 +90,25 @@ impl<'a> Parser<'a> {
                 node_types::HEADER_DELIMITER => self.add_delimiter(child, DelimiterKind::Header),
                 _ => {}
             }
+
+            if self.abort {
+                break;
+            }
         }
     }
 
     fn handle_header_node(&mut self, node: Node<'_>) {
-        let sid = self.tree.add_scope(ScopeKind::Header, node.range(), None);
+        let sid = self
+            .tree
+            .add_scope(ScopeKind::Header, node.range(), Some(ROOT_SCOPE_ID));
+
         let mut header = Header::new(sid);
 
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
+                node_types::LANGUAGE_DIRECTIVE => {
+                    self.handle_directive_node(child, sid, &mut header.directives)
+                }
                 node_types::METADATA_LINE => {
                     self.handle_local_params_node(child, sid, &mut header.metadata)
                 }
@@ -101,18 +117,27 @@ impl<'a> Parser<'a> {
                 }
                 _ => {}
             }
+
+            if self.abort {
+                break;
+            }
         }
 
         self.header = header;
     }
 
     fn handle_body_node(&mut self, node: Node<'_>) {
-        self.body.sid = self.tree.add_scope(ScopeKind::Body, node.range(), None);
+        self.body.sid = self
+            .tree
+            .add_scope(ScopeKind::Body, node.range(), Some(ROOT_SCOPE_ID));
 
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::SECTION_SPLIT_DELIMITER => {
                     self.add_delimiter(child, DelimiterKind::SectionSplit)
+                }
+                node_types::SECTION_MAJOR_DELIMITER => {
+                    self.add_delimiter(child, DelimiterKind::SectionMajor)
                 }
                 node_types::SECTION_MERGE_DELIMITER => {
                     self.add_delimiter(child, DelimiterKind::SectionMerge)
@@ -130,10 +155,12 @@ impl<'a> Parser<'a> {
 
         let mut section = Section::new(sid);
 
-        if let Some(prev) = node.prev_sibling()
-            && prev.kind_id() == node_types::SECTION_MERGE_DELIMITER
-        {
-            section.merge = true;
+        if let Some(prev) = node.prev_sibling() {
+            match prev.kind_id() {
+                node_types::SECTION_MERGE_DELIMITER => section.merge = true,
+                node_types::SECTION_MAJOR_DELIMITER => section.major_start = true,
+                _ => {}
+            }
         }
 
         for child in node.named_children(&mut node.walk()) {
@@ -560,6 +587,34 @@ impl<'a> Parser<'a> {
             let value = comment.trim().to_string();
 
             self.tree.comments.push(Comment { sid, value });
+        }
+    }
+
+    fn handle_directive_node(
+        &mut self,
+        node: Node<'_>,
+        parent_sid: ScopeId,
+        directives: &mut DirectiveMap,
+    ) {
+        if let Some(data) = self.resolve_assignment_data(node, parent_sid) {
+            directives.assign_field(data, self);
+        }
+
+        if let Some(version) = &directives.version {
+            let required =
+                VersionReq::parse(SUPPORTED_VERSION).expect("invalid required version definition");
+            let parsed = Version::parse(version.value.trim());
+
+            if parsed.is_err() || parsed.is_ok_and(|v| !required.matches(&v)) {
+                let range = self.tree.get_symbol_range(version.sid);
+
+                self.reporter.error(
+                    range,
+                    DiagnosticKind::UnsupportedVersion(version.value.clone()),
+                );
+
+                self.abort = true;
+            }
         }
     }
 

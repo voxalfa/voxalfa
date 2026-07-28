@@ -3,7 +3,7 @@
 
 (language_directive
   "@" @keyword
-  type: (identifier) @keyword)
+  name: (identifier) @keyword)
 
 (solfa_line
   voice: (identifier) @identifier)

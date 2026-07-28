@@ -1,4 +1,5 @@
 pub mod body;
+pub mod directives;
 pub mod header;
 pub mod lyrics;
 pub mod params;

@@ -10,7 +10,7 @@
 export default grammar({
   name: "voxalfa",
 
-  extras: ($) => [$.inline_comment, $.language_directive, $._space],
+  extras: ($) => [$.inline_comment, $._space],
 
   rules: {
     source_file: ($) =>
@@ -20,15 +20,25 @@ export default grammar({
     header_delimiter: () => "---",
 
     _header_line: ($) =>
-      choice($.metadata_line, $.parameter_line, $._linebreak),
+      choice(
+        $.language_directive,
+        $.metadata_line,
+        $.parameter_line,
+        $._linebreak,
+      ),
 
     body: ($) => sep1($._section_separator, $.section),
 
     _section_separator: ($) =>
-      choice($.section_split_delimiter, $.section_merge_delimiter),
+      choice(
+        $.section_split_delimiter,
+        $.section_merge_delimiter,
+        $.section_major_delimiter,
+      ),
 
     section_split_delimiter: () => "--",
     section_merge_delimiter: () => "<<",
+    section_major_delimiter: () => "==",
     sub_section_delimiter: () => "++",
 
     section: ($) => sep1($.sub_section_delimiter, $.sub_section),
@@ -229,7 +239,7 @@ export default grammar({
       seq(
         ";;",
         "@",
-        field("type", $.identifier),
+        field("name", $.identifier),
         field("value", $.inline_string),
       ),
 

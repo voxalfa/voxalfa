@@ -5,9 +5,12 @@ mod tempo;
 mod time_signature;
 mod voice;
 
+// TODO?
+// mod articulations;
+
 pub use dynamics::Dynamic;
 pub use key::Key;
-pub use marker::Marker;
+pub use marker::Navigation;
 pub use tempo::Tempo;
 pub use time_signature::TimeSignature;
 pub use voice::Voice;

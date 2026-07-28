@@ -131,7 +131,7 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Params, params.key.as_ref());
         self.add_assignment(Assignment::Params, params.time.as_ref());
         self.add_assignment(Assignment::Params, params.tempo.as_ref());
-        self.add_assignment(Assignment::Params, params.markers.as_ref());
+        self.add_assignment(Assignment::Params, params.navigation.as_ref());
     }
 
     fn proces_initial_params(&mut self, params: &InitialParams) {

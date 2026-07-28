@@ -3,7 +3,7 @@ use crate::{
         parser::Parser,
         symbols::{Field, FieldAssign},
     },
-    data_types::{Dynamic, Key, Marker, Tempo, TimeSignature, TimedList},
+    data_types::{Dynamic, Key, Navigation, Tempo, TimeSignature, TimedList},
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
 };
@@ -36,7 +36,7 @@ pub struct SectionParams {
     pub time: Field<TimeSignature>,
     pub key: Field<TimedList<Key>>,
     pub tempo: Field<TimedList<Tempo>>,
-    pub markers: Field<TimedList<Marker>>,
+    pub navigation: Field<TimedList<Navigation>>,
 }
 
 impl FieldAssign for SectionParams {
@@ -45,7 +45,7 @@ impl FieldAssign for SectionParams {
             "key" => context.assign_field(data, &mut self.key),
             "time" => context.assign_field(data, &mut self.time),
             "tempo" => context.assign_field(data, &mut self.tempo),
-            "markers" => context.assign_field(data, &mut self.markers),
+            "navigation" => context.assign_field(data, &mut self.navigation),
             "dynamics" => {}
             _ => {
                 context.reporter.error(

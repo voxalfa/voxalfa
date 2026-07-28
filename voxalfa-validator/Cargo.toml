@@ -1,9 +1,10 @@
 [package]
 name = "voxalfa-validator"
-version = "0.1.0"
+version = "0.1.0-alpha"
 edition = "2024"
 
 [dependencies]
+semver = "1.0.28"
 thiserror = { workspace = true }
 tree-sitter = "0.26.8"
 tree-sitter-voxalfa = { workspace = true }

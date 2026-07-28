@@ -1,6 +1,8 @@
 use thiserror::Error;
 
-use crate::{ast::solfa::PulseAccent, data_types::Voice, ts_utils::range::Range};
+use crate::{
+    SUPPORTED_VERSION, ast::solfa::PulseAccent, data_types::Voice, ts_utils::range::Range,
+};
 
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
@@ -12,6 +14,8 @@ pub struct Diagnostic {
 
 #[derive(Debug, Error, Clone)]
 pub enum DiagnosticKind {
+    #[error("unsupported version {0} ({SUPPORTED_VERSION})")]
+    UnsupportedVersion(String),
     #[error("syntax error")]
     SyntaxError,
     #[error("missing '{0}'")]
@@ -85,6 +89,7 @@ pub enum DiagnosticKind {
 impl DiagnosticKind {
     pub fn get_code(&self) -> &'static str {
         match self {
+            DiagnosticKind::UnsupportedVersion(_) => "E000",
             DiagnosticKind::SyntaxError => "E001",
             DiagnosticKind::Missing(_) => "E002",
             DiagnosticKind::InvalidUTF8(_) => "E003",
