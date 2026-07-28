@@ -9,7 +9,7 @@ use voxalfa_validator::{
         header::HeaderMetadata,
         lyrics::LyricOperatorKind,
         params::{InitialParams, SectionParams, SubSectionParams},
-        symbols::SymbolRef,
+        symbols::{Comment, SymbolRef},
     },
     ir::{
         PulseView,
@@ -34,6 +34,7 @@ pub struct Formatter<'a> {
     partials: Vec<PartialLine>,
     mergable_lines: Vec<usize>,
     current_scope: usize,
+    scope_bounds: Vec<usize>,
 }
 
 impl<'a> Formatter<'a> {
@@ -43,6 +44,7 @@ impl<'a> Formatter<'a> {
             col_factor: source.resolve_column_factor(),
             partials: Vec::new(),
             mergable_lines: Vec::new(),
+            scope_bounds: Vec::new(),
             current_scope: 0,
             source,
         }
@@ -312,19 +314,7 @@ impl<'a> Formatter<'a> {
 
     fn process_comments(&mut self) {
         for comment in &self.source.tree.comments {
-            let line_id = self.source.tree.get_symbol_range(comment.sid).line();
-
-            let nearest = self.partials.iter().min_by_key(|p| {
-                if p.line_id == line_id {
-                    (0, 0) // Priority 0: exact inline match
-                } else if p.line_id > line_id {
-                    (1, p.line_id - line_id) // priority 1: closest line after comment
-                } else {
-                    (2, line_id - p.line_id) // priority 2: closest line before comment (EOF fallback)
-                }
-            });
-
-            let (scope, rank) = nearest.map(|p| (p.scope, p.rank)).unwrap_or_default();
+            let (line_id, scope, rank) = self.resolve_comment_position(comment);
             let trimmed = comment.value.trim_end();
 
             let content = match self.mergable_lines.contains(&line_id) {
@@ -340,6 +330,30 @@ impl<'a> Formatter<'a> {
                 content,
             });
         }
+    }
+
+    fn resolve_comment_position(&self, comment: &Comment) -> (usize, usize, LineRank) {
+        let line_id = self.source.tree.get_symbol_range(comment.sid).line();
+
+        if comment.value.starts_with(";;") {
+            let scope = self.scope_bounds.partition_point(|&line| line <= line_id);
+
+            return (line_id, scope, LineRank::Directive);
+        }
+
+        let nearest = self.partials.iter().min_by_key(|p| {
+            if p.line_id == line_id {
+                (0, 0) // Priority 0: exact inline match
+            } else if p.line_id > line_id {
+                (1, p.line_id - line_id) // priority 1: closest line after comment
+            } else {
+                (2, line_id - p.line_id) // priority 2: closest line before comment (EOF fallback)
+            }
+        });
+
+        nearest
+            .map(|p| (line_id, p.scope, p.rank))
+            .unwrap_or_default()
     }
 
     fn add_assignment<F: Formattable>(
@@ -391,6 +405,7 @@ impl<'a> Formatter<'a> {
                 index: self.partials.len(),
             });
 
+            self.scope_bounds.push(delimiter.line);
             self.current_scope += 1;
         }
     }

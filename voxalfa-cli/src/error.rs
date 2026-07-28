@@ -4,8 +4,15 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("{0}")]
+    #[error("IO error: {0}")]
     Io(#[from] io::Error),
-    #[error("{0}")]
+
+    #[error("Validator error: {0}")]
     Validator(#[from] voxalfa_validator::error::Error),
+
+    #[error("Invalid glob pattern: {0}")]
+    GlobPattern(#[from] glob::PatternError),
+
+    #[error("Glob iteration error: {0}")]
+    Glob(#[from] glob::GlobError),
 }

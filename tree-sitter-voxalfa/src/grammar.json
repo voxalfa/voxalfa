@@ -162,6 +162,10 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "language_directive"
+        },
+        {
+          "type": "SYMBOL",
           "name": "metadata_line"
         },
         {
@@ -1158,6 +1162,10 @@
             "type": "SYMBOL",
             "name": "identifier"
           }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_space"
         },
         {
           "type": "FIELD",

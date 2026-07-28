@@ -5,7 +5,7 @@ use crate::{
     SUPPORTED_VERSION,
     ast::{
         body::{Body, Section, SubSection},
-        directives::DirectiveMap,
+        directives::HeaderDirective,
         header::Header,
         lyrics::{
             LyricChunk, LyricChunkKind, LyricColumn, LyricLine, LyricOperator, LyricOperatorKind,
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::LANGUAGE_DIRECTIVE => {
-                    self.handle_directive_node(child, sid, &mut header.directives)
+                    self.handle_header_directive(child, sid, &mut header.directives)
                 }
                 node_types::METADATA_LINE => {
                     self.handle_local_params_node(child, sid, &mut header.metadata)
@@ -590,11 +590,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn handle_directive_node(
+    fn handle_header_directive(
         &mut self,
         node: Node<'_>,
         parent_sid: ScopeId,
-        directives: &mut DirectiveMap,
+        directives: &mut HeaderDirective,
     ) {
         if let Some(data) = self.resolve_assignment_data(node, parent_sid) {
             directives.assign_field(data, self);

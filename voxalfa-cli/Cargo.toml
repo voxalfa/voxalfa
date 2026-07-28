@@ -1,12 +1,13 @@
 [package]
 name = "voxalfa-cli"
-version = "0.1.0"
+version = "0.1.0-alpha"
 edition = "2024"
 description = "A command line interface for the core voxalfa functions."
 
 [dependencies]
 clap = { version = "4.6.2", features = ["derive"] }
 codespan-reporting = "0.13.1"
+glob = "0.3.4"
 similar = { version = "3.1.1", features = ["inline"] }
 thiserror = { workspace = true }
 voxalfa-validator = { workspace = true }

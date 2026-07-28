@@ -24,6 +24,7 @@ impl Assignment {
 pub enum LineRank {
     #[default]
     Fallback,
+    Directive,
     Metadata,
     Params,
     Solfa,

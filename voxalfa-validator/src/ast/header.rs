@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        directives::DirectiveMap,
+        directives::HeaderDirective,
         params::InitialParams,
         parser::Parser,
         symbols::{Field, FieldAssign, ScopeId},
@@ -15,7 +15,7 @@ pub struct Header {
     pub sid: ScopeId,
     pub metadata: HeaderMetadata,
     pub params: InitialParams,
-    pub directives: DirectiveMap,
+    pub directives: HeaderDirective,
 }
 
 impl Header {

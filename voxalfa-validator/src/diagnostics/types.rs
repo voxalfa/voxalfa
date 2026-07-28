@@ -84,6 +84,10 @@ pub enum DiagnosticKind {
     UnmatchedTimestamp,
     #[error("section metadata should be declared at the top level")]
     NonTopLevelSectionMetadata(Range),
+    #[error("unknown compiler directive '@{0}'")]
+    UnknownDirective(String),
+    #[error("compiler directives are only allowed inside the header")]
+    DirectiveNotAllowed(Range),
 }
 
 impl DiagnosticKind {
@@ -124,6 +128,8 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidSectionMerge(_) => "E032",
             DiagnosticKind::UnmatchedTimestamp => "E033",
             DiagnosticKind::NonTopLevelSectionMetadata(_) => "E034",
+            DiagnosticKind::UnknownDirective(_) => "E035",
+            DiagnosticKind::DirectiveNotAllowed(_) => "E036",
         }
     }
 
@@ -194,6 +200,10 @@ impl DiagnosticKind {
             }],
             DiagnosticKind::InvalidSectionMerge(range) => vec![DiagnosticRelatedInfo {
                 message: "root section defined here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::DirectiveNotAllowed(range) => vec![DiagnosticRelatedInfo {
+                message: "move the directive inside the header".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),

@@ -19,9 +19,8 @@ pub struct FormatParams {
 }
 
 pub fn execute(params: FormatParams) -> Result<(), Error> {
-    let mut cli_reporter = CliReporter::new(params.file.len());
-
     let files = read_files(params.file)?;
+    let mut cli_reporter = CliReporter::new(files.len());
 
     for file in &files {
         let output = parse_file(&file.content)?;

@@ -623,6 +623,10 @@
           "named": true
         },
         {
+          "type": "language_directive",
+          "named": true
+        },
+        {
           "type": "lyric_line",
           "named": true
         },

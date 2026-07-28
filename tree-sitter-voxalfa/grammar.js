@@ -47,6 +47,7 @@ export default grammar({
 
     _section_line: ($) =>
       choice(
+        $.language_directive,
         $.metadata_line,
         $.parameter_line,
         $.dynamics_line,
@@ -240,6 +241,7 @@ export default grammar({
         ";;",
         "@",
         field("name", $.identifier),
+        $._space,
         field("value", $.inline_string),
       ),
 
