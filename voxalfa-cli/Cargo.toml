@@ -4,6 +4,10 @@ version = "0.1.0-alpha"
 edition = "2024"
 description = "A command line interface for the core voxalfa functions."
 
+[[bin]]
+name = "voxalfa"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4.6.2", features = ["derive"] }
 codespan-reporting = "0.13.1"

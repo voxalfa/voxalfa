@@ -1,0 +1,28 @@
+name: Nightly Release
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Midnight UTC daily
+  workflow_dispatch:
+
+jobs:
+  publish-nightly:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build binary (Release mode)
+        run: cargo build --release -p voxalfa-cli
+
+      - name: Publish Nightly Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "Nightly Build"
+          body: "Automated nightly build from commit ${{ github.sha }}."
+          prerelease: true
+          files: target/release/voxalfa
