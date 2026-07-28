@@ -19,8 +19,7 @@ pub struct FormatParams {
 }
 
 pub fn execute(params: FormatParams) -> Result<(), Error> {
-    let mut cli_reporter = CliReporter::default();
-    let mut dirty = false;
+    let mut cli_reporter = CliReporter::new(params.file.len());
 
     let files = read_files(params.file)?;
 
@@ -29,7 +28,7 @@ pub fn execute(params: FormatParams) -> Result<(), Error> {
 
         // TODO: recoverable error implementation
         if output.diagnostics.iter().any(|d| d.is_error()) {
-            cli_reporter.register(file, output.diagnostics);
+            cli_reporter.register_diagnostics(file, output.diagnostics);
         } else {
             let formatter = Formatter::new(&output);
 
@@ -39,8 +38,11 @@ pub fn execute(params: FormatParams) -> Result<(), Error> {
                 let expected = String::from_utf8_lossy(&buffer);
 
                 if expected != file.content {
-                    eprintln!("Check failed: {}", file.path);
-                    dirty = true;
+                    cli_reporter.register_diff(
+                        file.path.clone(),
+                        file.content.clone(),
+                        expected.into_owned(),
+                    );
                 }
             } else {
                 let mut writer = File::create(&file.path)?;
@@ -49,11 +51,7 @@ pub fn execute(params: FormatParams) -> Result<(), Error> {
         }
     }
 
-    cli_reporter.display_report();
-
-    if dirty {
-        std::process::exit(1);
-    }
+    cli_reporter.finalize();
 
     Ok(())
 }
