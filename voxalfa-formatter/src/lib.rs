@@ -8,7 +8,7 @@ use voxalfa_validator::{
         body::SectionMetadata,
         header::HeaderMetadata,
         lyrics::LyricOperatorKind,
-        params::{GlobalParams, LocalParams},
+        params::{InitialParams, SectionParams, SubSectionParams},
         symbols::SymbolRef,
     },
     ir::{
@@ -52,7 +52,7 @@ impl<'a> Formatter<'a> {
         let header = &self.source.header;
 
         self.process_metadata(&header.metadata);
-        self.process_global_params(&header.params);
+        self.proces_initial_params(&header.params);
         self.push_delimiter();
         self.process_body();
         self.process_comments();
@@ -81,13 +81,15 @@ impl<'a> Formatter<'a> {
             }
         }
 
+        writer.write_all(b"\n")?;
+
         Ok(())
     }
 
     fn process_body(&mut self) {
         for (section_id, section) in self.source.ir.sections.iter().enumerate() {
             self.process_section_metadata(&section.metadata);
-            self.process_global_params(&section.params);
+            self.proces_section_params(&section.params);
 
             for sub_section in &section.items {
                 self.process_local_params(&sub_section.params);
@@ -125,14 +127,20 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Metadata, params.ending.as_ref());
     }
 
-    fn process_global_params(&mut self, params: &GlobalParams) {
+    fn proces_section_params(&mut self, params: &SectionParams) {
         self.add_assignment(Assignment::Params, params.key.as_ref());
         self.add_assignment(Assignment::Params, params.time.as_ref());
         self.add_assignment(Assignment::Params, params.tempo.as_ref());
         self.add_assignment(Assignment::Params, params.markers.as_ref());
     }
 
-    fn process_local_params(&mut self, params: &LocalParams) {
+    fn proces_initial_params(&mut self, params: &InitialParams) {
+        self.add_assignment(Assignment::Params, params.key.as_ref());
+        self.add_assignment(Assignment::Params, params.time.as_ref());
+        self.add_assignment(Assignment::Params, params.tempo.as_ref());
+    }
+
+    fn process_local_params(&mut self, params: &SubSectionParams) {
         self.add_assignment(Assignment::Params, params.dynamics.as_ref());
     }
 

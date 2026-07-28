@@ -1,4 +1,4 @@
-use voxalfa_validator::ast::types::{Dynamic, Key, List, Mark, TimeSignature, TimedValue, Voice};
+use voxalfa_validator::data_types::{Dynamic, Key, List, Marker, TimeSignature, TimedValue, Voice};
 
 pub trait Formattable {
     fn format(&self, embedded: bool) -> String;
@@ -60,7 +60,7 @@ impl Formattable for Dynamic {
     }
 }
 
-impl Formattable for Mark {
+impl Formattable for Marker {
     fn format(&self, embedded: bool) -> String {
         if embedded {
             self.to_string()

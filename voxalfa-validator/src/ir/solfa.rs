@@ -2,8 +2,8 @@ use crate::{
     ast::{
         solfa::{Note, PulseAccent},
         symbols::ScopeId,
-        types::Voice,
     },
+    data_types::Voice,
     ir::utils::{UnderlineMarker, UnderlineRange},
 };
 

@@ -5,4 +5,3 @@ pub mod params;
 pub mod parser;
 pub mod solfa;
 pub mod symbols;
-pub mod types;

@@ -8,8 +8,10 @@ use crate::{
 };
 
 pub mod ast;
+pub mod data_types;
 pub mod diagnostics;
 pub mod error;
+pub mod event;
 pub mod ir;
 pub mod output;
 pub mod render;

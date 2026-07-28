@@ -1,10 +1,10 @@
 use crate::{
     ast::{
-        params::GlobalParams,
+        params::InitialParams,
         parser::Parser,
         symbols::{Field, FieldAssign, ScopeId},
-        types::{List, Voice},
     },
+    data_types::{List, Voice},
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
 };
@@ -13,7 +13,7 @@ use crate::{
 pub struct Header {
     pub sid: ScopeId,
     pub metadata: HeaderMetadata,
-    pub params: GlobalParams,
+    pub params: InitialParams,
 }
 
 impl Header {

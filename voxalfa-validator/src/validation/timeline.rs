@@ -1,7 +1,7 @@
 use crate::{
-    ast::types::TimedList,
+    data_types::TimedList,
+    event::{Event, SubSectonId, Timestamp, ToEventKind},
     ir::SubSectionIR,
-    output::{Event, SubSectonId, Timestamp, ToEventKind},
 };
 
 pub const FLOAT_ERROR: f32 = 0.05; // allow 0.3 and 0.7 to match 1/3 and 2/3

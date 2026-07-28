@@ -5,8 +5,8 @@ use crate::{
         parser::Parser,
         solfa::{BaseNote, Note, NoteVariation},
         symbols::{ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
-        types::{Dynamic, Key, Mark, TimeSignature, TimedValue, Voice},
     },
+    data_types::{Dynamic, Key, Marker, TimeSignature, TimedValue, Voice},
     diagnostics::types::DiagnosticKind,
     ts_utils::generated::node_types,
 };
@@ -252,7 +252,7 @@ impl ParseBuiltin for Voice {
     const TYPE_NAME: &'static str = "voice";
 }
 
-impl ParseBuiltin for Mark {
+impl ParseBuiltin for Marker {
     const TYPE_NAME: &'static str = "key";
 }
 

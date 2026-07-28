@@ -13,8 +13,8 @@ use crate::{
             Comment, Delimiter, DelimiterKind, Field, FieldAssign, ScopeId, ScopeKind, SymbolKind,
             SymbolRef, SymbolTree,
         },
-        types::Voice,
     },
+    data_types::Voice,
     diagnostics::{
         reporter::DiagnosticReporter,
         types::{DiagnosticKind, ReportStage},

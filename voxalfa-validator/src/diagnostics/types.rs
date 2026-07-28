@@ -1,9 +1,6 @@
 use thiserror::Error;
 
-use crate::{
-    ast::{solfa::PulseAccent, types::Voice},
-    ts_utils::range::Range,
-};
+use crate::{ast::solfa::PulseAccent, data_types::Voice, ts_utils::range::Range};
 
 #[derive(Debug, Clone)]
 pub struct Diagnostic {

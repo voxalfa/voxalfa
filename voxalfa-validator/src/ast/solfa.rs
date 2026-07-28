@@ -1,8 +1,6 @@
 use crate::{
-    ast::{
-        symbols::{ScopeId, SymbolRef},
-        types::Voice,
-    },
+    ast::symbols::{ScopeId, SymbolRef},
+    data_types::Voice,
     render::RenderType,
 };
 

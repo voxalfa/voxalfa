@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         lyrics::LyricLine,
-        params::{GlobalParams, LocalParams},
+        params::{SectionParams, SubSectionParams},
         parser::Parser,
         solfa::SolfaLine,
         symbols::{Field, FieldAssign, ScopeId},
@@ -30,7 +30,7 @@ pub struct Section {
     pub sid: ScopeId,
     pub items: Vec<SubSection>,
     pub metadata: SectionMetadata,
-    pub params: GlobalParams,
+    pub params: SectionParams,
     pub merge: bool,
 }
 
@@ -68,7 +68,7 @@ impl FieldAssign for SectionMetadata {
 pub struct SubSection {
     pub id: usize,
     pub sid: ScopeId,
-    pub params: LocalParams,
+    pub params: SubSectionParams,
     pub solfa: Vec<SolfaLine>,
     pub lyrics: Vec<LyricLine>,
 }

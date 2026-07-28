@@ -3,17 +3,17 @@ use crate::{
         body::{Body, Section},
         header::Header,
         lyrics::LyricToken,
-        params::LocalParams,
+        params::SubSectionParams,
         solfa::{PulseAccent, SolfaLine},
         symbols::{SymbolRef, SymbolTree},
-        types::{TimeSignature, TimedList},
     },
+    data_types::{TimeSignature, TimedList},
     diagnostics::{
         reporter::DiagnosticReporter,
         types::{DiagnosticKind, ReportStage},
     },
+    event::{TimelineMap, ToEventKind},
     ir::{BodyIR, SectionIR, SubSectionIR},
-    output::{TimelineMap, ToEventKind},
     ts_utils::range::RangeUtil,
     validation::timeline::EventBuffer,
 };
@@ -348,7 +348,7 @@ impl<'a> Validator<'a> {
         section_id: usize,
         sub_id: usize,
         sections: &'a [SectionIR],
-    ) -> Option<&'a LocalParams> {
+    ) -> Option<&'a SubSectionParams> {
         sections[..=section_id]
             .iter()
             .rev()
