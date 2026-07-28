@@ -1,6 +1,6 @@
 use crate::{
     data_types::TimedList,
-    event::{Event, SubSectonId, Timestamp, ToEventKind},
+    event::{Event, EventKind, SubSectonId, Timestamp, ToEventKind},
     ir::SubSectionIR,
 };
 
@@ -10,7 +10,7 @@ pub const FLOAT_ERROR: f32 = 0.05; // allow 0.3 and 0.7 to match 1/3 and 2/3
 pub struct EventBuffer {
     offset: usize,
     results: Vec<BufferedEvent>,
-    processed: Vec<usize>,
+    processed: Vec<(EventKind, usize)>,
 }
 
 impl EventBuffer {
@@ -19,26 +19,26 @@ impl EventBuffer {
         self.processed.clear();
     }
 
-    pub fn has_processed(&self, id: usize) -> bool {
-        self.processed.contains(&id)
+    pub fn has_processed(&self, kind: EventKind, id: usize) -> bool {
+        self.processed.contains(&(kind, id))
+    }
+
+    pub fn add_offset(&mut self, offset: usize) {
+        self.offset += offset;
     }
 
     pub fn drain(&mut self) -> impl Iterator<Item = BufferedEvent> {
         self.results.drain(..)
     }
 
-    pub fn process<T: ToEventKind + std::fmt::Debug>(
-        &mut self,
-        sub_section: &SubSectionIR,
-        events: &TimedList<T>,
-    ) {
+    pub fn process<T: ToEventKind>(&mut self, sub_section: &SubSectionIR, events: &TimedList<T>) {
         if events.is_empty() {
             return;
         }
 
-        for (pulse_index, view) in sub_section.views.iter().enumerate() {
-            let mut ellapsed = self.offset as f32;
+        let mut ellapsed = self.offset as f32;
 
+        for (pulse_index, view) in sub_section.views.iter().enumerate() {
             for (note_index, &duration) in view.durations.iter().enumerate() {
                 let params = EventMatchParams {
                     note_start: ellapsed,
@@ -52,7 +52,7 @@ impl EventBuffer {
                 ellapsed = params.note_end;
             }
 
-            self.offset += 1;
+            ellapsed += 1.;
         }
     }
 
@@ -62,29 +62,47 @@ impl EventBuffer {
         events: &TimedList<T>,
         params: &EventMatchParams,
     ) {
-        for (id, current) in events.iter().enumerate() {
-            let start_diff = (current.value.start - params.note_start).abs();
-            let end_diff = (current.value.end.unwrap_or_default() - params.note_end).abs();
+        for (id, symbol) in events.iter().enumerate() {
+            let current = &symbol.value;
+            let kind = current.value.to_event_kind();
 
-            if start_diff < FLOAT_ERROR {
-                let timestamp = Timestamp::new(params.pulse_index, params.note_index);
-                let event = Event::start(current.value.value.to_event_kind());
+            if self.has_processed(kind, id) {
+                continue;
+            }
 
-                self.push_event(sub_id, timestamp, event);
+            if current.value.is_range() {
+                let end = current.end.unwrap_or_default();
 
-                if current.value.end.is_none() {
-                    self.processed.push(id);
+                if self.check_eq(end, params.note_start) || self.check_eq(end, params.note_end) {
+                    self.mark_event(kind, id);
                 }
             }
 
-            if current.value.end.is_some() && end_diff < FLOAT_ERROR {
-                let timestamp = Timestamp::new(params.pulse_index, params.note_index);
-                let event = Event::end(current.value.value.to_event_kind());
+            let timestamp = if self.check_eq(current.start, params.note_start) {
+                Timestamp::start(params.pulse_index, params.note_index)
+            } else if self.check_eq(current.start, params.note_end) {
+                Timestamp::end(params.pulse_index, params.note_index)
+            } else {
+                continue;
+            };
 
-                self.push_event(sub_id, timestamp, event);
-                self.processed.push(id);
+            let span = current.end.map(|end| end - current.start);
+            let event = Event::new(kind, span);
+
+            self.push_event(sub_id, timestamp, event);
+
+            if !current.value.is_range() {
+                self.mark_event(kind, id);
             }
         }
+    }
+
+    fn check_eq(&self, lhs: f32, rhs: f32) -> bool {
+        (lhs - rhs).abs() < FLOAT_ERROR
+    }
+
+    fn mark_event(&mut self, kind: EventKind, id: usize) {
+        self.processed.push((kind, id));
     }
 
     fn push_event(&mut self, sub_id: SubSectonId, timestamp: Timestamp, event: Event) {

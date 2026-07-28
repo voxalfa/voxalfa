@@ -1,12 +1,14 @@
 mod dynamics;
 mod key;
 mod marker;
+mod tempo;
 mod time_signature;
 mod voice;
 
 pub use dynamics::Dynamic;
 pub use key::Key;
 pub use marker::Marker;
+pub use tempo::Tempo;
 pub use time_signature::TimeSignature;
 pub use voice::Voice;
 

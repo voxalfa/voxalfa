@@ -3,7 +3,7 @@ use crate::{
         parser::Parser,
         symbols::{Field, FieldAssign},
     },
-    data_types::{Dynamic, Key, Marker, TimeSignature, TimedList},
+    data_types::{Dynamic, Key, Marker, Tempo, TimeSignature, TimedList},
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
 };
@@ -12,7 +12,7 @@ use crate::{
 pub struct InitialParams {
     pub key: Field<Key>,
     pub time: Field<TimeSignature>,
-    pub tempo: Field<usize>,
+    pub tempo: Field<Tempo>,
 }
 
 impl FieldAssign for InitialParams {
@@ -35,7 +35,7 @@ impl FieldAssign for InitialParams {
 pub struct SectionParams {
     pub time: Field<TimeSignature>,
     pub key: Field<TimedList<Key>>,
-    pub tempo: Field<TimedList<usize>>,
+    pub tempo: Field<TimedList<Tempo>>,
     pub markers: Field<TimedList<Marker>>,
 }
 

@@ -30,10 +30,10 @@ pub enum DiagnosticKind {
     InvalidType(&'static str),
     #[error("invalid time signature, expected two non-null integers")]
     InvalidTimeSignature,
-    #[error("invalid dynamic identifier '{0}'")]
-    InvalidDynamic(String),
-    #[error("invalid dynamic parameters, expected {0} numbers")]
-    InvalidDynamicParams(usize),
+    #[error("expected a range for timestamp")]
+    ExpectedTimestampRange,
+    #[error("range not allowed for this event")]
+    RangeNotAllowed,
     #[error("invalid voice '{0}'")]
     InvalidVoice(String),
     #[error("undefined voice '{0:?}'")]
@@ -76,8 +76,8 @@ pub enum DiagnosticKind {
     UnusedLyricJoin(Range),
     #[error("merged section structure does not match previous")]
     InvalidSectionMerge(Range),
-    #[error("dynamic is unmatched")]
-    UnmatchedDynamic,
+    #[error("timestamp is unmatched")]
+    UnmatchedTimestamp,
     #[error("section metadata should be declared at the top level")]
     NonTopLevelSectionMetadata(Range),
 }
@@ -94,8 +94,8 @@ impl DiagnosticKind {
             DiagnosticKind::ExpectedType(_, _) => "E007",
             DiagnosticKind::InvalidType(_) => "E008",
             DiagnosticKind::InvalidTimeSignature => "E009",
-            DiagnosticKind::InvalidDynamic(_) => "E010",
-            DiagnosticKind::InvalidDynamicParams(_) => "E011",
+            DiagnosticKind::ExpectedTimestampRange => "E010",
+            DiagnosticKind::RangeNotAllowed => "E011",
             DiagnosticKind::InvalidVoice(_) => "E012",
             DiagnosticKind::UndefinedVoice(_, _) => "E013",
             DiagnosticKind::VoiceMismatch(_, _) => "E014",
@@ -117,7 +117,7 @@ impl DiagnosticKind {
             DiagnosticKind::ExpectedLyricJoin(_) => "E030",
             DiagnosticKind::UnusedLyricJoin(_) => "E031",
             DiagnosticKind::InvalidSectionMerge(_) => "E032",
-            DiagnosticKind::UnmatchedDynamic => "E033",
+            DiagnosticKind::UnmatchedTimestamp => "E033",
             DiagnosticKind::NonTopLevelSectionMetadata(_) => "E034",
         }
     }

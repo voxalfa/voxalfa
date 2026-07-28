@@ -1,4 +1,6 @@
-use voxalfa_validator::data_types::{Dynamic, Key, List, Marker, TimeSignature, TimedValue, Voice};
+use voxalfa_validator::data_types::{
+    Dynamic, Key, List, Marker, Tempo, TimeSignature, TimedValue, Voice,
+};
 
 pub trait Formattable {
     fn format(&self, embedded: bool) -> String;
@@ -78,6 +80,16 @@ impl Formattable for bool {
             s.to_string()
         } else {
             format!("{{{s}}}")
+        }
+    }
+}
+
+impl Formattable for Tempo {
+    fn format(&self, embedded: bool) -> String {
+        if embedded {
+            self.to_string()
+        } else {
+            format!("{{{self}}}")
         }
     }
 }

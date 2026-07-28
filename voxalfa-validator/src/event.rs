@@ -1,20 +1,39 @@
 use std::collections::HashMap;
 
-use crate::{data_types::Dynamic, validation::timeline::EventBuffer};
+use crate::{
+    data_types::{Dynamic, Key, Marker},
+    validation::timeline::EventBuffer,
+};
 
 pub type SubSectonId = usize;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TimestampKind {
+    Start,
+    End,
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Timestamp {
     pub pulse_index: usize,
     pub note_index: usize,
+    pub kind: TimestampKind,
 }
 
 impl Timestamp {
-    pub fn new(pulse_index: usize, note_index: usize) -> Self {
+    pub fn start(pulse_index: usize, note_index: usize) -> Self {
         Self {
             pulse_index,
             note_index,
+            kind: TimestampKind::Start,
+        }
+    }
+
+    pub fn end(pulse_index: usize, note_index: usize) -> Self {
+        Self {
+            pulse_index,
+            note_index,
+            kind: TimestampKind::End,
         }
     }
 }
@@ -59,29 +78,21 @@ impl Timeline {
 
 #[derive(Debug)]
 pub struct Event {
-    pub dispatch: EventDispatch,
     pub kind: EventKind,
+    pub span: Option<f32>,
 }
 
 impl Event {
-    pub fn start(kind: EventKind) -> Self {
-        Self {
-            dispatch: EventDispatch::Start,
-            kind,
-        }
-    }
-
-    pub fn end(kind: EventKind) -> Self {
-        Self {
-            dispatch: EventDispatch::End,
-            kind,
-        }
+    pub fn new(kind: EventKind, span: Option<f32>) -> Self {
+        Self { kind, span }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EventKind {
     Dynamic(Dynamic),
+    Key(Key),
+    Marker(Marker),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -92,10 +103,30 @@ pub enum EventDispatch {
 
 pub trait ToEventKind {
     fn to_event_kind(&self) -> EventKind;
+
+    fn is_range(&self) -> bool {
+        false
+    }
 }
 
 impl ToEventKind for Dynamic {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Dynamic(*self)
+    }
+
+    fn is_range(&self) -> bool {
+        matches!(self, Dynamic::Cre | Dynamic::Dec)
+    }
+}
+
+impl ToEventKind for Key {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Key(*self)
+    }
+}
+
+impl ToEventKind for Marker {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Marker(*self)
     }
 }

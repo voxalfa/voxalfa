@@ -6,7 +6,7 @@ use crate::{
         solfa::{BaseNote, Note, NoteVariation},
         symbols::{ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
     },
-    data_types::{Dynamic, Key, Marker, TimeSignature, TimedValue, Voice},
+    data_types::{Dynamic, Key, Marker, Tempo, TimeSignature, TimedValue, Voice},
     diagnostics::types::DiagnosticKind,
     ts_utils::generated::node_types,
 };
@@ -253,7 +253,11 @@ impl ParseBuiltin for Voice {
 }
 
 impl ParseBuiltin for Marker {
-    const TYPE_NAME: &'static str = "key";
+    const TYPE_NAME: &'static str = "marker";
+}
+
+impl ParseBuiltin for Tempo {
+    const TYPE_NAME: &'static str = "tempo";
 }
 
 impl<T> ParseNode for T
@@ -262,23 +266,15 @@ where
 {
     fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self> {
         let range = node.range();
+        let text = context.resolve_node_string(node)?;
 
-        if node.kind_id() == node_types::BUILTIN {
-            let text = context.resolve_node_string(node)?;
-
-            if let Ok(res) = T::try_from(text) {
-                return Some(res);
-            }
-
-            context
-                .reporter
-                .error(range, DiagnosticKind::InvalidType(T::TYPE_NAME));
-        } else {
-            context.reporter.error(
-                range,
-                DiagnosticKind::ExpectedType(T::TYPE_NAME, node.kind()),
-            );
+        if let Ok(res) = T::try_from(text) {
+            return Some(res);
         }
+
+        context
+            .reporter
+            .error(range, DiagnosticKind::InvalidType(T::TYPE_NAME));
 
         None
     }

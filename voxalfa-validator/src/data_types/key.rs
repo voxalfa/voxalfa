@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Key {
     pub base: BaseKey,
     pub accidental: KeyAccidental,
@@ -29,7 +29,7 @@ impl TryFrom<String> for Key {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BaseKey {
     C,
     D,
@@ -57,7 +57,7 @@ impl TryFrom<&str> for BaseKey {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum KeyAccidental {
     #[default]
     Neutral,
