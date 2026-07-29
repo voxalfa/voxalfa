@@ -3,7 +3,7 @@ use crate::{
         parser::Parser,
         symbols::{Field, FieldAssign},
     },
-    data_types::{Dynamic, Key, Navigation, Tempo, TimeSignature, TimedList},
+    data_types::{Dynamic, Key, List, Navigation, Tempo, TimeSignature, TimedList, Voice},
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
 };
@@ -13,6 +13,7 @@ pub struct InitialParams {
     pub key: Field<Key>,
     pub time: Field<TimeSignature>,
     pub tempo: Field<Tempo>,
+    pub voices: Field<List<Voice>>,
 }
 
 impl FieldAssign for InitialParams {
@@ -21,6 +22,7 @@ impl FieldAssign for InitialParams {
             "key" => context.assign_field(data, &mut self.key),
             "time" => context.assign_field(data, &mut self.time),
             "tempo" => context.assign_field(data, &mut self.tempo),
+            "voices" => context.assign_field(data, &mut self.voices),
             _ => {
                 context.reporter.error(
                     data.full_range,

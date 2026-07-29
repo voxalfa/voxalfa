@@ -445,6 +445,7 @@ name = "voxalfa-midi"
 version = "0.1.0"
 dependencies = [
  "midly",
+ "thiserror",
  "voxalfa-validator",
 ]
 

@@ -234,7 +234,7 @@ impl<'a> Validator<'a> {
     }
 
     fn validate_voices(&mut self, section: &Section) {
-        let Some(voices) = &self.header.metadata.voices else {
+        let Some(voices) = &self.header.params.voices else {
             return;
         };
 
@@ -258,7 +258,7 @@ impl<'a> Validator<'a> {
         for (id, voice) in voices.iter().enumerate() {
             let range = self.tree.get_symbol_range(voice.sid);
 
-            if let Some(voices) = &self.header.metadata.voices {
+            if let Some(voices) = &self.header.params.voices {
                 if let Some(expected) = voices.value.get(id) {
                     if voice.value != expected.value {
                         self.reporter.error(

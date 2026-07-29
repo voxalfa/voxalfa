@@ -5,11 +5,11 @@ use crate::{
     },
     data_types::Voice,
     diagnostics::types::Diagnostic,
-    event::{Timeline, TimelineMap},
+    event::{Event, Timeline, TimelineMap, Timestamp},
     ir::{
         BodyIR, PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricPrimitive, LyricStringIR},
-        solfa::{PulseColumnKind, SolfaLineIR},
+        solfa::{PulseColumn, PulseColumnKind, PulseIR},
     },
     render::RenderType,
 };
@@ -47,19 +47,32 @@ impl FinalOutput {
             .unwrap_or(1)
     }
 
-    pub fn build_voice_sections<'a>(&'a self, voice: Voice) -> Vec<VoiceSection<'a>> {
-        self.ir
-            .sections
-            .iter()
-            .flat_map(|section| &section.items)
-            .filter_map(|sub| {
-                Some(VoiceSection {
-                    voice,
-                    timeline: self.timelines.get(sub.sid),
-                    solfa: sub.solfa.iter().find(|s| s.voice == voice)?,
-                })
-            })
-            .collect()
+    pub fn build_voice_line(&self, voice: Voice) -> Vec<NoteContext<'_>> {
+        let mut notes = Vec::new();
+
+        let sub_items = self.ir.sections.iter().flat_map(|section| &section.items);
+
+        for sub in sub_items {
+            let Some(solfa) = sub.solfa.iter().find(|s| s.voice == voice) else {
+                continue;
+            };
+
+            let timeline = self.timelines.get(sub.sid);
+
+            for (pulse_id, pulse) in solfa.pulses.iter().enumerate() {
+                for (note_id, note) in pulse.columns.iter().enumerate() {
+                    notes.push(NoteContext {
+                        timeline,
+                        pulse,
+                        pulse_id,
+                        note,
+                        note_id,
+                    });
+                }
+            }
+        }
+
+        notes
     }
 
     fn resolve_lyric_column_width(&self, column: &LyricColumnIR, render_type: RenderType) -> usize {
@@ -166,8 +179,22 @@ impl FinalOutput {
 }
 
 #[derive(Debug)]
-pub struct VoiceSection<'a> {
-    pub voice: Voice,
+pub struct NoteContext<'a> {
     pub timeline: Option<&'a Timeline>,
-    pub solfa: &'a SolfaLineIR,
+    pub pulse: &'a PulseIR,
+    pub pulse_id: usize,
+    pub note: &'a PulseColumn,
+    pub note_id: usize,
+}
+
+impl NoteContext<'_> {
+    pub fn start_event(&self) -> Option<&Event> {
+        self.timeline
+            .and_then(|t| t.get_event(Timestamp::start(self.pulse_id, self.note_id)))
+    }
+
+    pub fn end_event(&self) -> Option<&Event> {
+        self.timeline
+            .and_then(|t| t.get_event(Timestamp::end(self.pulse_id, self.note_id)))
+    }
 }

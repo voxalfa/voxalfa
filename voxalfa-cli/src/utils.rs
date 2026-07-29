@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::{self, Path},
-};
+use std::fs;
 
 use glob::glob;
 use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
@@ -12,7 +9,7 @@ pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>, Error> {
     let mut results = Vec::new();
 
     for pattern in file_paths {
-        for entry in glob(&pattern)? {
+        for entry in glob(pattern)? {
             let path_buf = entry?;
 
             if path_buf.is_file() {

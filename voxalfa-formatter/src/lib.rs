@@ -116,7 +116,6 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Metadata, meta.title.as_ref());
         self.add_assignment(Assignment::Metadata, meta.author.as_ref());
         self.add_assignment(Assignment::Metadata, meta.composer.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.voices.as_ref());
         self.add_assignment(Assignment::Metadata, meta.verses.as_ref());
         self.add_assignment(Assignment::Metadata, meta.meter.as_ref());
         self.add_assignment(Assignment::Metadata, meta.description.as_ref());
@@ -141,6 +140,7 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Params, params.key.as_ref());
         self.add_assignment(Assignment::Params, params.time.as_ref());
         self.add_assignment(Assignment::Params, params.tempo.as_ref());
+        self.add_assignment(Assignment::Params, params.voices.as_ref());
     }
 
     fn process_local_params(&mut self, params: &SubSectionParams) {

@@ -106,6 +106,15 @@ impl<'a> CliReporter<'a> {
         }
     }
 
+    pub fn print_error<D: std::fmt::Display>(message: D) {
+        let red = Style::new()
+            .fg_color(Some(AnsiColor::BrightRed.into()))
+            .bold();
+
+        eprintln!("{red}error{red:#}: {message}");
+        std::process::exit(1);
+    }
+
     fn has_errors_or_diffs(&self, min_severity: Severity) -> bool {
         self.diagnostics.iter().any(|d| d.severity >= min_severity) || !self.diffs.is_empty()
     }

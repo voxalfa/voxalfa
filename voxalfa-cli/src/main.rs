@@ -6,7 +6,7 @@ mod utils;
 
 use clap::Parser;
 
-use crate::commands::*;
+use crate::{commands::*, reporter::CliReporter};
 
 #[derive(Parser)]
 #[clap(about, version)]
@@ -18,14 +18,13 @@ pub struct Cli {
 fn main() {
     let cli = Cli::parse();
 
-    let res = match cli.command {
+    let result = match cli.command {
         CliCommand::Format(params) => format::execute(params),
         CliCommand::Check(params) => check::execute(params),
         CliCommand::Midi(params) => midi::execute(params),
     };
 
-    if let Err(err) = res {
-        eprintln!("Error: {err}");
-        std::process::exit(1);
+    if let Err(error) = result {
+        CliReporter::print_error(error);
     }
 }

@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use crate::{
-    error::Error,
+    error::Result,
     reporter::CliReporter,
     utils::{parse_file, read_files},
 };
@@ -12,7 +12,7 @@ pub struct CheckParams {
     file: Vec<String>,
 }
 
-pub fn execute(params: CheckParams) -> Result<(), Error> {
+pub fn execute(params: CheckParams) -> Result<()> {
     let files = read_files(&params.file)?;
     let mut cli_reporter = CliReporter::new(files.len());
 

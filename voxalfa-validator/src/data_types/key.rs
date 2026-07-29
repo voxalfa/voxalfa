@@ -4,6 +4,12 @@ pub struct Key {
     pub accidental: KeyAccidental,
 }
 
+impl Key {
+    pub fn offset(self) -> i8 {
+        self.base.offset() + self.accidental.offset()
+    }
+}
+
 impl std::fmt::Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let suffix = match self.accidental {
@@ -41,7 +47,7 @@ pub enum BaseKey {
 }
 
 impl BaseKey {
-    pub fn offset(self) -> i8 {
+    fn offset(self) -> i8 {
         match self {
             BaseKey::C => 0,
             BaseKey::D => 2,
@@ -77,6 +83,16 @@ pub enum KeyAccidental {
     Neutral,
     Sharp,
     Flat,
+}
+
+impl KeyAccidental {
+    fn offset(self) -> i8 {
+        match self {
+            KeyAccidental::Neutral => 0,
+            KeyAccidental::Sharp => 1,
+            KeyAccidental::Flat => -1,
+        }
+    }
 }
 
 impl TryFrom<&str> for KeyAccidental {

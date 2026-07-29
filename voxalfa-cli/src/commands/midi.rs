@@ -25,12 +25,12 @@ pub fn execute(params: MidiParams) -> Result<(), Error> {
         let output = parse_file(&file.content)?;
 
         if output.has_error() {
-            reporter.register_diagnostics(&file, output.diagnostics);
+            reporter.register_diagnostics(file, output.diagnostics);
         } else {
             let mut converter = Converter::new(&output);
             let output_path = Path::new(&file.path).with_extension("mid");
 
-            converter.convert(output_path);
+            converter.convert(output_path)?;
         }
     }
 

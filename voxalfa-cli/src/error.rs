@@ -15,4 +15,9 @@ pub enum Error {
 
     #[error("Glob iteration error: {0}")]
     Glob(#[from] glob::GlobError),
+
+    #[error("{0}")]
+    Converter(#[from] voxalfa_midi::error::ConvertError),
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
