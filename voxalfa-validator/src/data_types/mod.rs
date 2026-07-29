@@ -9,7 +9,7 @@ mod voice;
 // mod articulations;
 
 pub use dynamics::Dynamic;
-pub use key::Key;
+pub use key::{BaseKey, Key, KeyAccidental};
 pub use marker::Navigation;
 pub use tempo::Tempo;
 pub use time_signature::TimeSignature;

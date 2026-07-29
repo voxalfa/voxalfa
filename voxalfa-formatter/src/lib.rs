@@ -118,6 +118,7 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Metadata, meta.composer.as_ref());
         self.add_assignment(Assignment::Metadata, meta.voices.as_ref());
         self.add_assignment(Assignment::Metadata, meta.verses.as_ref());
+        self.add_assignment(Assignment::Metadata, meta.meter.as_ref());
         self.add_assignment(Assignment::Metadata, meta.description.as_ref());
         self.add_assignment(Assignment::Metadata, meta.release.as_ref());
         self.add_assignment(Assignment::Metadata, meta.language.as_ref());

@@ -429,6 +429,7 @@ dependencies = [
  "similar",
  "thiserror",
  "voxalfa-formatter",
+ "voxalfa-midi",
  "voxalfa-validator",
 ]
 

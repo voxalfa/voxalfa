@@ -14,5 +14,6 @@ codespan-reporting = "0.13.1"
 glob = "0.3.4"
 similar = { version = "3.1.1", features = ["inline"] }
 thiserror = { workspace = true }
-voxalfa-validator = { workspace = true }
 voxalfa-formatter = { workspace = true }
+voxalfa-midi = { workspace = true }
+voxalfa-validator = { workspace = true }

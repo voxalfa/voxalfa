@@ -6,7 +6,7 @@ mod utils;
 
 use clap::Parser;
 
-use crate::commands::CliCommand;
+use crate::commands::*;
 
 #[derive(Parser)]
 #[clap(about, version)]
@@ -19,8 +19,9 @@ fn main() {
     let cli = Cli::parse();
 
     let res = match cli.command {
-        CliCommand::Format(params) => commands::format::execute(params),
-        CliCommand::Check(params) => commands::check::execute(params),
+        CliCommand::Format(params) => format::execute(params),
+        CliCommand::Check(params) => check::execute(params),
+        CliCommand::Midi(params) => midi::execute(params),
     };
 
     if let Err(err) = res {

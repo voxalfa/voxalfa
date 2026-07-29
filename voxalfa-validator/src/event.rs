@@ -53,7 +53,7 @@ impl TimelineMap {
         }
     }
 
-    pub fn get(&mut self, sub_id: SubSectonId) -> Option<&Timeline> {
+    pub fn get(&self, sub_id: SubSectonId) -> Option<&Timeline> {
         self.timelines.get(&sub_id)
     }
 }

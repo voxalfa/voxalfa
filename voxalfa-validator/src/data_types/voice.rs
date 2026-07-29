@@ -6,6 +6,17 @@ pub enum Voice {
     B,
 }
 
+impl Voice {
+    pub fn octave_offset(self) -> i8 {
+        match self {
+            Voice::S => 0,
+            Voice::A => -1,
+            Voice::T => -2,
+            Voice::B => -3,
+        }
+    }
+}
+
 impl TryFrom<String> for Voice {
     type Error = ();
 

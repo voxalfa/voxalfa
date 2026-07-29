@@ -3,12 +3,13 @@ use crate::{
         header::Header,
         symbols::{Delimiter, SymbolTree},
     },
+    data_types::Voice,
     diagnostics::types::Diagnostic,
-    event::TimelineMap,
+    event::{Timeline, TimelineMap},
     ir::{
         BodyIR, PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricPrimitive, LyricStringIR},
-        solfa::PulseColumnKind,
+        solfa::{PulseColumnKind, SolfaLineIR},
     },
     render::RenderType,
 };
@@ -24,6 +25,10 @@ pub struct FinalOutput {
 }
 
 impl FinalOutput {
+    pub fn has_error(&self) -> bool {
+        self.diagnostics.iter().any(|d| d.is_error())
+    }
+
     pub fn resolve_column_width(&self, render_type: RenderType) -> usize {
         let max_note_width = self.resolve_max_note_width(render_type);
         let max_lyrics_width = self.resolve_max_lyrics_width(render_type);
@@ -40,6 +45,21 @@ impl FinalOutput {
             .flat_map(|s| s.pulses.iter().map(|p| p.factor).max())
             .max()
             .unwrap_or(1)
+    }
+
+    pub fn build_voice_sections<'a>(&'a self, voice: Voice) -> Vec<VoiceSection<'a>> {
+        self.ir
+            .sections
+            .iter()
+            .flat_map(|section| &section.items)
+            .filter_map(|sub| {
+                Some(VoiceSection {
+                    voice,
+                    timeline: self.timelines.get(sub.sid),
+                    solfa: sub.solfa.iter().find(|s| s.voice == voice)?,
+                })
+            })
+            .collect()
     }
 
     fn resolve_lyric_column_width(&self, column: &LyricColumnIR, render_type: RenderType) -> usize {
@@ -143,4 +163,11 @@ impl FinalOutput {
             PulseColumnKind::EmptyNote => 1,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct VoiceSection<'a> {
+    pub voice: Voice,
+    pub timeline: Option<&'a Timeline>,
+    pub solfa: &'a SolfaLineIR,
 }

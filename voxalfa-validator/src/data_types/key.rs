@@ -40,6 +40,20 @@ pub enum BaseKey {
     B,
 }
 
+impl BaseKey {
+    pub fn offset(self) -> i8 {
+        match self {
+            BaseKey::C => 0,
+            BaseKey::D => 2,
+            BaseKey::E => 4,
+            BaseKey::F => 5,
+            BaseKey::G => 7,
+            BaseKey::A => 9,
+            BaseKey::B => 11,
+        }
+    }
+}
+
 impl TryFrom<&str> for BaseKey {
     type Error = ();
 

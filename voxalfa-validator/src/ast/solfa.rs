@@ -73,6 +73,20 @@ pub enum BaseNote {
     T,
 }
 
+impl BaseNote {
+    pub fn offset(self) -> i8 {
+        match self {
+            BaseNote::D => 0,
+            BaseNote::R => 2,
+            BaseNote::M => 4,
+            BaseNote::F => 5,
+            BaseNote::S => 7,
+            BaseNote::L => 9,
+            BaseNote::T => 11,
+        }
+    }
+}
+
 impl std::fmt::Display for BaseNote {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -110,6 +124,16 @@ pub enum NoteVariation {
     Base,
     Raised,
     Lowered,
+}
+
+impl NoteVariation {
+    pub fn offset(self) -> i8 {
+        match self {
+            NoteVariation::Base => 0,
+            NoteVariation::Raised => 1,
+            NoteVariation::Lowered => -1,
+        }
+    }
 }
 
 impl TryFrom<&str> for NoteVariation {
@@ -162,5 +186,9 @@ impl Note {
         }
 
         result
+    }
+
+    pub fn offset(&self) -> i8 {
+        self.base.offset() + self.variation.offset() + 12 * self.octave
     }
 }

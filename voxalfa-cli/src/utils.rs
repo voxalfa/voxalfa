@@ -1,11 +1,14 @@
-use std::fs;
+use std::{
+    fs,
+    path::{self, Path},
+};
 
 use glob::glob;
 use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
 
 use crate::{error::Error, types::SourceFile};
 
-pub fn read_files(file_paths: Vec<String>) -> Result<Vec<SourceFile>, Error> {
+pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>, Error> {
     let mut results = Vec::new();
 
     for pattern in file_paths {
@@ -13,10 +16,13 @@ pub fn read_files(file_paths: Vec<String>) -> Result<Vec<SourceFile>, Error> {
             let path_buf = entry?;
 
             if path_buf.is_file() {
-                let path = path_buf.to_string_lossy().to_string();
+                let file_path = path_buf.to_string_lossy().to_string();
                 let content = fs::read_to_string(&path_buf)?;
 
-                results.push(SourceFile { path, content });
+                results.push(SourceFile {
+                    path: file_path,
+                    content,
+                });
             }
         }
     }

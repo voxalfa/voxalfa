@@ -13,7 +13,7 @@ pub struct CheckParams {
 }
 
 pub fn execute(params: CheckParams) -> Result<(), Error> {
-    let files = read_files(params.file)?;
+    let files = read_files(&params.file)?;
     let mut cli_reporter = CliReporter::new(files.len());
 
     for file in &files {
