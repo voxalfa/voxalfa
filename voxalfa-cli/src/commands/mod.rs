@@ -1,10 +1,13 @@
 pub mod check;
 pub mod format;
+pub mod lyrics;
 pub mod midi;
 
 use clap::Subcommand;
 
-use crate::commands::{check::CheckParams, format::FormatParams, midi::MidiParams};
+use crate::commands::{
+    check::CheckParams, format::FormatParams, lyrics::LyricsParams, midi::MidiParams,
+};
 
 #[derive(Subcommand)]
 pub enum CliCommand {
@@ -14,4 +17,6 @@ pub enum CliCommand {
     Check(CheckParams),
     /// Convert partitions into MIDI files
     Midi(MidiParams),
+    /// Manipulate lyrics from partition files
+    Lyrics(LyricsParams),
 }

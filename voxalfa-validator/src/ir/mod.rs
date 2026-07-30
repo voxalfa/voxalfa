@@ -30,7 +30,7 @@ pub struct SectionIR {
 }
 
 impl SectionIR {
-    pub fn get_lyrics(&self, voice: &Voice) -> Option<&[LyricLineIR]> {
+    pub fn get_verses(&self, voice: &Voice) -> Option<&[LyricLineIR]> {
         self.items.iter().find_map(|s| {
             s.solfa
                 .iter()

@@ -1,11 +1,11 @@
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use glob::glob;
 use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
 
-use crate::{error::Error, types::SourceFile};
+use crate::{error::Result, types::SourceFile};
 
-pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>, Error> {
+pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>> {
     let mut results = Vec::new();
 
     for pattern in file_paths {
@@ -13,13 +13,9 @@ pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>, Error> {
             let path_buf = entry?;
 
             if path_buf.is_file() {
-                let file_path = path_buf.to_string_lossy().to_string();
-                let content = fs::read_to_string(&path_buf)?;
+                let file = read_file(path_buf)?;
 
-                results.push(SourceFile {
-                    path: file_path,
-                    content,
-                });
+                results.push(file);
             }
         }
     }
@@ -27,7 +23,17 @@ pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>, Error> {
     Ok(results)
 }
 
-pub fn parse_file(content: &str) -> Result<FinalOutput, Error> {
+pub fn read_file(path_buf: PathBuf) -> Result<SourceFile> {
+    let file_path = path_buf.to_string_lossy().to_string();
+    let content = fs::read_to_string(&path_buf)?;
+
+    Ok(SourceFile {
+        path: file_path,
+        content,
+    })
+}
+
+pub fn parse_file(content: &str) -> Result<FinalOutput> {
     let mut validator = MultiStepValidator::init()?;
     let output = validator.process(content);
 

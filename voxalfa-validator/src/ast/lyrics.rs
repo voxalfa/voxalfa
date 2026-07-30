@@ -34,6 +34,16 @@ pub enum LyricOperatorKind {
     Newline,
 }
 
+impl LyricOperatorKind {
+    pub fn char(self) -> Option<char> {
+        match self {
+            LyricOperatorKind::Space => Some(' '),
+            LyricOperatorKind::Newline => Some('\n'),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct LyricColumn {
     pub sid: ScopeId,

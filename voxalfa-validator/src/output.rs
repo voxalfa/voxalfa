@@ -75,6 +75,73 @@ impl FinalOutput {
         notes
     }
 
+    // FIXME: use a dedicated lyric builder task for handling jumps
+    pub fn build_lyrics(&self, voice: Voice, ulhs: &str, urhs: &str) -> Vec<String> {
+        let mut result = Vec::new();
+
+        let section_verses: Vec<&[LyricLineIR]> = self
+            .ir
+            .sections
+            .iter()
+            .filter_map(|s| s.get_verses(&voice))
+            .collect();
+
+        let max_lines = section_verses.iter().map(|v| v.len()).max().unwrap_or(0);
+
+        for line_idx in 0..max_lines {
+            let verse = section_verses
+                .iter()
+                .filter_map(|verses| verses.get(line_idx))
+                .map(|line| self.stringify_lyrics_line(line, ulhs, urhs))
+                .collect::<Vec<String>>()
+                .join("");
+
+            result.push(verse);
+        }
+
+        result
+    }
+
+    fn stringify_lyrics_line(
+        &self,
+        line: &LyricLineIR,
+        underline_lhs: &str,
+        underline_rhs: &str,
+    ) -> String {
+        let mut result = String::new();
+
+        for (column_id, column) in line.columns.iter().enumerate() {
+            for (chunk_id, chunk) in column.chunks.iter().enumerate() {
+                for primitive in &chunk.primitives {
+                    if primitive.underline.left {
+                        result.push_str(underline_lhs);
+                    }
+
+                    let part = match primitive.string {
+                        LyricStringIR::Reference(id) => self.tree.get_lyric_chunk(id),
+                        LyricStringIR::Special(ch) => &ch.to_string(),
+                    };
+
+                    result.push_str(part);
+
+                    if primitive.underline.right {
+                        result.push_str(underline_rhs);
+                    }
+                }
+
+                if let Some(ch) = column.operators.get(chunk_id).and_then(|op| op.char()) {
+                    result.push(ch);
+                }
+            }
+
+            if let Some(ch) = line.operators.get(column_id).and_then(|op| op.char()) {
+                result.push(ch);
+            }
+        }
+
+        result
+    }
+
     fn resolve_lyric_column_width(&self, column: &LyricColumnIR, render_type: RenderType) -> usize {
         let extra = if column.chunks.len() > 1 { 2 } else { 0 }; // add parenthesis
 

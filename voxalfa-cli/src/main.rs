@@ -22,6 +22,7 @@ fn main() {
         CliCommand::Format(params) => format::execute(params),
         CliCommand::Check(params) => check::execute(params),
         CliCommand::Midi(params) => midi::execute(params),
+        CliCommand::Lyrics(params) => lyrics::execute(params),
     };
 
     if let Err(error) = result {

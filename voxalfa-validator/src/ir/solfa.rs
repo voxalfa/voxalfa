@@ -64,7 +64,9 @@ impl PulseIR {
 
     pub fn fit_durations(&mut self, durations: &[usize]) {
         for (i, duration) in durations.iter().enumerate() {
-            self.columns[i].duration = *duration;
+            if let Some(column) = self.columns.get_mut(i) {
+                column.duration = *duration;
+            }
         }
     }
 }

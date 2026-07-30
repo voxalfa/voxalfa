@@ -18,6 +18,9 @@ pub enum Error {
 
     #[error("{0}")]
     Converter(#[from] voxalfa_midi::error::ConvertError),
+
+    #[error("invalid voice {0}")]
+    InvalidVoice(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
