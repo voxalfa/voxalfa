@@ -123,6 +123,9 @@ impl<'a> Formatter<'a> {
     }
 
     fn proces_section_params(&mut self, params: &SectionParams) {
+        self.add_assignment(Assignment::Params, params.ending.as_ref());
+        self.add_assignment(Assignment::Params, params.label.as_ref());
+        self.add_assignment(Assignment::Params, params.mark.as_ref());
         self.add_assignment(Assignment::Params, params.key.as_ref());
         self.add_assignment(Assignment::Params, params.time.as_ref());
         self.add_assignment(Assignment::Params, params.tempo.as_ref());

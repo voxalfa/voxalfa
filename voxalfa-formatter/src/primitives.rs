@@ -1,5 +1,5 @@
 use voxalfa_validator::data_types::{
-    Dynamic, Jump, Key, List, Tempo, TimeSignature, TimedValue, Voice,
+    Dynamic, Jump, Key, List, Mark, Tempo, TimeSignature, TimedValue, Voice,
 };
 
 pub trait Formattable {
@@ -63,6 +63,16 @@ impl Formattable for Dynamic {
 }
 
 impl Formattable for Jump {
+    fn format(&self, embedded: bool) -> String {
+        if embedded {
+            self.to_string()
+        } else {
+            format!("{{{self}}}")
+        }
+    }
+}
+
+impl Formattable for Mark {
     fn format(&self, embedded: bool) -> String {
         if embedded {
             self.to_string()
