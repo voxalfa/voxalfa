@@ -5,7 +5,6 @@ use std::io::{self, Write};
 
 use voxalfa_validator::{
     ast::{
-        body::SectionMetadata,
         header::HeaderMetadata,
         lyrics::LyricOperatorKind,
         params::{InitialParams, SectionParams, SubSectionParams},
@@ -90,7 +89,6 @@ impl<'a> Formatter<'a> {
 
     fn process_body(&mut self) {
         for (section_id, section) in self.source.ir.sections.iter().enumerate() {
-            self.process_section_metadata(&section.metadata);
             self.proces_section_params(&section.params);
 
             for sub_section in &section.items {
@@ -124,16 +122,11 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Metadata, meta.tags.as_ref());
     }
 
-    fn process_section_metadata(&mut self, params: &SectionMetadata) {
-        self.add_assignment(Assignment::Metadata, params.name.as_ref());
-        self.add_assignment(Assignment::Metadata, params.ending.as_ref());
-    }
-
     fn proces_section_params(&mut self, params: &SectionParams) {
         self.add_assignment(Assignment::Params, params.key.as_ref());
         self.add_assignment(Assignment::Params, params.time.as_ref());
         self.add_assignment(Assignment::Params, params.tempo.as_ref());
-        self.add_assignment(Assignment::Params, params.navigation.as_ref());
+        self.add_assignment(Assignment::Params, params.jump.as_ref());
     }
 
     fn proces_initial_params(&mut self, params: &InitialParams) {

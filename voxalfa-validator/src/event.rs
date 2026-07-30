@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Key, Navigation, Tempo},
+    data_types::{Dynamic, Jump, Key, Mark},
     validation::timeline::EventBuffer,
 };
 
@@ -56,6 +56,10 @@ impl TimelineMap {
     pub fn get(&self, sub_id: SubSectonId) -> Option<&Timeline> {
         self.timelines.get(&sub_id)
     }
+
+    pub fn get_mut(&mut self, sub_id: SubSectonId) -> &mut Timeline {
+        self.timelines.entry(sub_id).or_default()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -68,11 +72,11 @@ impl Timeline {
         self.events.push((timestamp, event));
     }
 
-    pub fn get_event(&self, timestamp: Timestamp) -> Option<&Event> {
+    pub fn get_events(&self, timestamp: Timestamp) -> impl Iterator<Item = &Event> {
         self.events
-            .binary_search_by(|(ts, _)| ts.cmp(&timestamp))
-            .ok()
-            .map(|idx| &self.events[idx].1)
+            .iter()
+            .filter(move |(ts, _)| *ts == timestamp)
+            .map(|(_, ev)| ev)
     }
 }
 
@@ -86,14 +90,23 @@ impl Event {
     pub fn new(kind: EventKind, span: Option<f32>) -> Self {
         Self { kind, span }
     }
+
+    pub fn simple<T: ToEventKind>(value: T) -> Self {
+        Self {
+            kind: value.to_event_kind(),
+            span: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EventKind {
     Dynamic(Dynamic),
     Key(Key),
-    Navigation(Navigation),
-    Tempo(Tempo),
+    Jump(Jump),
+    Mark(Mark),
+    EndingStart(usize),
+    EndingEnd(usize),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -126,8 +139,14 @@ impl ToEventKind for Key {
     }
 }
 
-impl ToEventKind for Navigation {
+impl ToEventKind for Jump {
     fn to_event_kind(&self) -> EventKind {
-        EventKind::Navigation(*self)
+        EventKind::Jump(*self)
+    }
+}
+
+impl ToEventKind for Mark {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Mark(*self)
     }
 }

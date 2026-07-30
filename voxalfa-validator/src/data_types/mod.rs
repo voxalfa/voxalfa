@@ -1,6 +1,6 @@
 mod dynamics;
 mod key;
-mod marker;
+mod navigation;
 mod tempo;
 mod time_signature;
 mod voice;
@@ -10,7 +10,7 @@ mod voice;
 
 pub use dynamics::Dynamic;
 pub use key::{BaseKey, Key, KeyAccidental};
-pub use marker::Navigation;
+pub use navigation::{Jump, Mark};
 pub use tempo::Tempo;
 pub use time_signature::TimeSignature;
 pub use voice::Voice;

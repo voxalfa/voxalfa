@@ -4,7 +4,7 @@ use clap::Parser;
 use voxalfa_midi::Converter;
 
 use crate::{
-    error::Error,
+    error::Result,
     reporter::CliReporter,
     utils::{parse_file, read_files},
 };
@@ -17,7 +17,7 @@ pub struct MidiParams {
     // output: Option<String>,
 }
 
-pub fn execute(params: MidiParams) -> Result<(), Error> {
+pub fn execute(params: MidiParams) -> Result<()> {
     let files = read_files(&params.files)?;
     let mut reporter = CliReporter::new(1);
 

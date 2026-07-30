@@ -3,7 +3,7 @@ use crate::{
         parser::Parser,
         symbols::{Field, FieldAssign},
     },
-    data_types::{Dynamic, Key, List, Navigation, Tempo, TimeSignature, TimedList, Voice},
+    data_types::{Dynamic, Jump, Key, List, Mark, Tempo, TimeSignature, TimedList, Voice},
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
 };
@@ -36,18 +36,30 @@ impl FieldAssign for InitialParams {
 #[derive(Debug, Default, Clone)]
 pub struct SectionParams {
     pub time: Field<TimeSignature>,
-    pub key: Field<TimedList<Key>>,
-    pub tempo: Field<TimedList<Tempo>>,
-    pub navigation: Field<TimedList<Navigation>>,
+    pub tempo: Field<Tempo>,
+    pub label: Field<String>,
+    pub ending: Field<usize>,
+    pub key: Field<Key>,
+    pub jump: Field<Jump>,
+    pub mark: Field<Mark>,
+}
+
+impl SectionParams {
+    pub fn has_events(&self) -> bool {
+        self.key.is_some() || self.jump.is_some() || self.mark.is_some() || self.ending.is_some()
+    }
 }
 
 impl FieldAssign for SectionParams {
     fn assign_field(&mut self, data: AssignmentData, context: &mut Parser) {
         match data.key_name.as_str() {
+            "label" => context.assign_field(data, &mut self.label),
             "key" => context.assign_field(data, &mut self.key),
             "time" => context.assign_field(data, &mut self.time),
             "tempo" => context.assign_field(data, &mut self.tempo),
-            "navigation" => context.assign_field(data, &mut self.navigation),
+            "ending" => context.assign_field(data, &mut self.ending),
+            "jump" => context.assign_field(data, &mut self.jump),
+            "mark" => context.assign_field(data, &mut self.mark),
             "dynamics" => {}
             _ => {
                 context.reporter.error(

@@ -12,7 +12,7 @@ use crate::{
         reporter::DiagnosticReporter,
         types::{DiagnosticKind, ReportStage},
     },
-    event::{TimelineMap, ToEventKind},
+    event::{Event, EventKind, TimelineMap, Timestamp, ToEventKind},
     ir::{BodyIR, SectionIR, SubSectionIR},
     ts_utils::range::RangeUtil,
     validation::timeline::EventBuffer,
@@ -65,9 +65,6 @@ impl<'a> Validator<'a> {
                 buffer.init_section();
             }
 
-            self.validate_timestamps(section.params.key.as_ref());
-            self.validate_timestamps(section.params.navigation.as_ref());
-
             for (sub_id, sub_section) in section.items.iter().enumerate() {
                 let dynamics = self
                     .resolve_root_params(section_id, sub_id, &body.sections)
@@ -77,21 +74,21 @@ impl<'a> Validator<'a> {
 
                 let next_section = body.sections.get(section_id + 1);
                 let is_last = next_section.is_some_and(|s| !s.merge) || next_section.is_none();
-                let params = &section.params;
 
-                self.check_events(params.key.as_ref(), sub_section, is_last, &mut buffer);
-                self.check_events(
-                    params.navigation.as_ref(),
-                    sub_section,
-                    is_last,
-                    &mut buffer,
-                );
-                self.check_events(dynamics, sub_section, is_last, &mut buffer);
+                if let Some(events) = dynamics {
+                    buffer.process(sub_section, &events.value);
+
+                    if is_last {
+                        self.validate_event_buffer(&events.value, &mut buffer);
+                    }
+                }
 
                 if sub_id == section.items.len() - 1 {
                     buffer.add_offset(sub_section.views.len());
                 }
             }
+
+            self.append_section_events(section);
         }
     }
 
@@ -99,6 +96,39 @@ impl<'a> Validator<'a> {
         ValidatorOutput {
             timelines: self.timelines,
             reporter: self.reporter,
+        }
+    }
+
+    fn append_section_events(&mut self, section: &SectionIR) {
+        if !section.params.has_events() {
+            return;
+        }
+
+        for sub_section in &section.items {
+            let timeline = self.timelines.get_mut(sub_section.sid);
+
+            if let Some(key) = &section.params.key {
+                timeline.add_event(Timestamp::start(0, 0), Event::simple(key.value));
+            }
+
+            if let Some(mark) = &section.params.mark {
+                timeline.add_event(Timestamp::start(0, 0), Event::simple(mark.value));
+            }
+
+            if let Some(jump) = &section.params.jump {
+                timeline.add_event(sub_section.last_timestamp(), Event::simple(jump.value));
+            }
+
+            if let Some(ending) = &section.params.ending {
+                timeline.add_event(
+                    Timestamp::start(0, 0),
+                    Event::new(EventKind::EndingStart(ending.value), None),
+                );
+                timeline.add_event(
+                    sub_section.last_timestamp(),
+                    Event::new(EventKind::EndingEnd(ending.value), None),
+                );
+            }
         }
     }
 
@@ -286,7 +316,7 @@ impl<'a> Validator<'a> {
     fn validate_lyrics_join(&mut self, sections: &[Section]) {
         for (id, section) in sections.iter().enumerate() {
             if let Some(next_section) = sections.get(id + 1) {
-                if section.metadata.ending.is_some() {
+                if section.params.ending.is_some() {
                     continue;
                 }
 
@@ -332,22 +362,6 @@ impl<'a> Validator<'a> {
 
                 self.reporter
                     .error(range, DiagnosticKind::InvalidSectionMerge(context_range));
-            }
-        }
-    }
-
-    fn check_events<T: ToEventKind>(
-        &mut self,
-        events: Option<&SymbolRef<TimedList<T>>>,
-        sub_section: &SubSectionIR,
-        is_last: bool,
-        buffer: &mut EventBuffer,
-    ) {
-        if let Some(events) = events {
-            buffer.process(sub_section, &events.value);
-
-            if is_last {
-                self.validate_event_buffer(&events.value, buffer);
             }
         }
     }

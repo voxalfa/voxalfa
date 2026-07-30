@@ -194,9 +194,6 @@ impl<'a> Parser<'a> {
                     self.handle_global_params_node(child, parent_sid, section);
                     self.handle_local_params_node(child, sid, &mut result.params)
                 }
-                node_types::METADATA_LINE => {
-                    self.handle_section_metadata_node(child, parent_sid, section);
-                }
                 node_types::SOLFA_LINE => self.handle_solfa_node(child, sid, &mut result),
                 node_types::LYRIC_LINE => self.handle_lyric_node(child, sid, &mut result),
                 _ => {}
@@ -222,24 +219,6 @@ impl<'a> Parser<'a> {
         }
 
         self.handle_local_params_node(node, section_sid, &mut section.params)
-    }
-
-    fn handle_section_metadata_node(
-        &mut self,
-        node: Node<'_>,
-        section_sid: ScopeId,
-        section: &mut Section,
-    ) {
-        if !section.items.is_empty() {
-            let context_range = self.tree.get_scope_range(section.sid).start();
-
-            self.reporter.error(
-                node.range(),
-                DiagnosticKind::NonTopLevelSectionMetadata(context_range),
-            );
-        }
-
-        self.handle_local_params_node(node, section_sid, &mut section.metadata)
     }
 
     fn handle_solfa_node(

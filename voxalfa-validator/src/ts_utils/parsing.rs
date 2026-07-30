@@ -6,7 +6,7 @@ use crate::{
         solfa::{BaseNote, Note, NoteVariation},
         symbols::{ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
     },
-    data_types::{Dynamic, Key, Navigation, Tempo, TimeSignature, TimedValue, Voice},
+    data_types::{Dynamic, Jump, Key, Mark, Tempo, TimeSignature, TimedValue, Voice},
     diagnostics::types::DiagnosticKind,
     ts_utils::generated::node_types,
 };
@@ -255,8 +255,12 @@ impl ParseBuiltin for Voice {
     const TYPE_NAME: &'static str = "voice";
 }
 
-impl ParseBuiltin for Navigation {
-    const TYPE_NAME: &'static str = "marker";
+impl ParseBuiltin for Jump {
+    const TYPE_NAME: &'static str = "jump";
+}
+
+impl ParseBuiltin for Mark {
+    const TYPE_NAME: &'static str = "mark";
 }
 
 impl ParseBuiltin for Tempo {

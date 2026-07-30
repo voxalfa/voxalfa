@@ -8,11 +8,11 @@ use solfa::SolfaLineIR;
 
 use crate::{
     ast::{
-        body::SectionMetadata,
         params::{SectionParams, SubSectionParams},
         symbols::ScopeId,
     },
     data_types::Voice,
+    event::Timestamp,
     ir::solfa::PulseIR,
 };
 
@@ -25,7 +25,6 @@ pub struct BodyIR {
 pub struct SectionIR {
     pub sid: ScopeId,
     pub items: Vec<SubSectionIR>,
-    pub metadata: SectionMetadata,
     pub params: SectionParams,
     pub merge: bool,
 }
@@ -53,6 +52,18 @@ pub struct SubSectionIR {
 impl SubSectionIR {
     pub fn width(&self) -> usize {
         self.views.iter().map(|v| v.factor).sum()
+    }
+
+    pub fn last_timestamp(&self) -> Timestamp {
+        let pulse_id = self.views.len() - 1;
+
+        let note_id = self
+            .views
+            .last()
+            .map(|l| l.durations.len() - 1)
+            .unwrap_or_default();
+
+        Timestamp::end(pulse_id, note_id)
     }
 }
 

@@ -188,13 +188,13 @@ pub struct NoteContext<'a> {
 }
 
 impl NoteContext<'_> {
-    pub fn start_event(&self) -> Option<&Event> {
+    pub fn start_event(&self) -> Option<impl Iterator<Item = &Event>> {
         self.timeline
-            .and_then(|t| t.get_event(Timestamp::start(self.pulse_id, self.note_id)))
+            .map(|t| t.get_events(Timestamp::start(self.pulse_id, self.note_id)))
     }
 
-    pub fn end_event(&self) -> Option<&Event> {
+    pub fn end_event(&self) -> Option<impl Iterator<Item = &Event>> {
         self.timeline
-            .and_then(|t| t.get_event(Timestamp::end(self.pulse_id, self.note_id)))
+            .map(|t| t.get_events(Timestamp::end(self.pulse_id, self.note_id)))
     }
 }

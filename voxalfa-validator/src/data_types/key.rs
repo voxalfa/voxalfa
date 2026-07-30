@@ -47,15 +47,16 @@ pub enum BaseKey {
 }
 
 impl BaseKey {
+    // pick the one closer to C
     fn offset(self) -> i8 {
         match self {
             BaseKey::C => 0,
             BaseKey::D => 2,
             BaseKey::E => 4,
             BaseKey::F => 5,
-            BaseKey::G => 7,
-            BaseKey::A => 9,
-            BaseKey::B => 11,
+            BaseKey::G => -5,
+            BaseKey::A => -3,
+            BaseKey::B => -1,
         }
     }
 }

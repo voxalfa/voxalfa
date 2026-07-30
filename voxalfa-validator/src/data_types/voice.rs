@@ -7,12 +7,12 @@ pub enum Voice {
 }
 
 impl Voice {
-    pub fn octave_offset(self) -> i8 {
+    pub fn offset(self) -> i8 {
         match self {
-            Voice::S => 0,
-            Voice::A => -1,
-            Voice::T => -2,
-            Voice::B => -3,
+            Voice::S => 12,
+            Voice::A => 0,
+            Voice::T => 0,
+            Voice::B => -12,
         }
     }
 }
