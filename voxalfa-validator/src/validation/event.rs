@@ -1,13 +1,14 @@
 use crate::{
     data_types::TimedList,
-    event::{Event, EventKind, SubSectonId, Timestamp, ToEventKind},
-    ir::SubSectionIR,
+    ir::{SectionIR, SubSectionIR},
+    output::event::{Event, EventKind, SubSectonId, Timestamp, ToEventKind, get_note_ticks},
 };
 
 pub const FLOAT_ERROR: f32 = 0.05; // allow 0.3 and 0.7 to match 1/3 and 2/3
 
 #[derive(Debug, Default)]
 pub struct EventBuffer {
+    elapsed: usize,
     offset: usize,
     results: Vec<BufferedEvent>,
     processed: Vec<(EventKind, usize)>,
@@ -25,34 +26,85 @@ impl EventBuffer {
 
     pub fn add_offset(&mut self, offset: usize) {
         self.offset += offset;
+        self.elapsed += get_note_ticks(offset, 1);
     }
 
     pub fn drain(&mut self) -> impl Iterator<Item = BufferedEvent> {
         self.results.drain(..)
     }
 
-    pub fn process<T: ToEventKind>(&mut self, sub_section: &SubSectionIR, events: &TimedList<T>) {
+    pub fn process_section_events(&mut self, section: &SectionIR) {
+        if !section.params.has_events() {
+            return;
+        }
+
+        for sub_section in &section.items {
+            let sid = sub_section.sid;
+
+            if let Some(key) = &section.params.key {
+                self.push_event(sid, self.elapsed, Event::simple(key.value));
+            }
+
+            if let Some(mark) = &section.params.mark {
+                self.push_event(sid, self.elapsed, Event::simple(mark.value));
+            }
+
+            if let Some(jump) = &section.params.jump {
+                self.push_event(
+                    sid,
+                    self.elapsed + sub_section.get_ticks(),
+                    Event::simple(jump.value),
+                );
+            }
+
+            if let Some(ending) = &section.params.ending {
+                self.push_event(
+                    sid,
+                    self.elapsed,
+                    Event::new(EventKind::EndingStart(ending.value), None),
+                );
+
+                self.push_event(
+                    sid,
+                    self.elapsed + sub_section.get_ticks(),
+                    Event::new(EventKind::EndingEnd(ending.value), None),
+                );
+            }
+        }
+    }
+
+    pub fn process_local_events<T: ToEventKind>(
+        &mut self,
+        sub_section: &SubSectionIR,
+        events: &TimedList<T>,
+    ) {
         if events.is_empty() {
             return;
         }
 
-        let mut ellapsed = self.offset as f32;
+        let mut relative_offset = self.offset as f32;
+        let mut elapsed = self.elapsed;
 
-        for (pulse_index, view) in sub_section.views.iter().enumerate() {
-            for (note_index, &duration) in view.durations.iter().enumerate() {
+        for view in &sub_section.views {
+            for &duration in &view.durations {
+                let note_ticks = get_note_ticks(duration, view.factor);
+                let note_start = relative_offset;
+                let note_end = relative_offset + (duration as f32 / view.factor as f32);
+
                 let params = EventMatchParams {
-                    note_start: ellapsed,
-                    note_end: ellapsed + (duration as f32 / view.factor as f32),
-                    pulse_index,
-                    note_index,
+                    note_start,
+                    note_end,
+                    note_ticks,
+                    elapsed,
                 };
 
                 self.match_event(sub_section.sid, events, &params);
 
-                ellapsed = params.note_end;
+                relative_offset = note_end;
+                elapsed += note_ticks;
             }
 
-            ellapsed += 1.;
+            relative_offset += 1.;
         }
     }
 
@@ -79,9 +131,9 @@ impl EventBuffer {
             }
 
             let timestamp = if self.check_eq(current.start, params.note_start) {
-                Timestamp::start(params.pulse_index, params.note_index)
+                params.elapsed
             } else if self.check_eq(current.start, params.note_end) {
-                Timestamp::end(params.pulse_index, params.note_index)
+                params.elapsed + params.note_ticks
             } else {
                 continue;
             };
@@ -126,6 +178,6 @@ pub struct BufferedEvent {
 struct EventMatchParams {
     note_start: f32,
     note_end: f32,
-    pulse_index: usize,
-    note_index: usize,
+    note_ticks: usize,
+    elapsed: usize,
 }

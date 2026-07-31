@@ -2,45 +2,24 @@ use std::collections::HashMap;
 
 use crate::{
     data_types::{Dynamic, Jump, Key, Mark},
-    validation::timeline::EventBuffer,
+    validation::event::EventBuffer,
 };
 
 pub type SubSectonId = usize;
+pub type Timestamp = usize;
+pub type NoteId = usize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TimestampKind {
-    Start,
-    End,
+pub const TICK_PER_WHOLE_NOTE: usize = 960;
+
+pub fn get_note_ticks(numerator: usize, denominator: usize) -> Timestamp {
+    (TICK_PER_WHOLE_NOTE * numerator) / denominator
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Timestamp {
-    pub pulse_index: usize,
-    pub note_index: usize,
-    pub kind: TimestampKind,
-}
-
-impl Timestamp {
-    pub fn start(pulse_index: usize, note_index: usize) -> Self {
-        Self {
-            pulse_index,
-            note_index,
-            kind: TimestampKind::Start,
-        }
-    }
-
-    pub fn end(pulse_index: usize, note_index: usize) -> Self {
-        Self {
-            pulse_index,
-            note_index,
-            kind: TimestampKind::End,
-        }
-    }
-}
+type PartialTimeline = Vec<(Timestamp, Event)>;
 
 #[derive(Debug, Default)]
 pub struct TimelineMap {
-    timelines: HashMap<SubSectonId, Timeline>,
+    timelines: HashMap<SubSectonId, PartialTimeline>,
 }
 
 impl TimelineMap {
@@ -49,38 +28,38 @@ impl TimelineMap {
             self.timelines
                 .entry(partial.sub_id)
                 .or_default()
-                .add_event(partial.timestamp, partial.event);
+                .push((partial.timestamp, partial.event));
         }
     }
 
-    pub fn get(&self, sub_id: SubSectonId) -> Option<&Timeline> {
+    pub fn get(&self, sub_id: SubSectonId) -> Option<&PartialTimeline> {
         self.timelines.get(&sub_id)
     }
 
-    pub fn get_mut(&mut self, sub_id: SubSectonId) -> &mut Timeline {
+    pub fn get_mut(&mut self, sub_id: SubSectonId) -> &mut PartialTimeline {
         self.timelines.entry(sub_id).or_default()
     }
 }
 
 #[derive(Debug, Default)]
-pub struct Timeline {
-    events: Vec<(Timestamp, Event)>,
+pub struct NoteTimeline {
+    events: Vec<(NoteId, Event)>,
 }
 
-impl Timeline {
-    pub fn add_event(&mut self, timestamp: Timestamp, event: Event) {
-        self.events.push((timestamp, event));
+impl NoteTimeline {
+    pub fn add_event(&mut self, note_id: NoteId, event: Event) {
+        self.events.push((note_id, event));
     }
 
-    pub fn get_events(&self, timestamp: Timestamp) -> impl Iterator<Item = &Event> {
+    pub fn get_events(&self, note_id: NoteId) -> impl Iterator<Item = &Event> {
         self.events
             .iter()
-            .filter(move |(ts, _)| *ts == timestamp)
+            .filter(move |(ts, _)| *ts == note_id)
             .map(|(_, ev)| ev)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Event {
     pub kind: EventKind,
     pub span: Option<f32>,

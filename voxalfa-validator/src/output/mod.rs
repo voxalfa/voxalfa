@@ -1,3 +1,6 @@
+pub mod event;
+pub mod render;
+
 use crate::{
     ast::{
         header::Header,
@@ -5,13 +8,15 @@ use crate::{
     },
     data_types::Voice,
     diagnostics::types::Diagnostic,
-    event::{Event, Timeline, TimelineMap, Timestamp},
     ir::{
         BodyIR, PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricPrimitive, LyricStringIR},
-        solfa::{PulseColumn, PulseColumnKind, PulseIR},
+        solfa::{PulseColumn, PulseColumnKind},
     },
-    render::RenderType,
+    output::{
+        event::{Event, NoteTimeline, TimelineMap, Timestamp, get_note_ticks},
+        render::RenderType,
+    },
 };
 
 #[derive(Debug)]
@@ -47,8 +52,9 @@ impl FinalOutput {
             .unwrap_or(1)
     }
 
-    pub fn build_voice_line(&self, voice: Voice) -> Vec<NoteContext<'_>> {
+    pub fn build_voice_line(&self, voice: Voice) -> VoiceLine<'_> {
         let mut notes = Vec::new();
+        let mut timeline = Vec::new();
 
         let sub_items = self.ir.sections.iter().flat_map(|section| &section.items);
 
@@ -57,22 +63,21 @@ impl FinalOutput {
                 continue;
             };
 
-            let timeline = self.timelines.get(sub.sid);
+            if let Some(partial) = self.timelines.get(sub.sid) {
+                timeline.extend(partial);
+            }
 
-            for (pulse_id, pulse) in solfa.pulses.iter().enumerate() {
-                for (note_id, note) in pulse.columns.iter().enumerate() {
+            for pulse in &solfa.pulses {
+                for note in &pulse.columns {
                     notes.push(NoteContext {
-                        timeline,
-                        pulse,
-                        pulse_id,
                         note,
-                        note_id,
+                        factor: pulse.factor,
                     });
                 }
             }
         }
 
-        notes
+        VoiceLine::new(notes, timeline)
     }
 
     // FIXME: use a dedicated lyric builder task for handling jumps
@@ -246,22 +251,37 @@ impl FinalOutput {
 }
 
 #[derive(Debug)]
-pub struct NoteContext<'a> {
-    pub timeline: Option<&'a Timeline>,
-    pub pulse: &'a PulseIR,
-    pub pulse_id: usize,
-    pub note: &'a PulseColumn,
-    pub note_id: usize,
+pub struct VoiceLine<'a> {
+    pub timeline: NoteTimeline,
+    pub notes: Vec<NoteContext<'a>>,
 }
 
-impl NoteContext<'_> {
-    pub fn start_event(&self) -> Option<impl Iterator<Item = &Event>> {
-        self.timeline
-            .map(|t| t.get_events(Timestamp::start(self.pulse_id, self.note_id)))
-    }
+impl<'a> VoiceLine<'a> {
+    pub fn new(notes: Vec<NoteContext<'a>>, flat_timeline: Vec<&(Timestamp, Event)>) -> Self {
+        let mut ticks = 0;
+        let mut timeline = NoteTimeline::default();
 
-    pub fn end_event(&self) -> Option<impl Iterator<Item = &Event>> {
-        self.timeline
-            .map(|t| t.get_events(Timestamp::end(self.pulse_id, self.note_id)))
+        for index in 0..=notes.len() {
+            let events = flat_timeline
+                .iter()
+                .filter(|(t, _e)| *t == ticks)
+                .map(|(_, e)| e);
+
+            for event in events {
+                timeline.add_event(index, event.clone());
+            }
+
+            if let Some(ctx) = notes.get(index) {
+                ticks += get_note_ticks(ctx.note.duration, ctx.factor);
+            }
+        }
+
+        Self { timeline, notes }
     }
+}
+
+#[derive(Debug)]
+pub struct NoteContext<'a> {
+    pub note: &'a PulseColumn,
+    pub factor: usize,
 }

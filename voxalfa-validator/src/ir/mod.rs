@@ -12,8 +12,8 @@ use crate::{
         symbols::ScopeId,
     },
     data_types::Voice,
-    event::Timestamp,
     ir::solfa::PulseIR,
+    output::event::get_note_ticks,
 };
 
 #[derive(Debug, Default)]
@@ -54,16 +54,8 @@ impl SubSectionIR {
         self.views.iter().map(|v| v.factor).sum()
     }
 
-    pub fn last_timestamp(&self) -> Timestamp {
-        let pulse_id = self.views.len() - 1;
-
-        let note_id = self
-            .views
-            .last()
-            .map(|l| l.durations.len() - 1)
-            .unwrap_or_default();
-
-        Timestamp::end(pulse_id, note_id)
+    pub fn get_ticks(&self) -> usize {
+        get_note_ticks(self.views.len(), 1)
     }
 }
 

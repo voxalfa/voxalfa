@@ -1,7 +1,7 @@
 use crate::{
     ast::symbols::{ScopeId, SymbolRef},
     data_types::Voice,
-    render::RenderType,
+    output::render::RenderType,
 };
 
 #[derive(Debug)]

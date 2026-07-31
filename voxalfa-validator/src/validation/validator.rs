@@ -12,10 +12,10 @@ use crate::{
         reporter::DiagnosticReporter,
         types::{DiagnosticKind, ReportStage},
     },
-    event::{Event, EventKind, TimelineMap, Timestamp, ToEventKind},
     ir::{BodyIR, SectionIR, SubSectionIR},
+    output::event::{TimelineMap, ToEventKind},
     ts_utils::range::RangeUtil,
-    validation::timeline::EventBuffer,
+    validation::event::EventBuffer,
 };
 
 #[derive(Debug)]
@@ -65,6 +65,8 @@ impl<'a> Validator<'a> {
                 buffer.init_section();
             }
 
+            buffer.process_section_events(section);
+
             for (sub_id, sub_section) in section.items.iter().enumerate() {
                 let dynamics = self
                     .resolve_root_params(section_id, sub_id, &body.sections)
@@ -76,7 +78,7 @@ impl<'a> Validator<'a> {
                 let is_last = next_section.is_some_and(|s| !s.merge) || next_section.is_none();
 
                 if let Some(events) = dynamics {
-                    buffer.process(sub_section, &events.value);
+                    buffer.process_local_events(sub_section, &events.value);
 
                     if is_last {
                         self.validate_event_buffer(&events.value, &mut buffer);
@@ -87,48 +89,16 @@ impl<'a> Validator<'a> {
                     buffer.add_offset(sub_section.views.len());
                 }
             }
-
-            self.append_section_events(section);
         }
+
+        // merge section level events
+        self.timelines.extend_from_buffer(&mut buffer);
     }
 
     pub fn finalize(self) -> ValidatorOutput {
         ValidatorOutput {
             timelines: self.timelines,
             reporter: self.reporter,
-        }
-    }
-
-    fn append_section_events(&mut self, section: &SectionIR) {
-        if !section.params.has_events() {
-            return;
-        }
-
-        for sub_section in &section.items {
-            let timeline = self.timelines.get_mut(sub_section.sid);
-
-            if let Some(key) = &section.params.key {
-                timeline.add_event(Timestamp::start(0, 0), Event::simple(key.value));
-            }
-
-            if let Some(mark) = &section.params.mark {
-                timeline.add_event(Timestamp::start(0, 0), Event::simple(mark.value));
-            }
-
-            if let Some(jump) = &section.params.jump {
-                timeline.add_event(sub_section.last_timestamp(), Event::simple(jump.value));
-            }
-
-            if let Some(ending) = &section.params.ending {
-                timeline.add_event(
-                    Timestamp::start(0, 0),
-                    Event::new(EventKind::EndingStart(ending.value), None),
-                );
-                timeline.add_event(
-                    sub_section.last_timestamp(),
-                    Event::new(EventKind::EndingEnd(ending.value), None),
-                );
-            }
         }
     }
 

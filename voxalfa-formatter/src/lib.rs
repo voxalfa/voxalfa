@@ -15,8 +15,7 @@ use voxalfa_validator::{
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
         solfa::{PulseIR, SolfaLineIR},
     },
-    output::FinalOutput,
-    render::RenderType,
+    output::{FinalOutput, render::RenderType},
     ts_utils::range::RangeUtil,
 };
 

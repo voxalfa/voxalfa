@@ -7,8 +7,10 @@ use midly::{
 use voxalfa_validator::{
     ast::solfa::Note,
     data_types::{Key, Voice},
-    event::{Event, EventKind},
-    output::NoteContext,
+    output::{
+        NoteContext,
+        event::{Event, EventKind, NoteTimeline},
+    },
 };
 
 use crate::{
@@ -17,8 +19,8 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct VoiceTask<'a> {
-    pointer: usize,
+pub struct VoiceTask {
+    index: usize,
     jump: Option<usize>,
     channel: u4,
     key: Key,
@@ -28,25 +30,25 @@ pub struct VoiceTask<'a> {
     pending_ticks: u32,
     velocity: u7,
     slur: bool,
-    pending_event: Vec<&'a Event>,
     marks: [usize; 3],
     endings_jump: HashMap<usize, usize>,
+    jump_table: HashMap<usize, u8>,
 }
 
-impl<'a> VoiceTask<'a> {
+impl VoiceTask {
     pub fn new(id: usize, voice: Voice, key: Key) -> Self {
         Self {
             key,
             voice,
-            pointer: 0,
+            index: 0,
             channel: u4::from(id as u8),
             track: Track::new(),
             active_note: None,
             pending_ticks: 0,
-            pending_event: Vec::new(),
             velocity: u7::from(DEFAULT_VELOCITY),
             slur: false,
             endings_jump: HashMap::new(),
+            jump_table: HashMap::new(),
             marks: [0; 3],
             jump: None,
         }
@@ -62,42 +64,34 @@ impl<'a> VoiceTask<'a> {
         }
     }
 
-    pub fn handle_note(&mut self, note: Note, params: NoteParams) -> Result<()> {
-        self.handle_note_params(&params);
+    pub fn handle_note(&mut self, note: Note, ctx: &NoteContext<'_>) -> Result<()> {
+        self.handle_note_context(ctx);
         self.handle_active_note(0);
 
         let midi_note = self.get_midi_note(note)?;
 
         self.note_on(midi_note);
         self.active_note = Some(midi_note);
-        self.pending_ticks = params.ticks;
+        self.pending_ticks = self.get_midi_note_ticks(ctx);
 
         Ok(())
     }
 
-    pub fn handle_pause(&mut self, params: NoteParams) {
-        self.handle_note_params(&params);
+    pub fn handle_pause(&mut self, ctx: &NoteContext<'_>) {
+        self.handle_note_context(ctx);
 
-        if self.handle_active_note(params.ticks) {
-            self.pending_ticks = params.ticks;
+        let ticks = self.get_midi_note_ticks(ctx);
+
+        if self.handle_active_note(ticks) {
+            self.pending_ticks = ticks;
         } else {
-            self.pending_ticks += params.ticks;
+            self.pending_ticks += ticks;
         }
     }
 
-    pub fn prolongate(&mut self, params: NoteParams) {
-        self.handle_note_params(&params);
-        self.pending_ticks += params.ticks;
-    }
-
-    pub fn handle_events(&mut self, events: impl Iterator<Item = &'a Event>) {
-        for event in events {
-            self.handle_event(event);
-        }
-    }
-
-    pub fn schedule_events(&mut self, events: impl Iterator<Item = &'a Event>) {
-        self.pending_event.extend(events);
+    pub fn prolongate(&mut self, ctx: &NoteContext<'_>) {
+        self.handle_note_context(ctx);
+        self.pending_ticks += self.get_midi_note_ticks(ctx);
     }
 
     pub fn finalize(mut self) -> Track<'static> {
@@ -112,48 +106,68 @@ impl<'a> VoiceTask<'a> {
     }
 
     pub fn index(&self) -> usize {
-        self.pointer
+        self.index
     }
 
-    pub fn step(&mut self) {
+    pub fn jump(&mut self) -> bool {
         if let Some(pointer) = self.jump.take() {
-            self.pointer = pointer;
+            self.index = pointer;
+            self.handle_active_note(0);
+            true
         } else {
-            self.pointer += 1;
+            false
         }
     }
 
-    fn handle_event(&mut self, event: &'a Event) {
+    pub fn step(&mut self) {
+        self.index += 1;
+    }
+
+    pub fn handle_events(&mut self, timeline: &NoteTimeline) {
+        let events = timeline.get_events(self.index);
+
+        for event in events {
+            self.handle_event(event);
+        }
+    }
+
+    pub fn handle_pending_events(&mut self, timeline: &NoteTimeline) {
+        self.handle_events(timeline);
+        self.jump();
+    }
+
+    pub fn handle_event(&mut self, event: &Event) {
         match event.kind {
-            EventKind::Key(key) => self.key = key,
+            EventKind::Key(key) => {
+                self.key = key;
+            }
 
             EventKind::Dynamic(_dynamic) => {}
 
             EventKind::Mark(mark) => {
-                self.marks[mark as usize] = self.pointer;
+                self.marks[mark as usize] = self.index;
             }
 
             EventKind::Jump(jump) => {
-                self.jump = Some(self.marks[jump.mark() as usize]);
+                if self.jump_table.get(&self.index).is_none() {
+                    self.jump = Some(self.marks[jump.mark() as usize]);
+                    self.jump_table.insert(self.index, 0); // TODO: actual repeat count
+                }
             }
 
             EventKind::EndingStart(id) => {
                 if let Some(address) = self.endings_jump.get(&id) {
-                    self.jump = Some(*address);
+                    self.index = *address;
                 }
             }
 
             EventKind::EndingEnd(id) => {
-                self.endings_jump.insert(id, self.pointer + 1);
+                self.endings_jump.insert(id, self.index + 1);
             }
         }
     }
 
     fn handle_active_note(&mut self, ticks: u32) -> bool {
-        while let Some(event) = self.pending_event.pop() {
-            self.handle_event(event);
-        }
-
         if let Some(last_note) = self.active_note.take() {
             self.note_off(last_note);
             self.pending_ticks = ticks;
@@ -165,12 +179,12 @@ impl<'a> VoiceTask<'a> {
     }
 
     // FIXME: figure out a way to apply slurs?
-    fn handle_note_params(&mut self, params: &NoteParams) {
-        if params.slur_start {
+    fn handle_note_context(&mut self, ctx: &NoteContext<'_>) {
+        if ctx.note.underline.left {
             self.slur = true;
         }
 
-        if params.slur_end {
+        if ctx.note.underline.right {
             self.slur = false;
         }
     }
@@ -200,25 +214,12 @@ impl<'a> VoiceTask<'a> {
             },
         });
     }
-}
 
-#[derive(Debug)]
-pub struct NoteParams {
-    pub ticks: u32,
-    pub slur_start: bool,
-    pub slur_end: bool,
-}
-
-impl NoteParams {
-    pub fn new(ctx: &NoteContext) -> Self {
-        let denominator = ctx.pulse.factor as u32;
+    fn get_midi_note_ticks(&self, ctx: &NoteContext<'_>) -> u32 {
+        let denominator = ctx.factor as u32;
         let numerator = ctx.note.duration as u32;
         let ticks = (PPQ as u32 * numerator) / denominator;
 
-        Self {
-            ticks,
-            slur_start: ctx.note.underline.left,
-            slur_end: ctx.note.underline.right,
-        }
+        ticks
     }
 }

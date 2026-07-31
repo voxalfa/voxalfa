@@ -16,7 +16,7 @@ use voxalfa_validator::{
 use crate::{
     error::{ConvertError, Result},
     tempo::TempoTask,
-    voice::{NoteParams, VoiceTask},
+    voice::VoiceTask,
 };
 
 pub const PPQ: u16 = 480;
@@ -76,24 +76,24 @@ impl<'a> Converter<'a> {
         let mut task = VoiceTask::new(id, voice, key);
         let voice_line = self.source.build_voice_line(voice);
 
-        while let Some(ctx) = voice_line.get(task.index()) {
-            let params = NoteParams::new(ctx);
+        while let Some(ctx) = voice_line.notes.get(task.index()) {
+            task.handle_events(&voice_line.timeline);
 
-            if let Some(events) = ctx.start_event() {
-                task.handle_events(events);
+            if task.jump() {
+                continue;
             }
 
             match ctx.note.kind {
-                PulseColumnKind::Note(note) => task.handle_note(note, params)?,
-                PulseColumnKind::EmptyNote => task.handle_pause(params),
-                PulseColumnKind::ProlongedNote(_) => task.prolongate(params),
-            }
-
-            if let Some(events) = ctx.end_event() {
-                task.schedule_events(events);
+                PulseColumnKind::Note(note) => task.handle_note(note, ctx)?,
+                PulseColumnKind::EmptyNote => task.handle_pause(ctx),
+                PulseColumnKind::ProlongedNote(_) => task.prolongate(ctx),
             }
 
             task.step();
+
+            if task.index() >= voice_line.notes.len() {
+                task.handle_pending_events(&voice_line.timeline);
+            }
         }
 
         Ok(task.finalize())
