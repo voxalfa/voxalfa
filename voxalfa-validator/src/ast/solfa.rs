@@ -155,6 +155,34 @@ pub struct Note {
     pub octave: i8,
 }
 
+impl TryFrom<&str> for Note {
+    type Error = ();
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        let base_str = s.get(..1).ok_or(())?;
+        let base = BaseNote::try_from(base_str).map_err(|_| ())?;
+
+        let variation = s
+            .find(['i', 'a'])
+            .and_then(|idx| s.get(idx..=idx))
+            .map(NoteVariation::try_from)
+            .transpose()
+            .map_err(|_| ())?
+            .unwrap_or_default();
+
+        let octave = s
+            .strip_prefix(char::is_alphabetic)
+            .and_then(|n| n.replace('+', "").parse::<i8>().ok())
+            .unwrap_or_default();
+
+        Ok(Note {
+            base,
+            variation,
+            octave,
+        })
+    }
+}
+
 impl std::fmt::Display for Note {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let variation_str = match self.variation {

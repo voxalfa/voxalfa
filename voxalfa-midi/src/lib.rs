@@ -16,7 +16,7 @@ use voxalfa_validator::{
 use crate::{
     error::{ConvertError, Result},
     tempo::TempoTask,
-    voice::VoiceTask,
+    voice::{PlaybackParams, VoiceTask},
 };
 
 pub const PPQ: u16 = 480;
@@ -42,7 +42,7 @@ impl<'a> Converter<'a> {
 
         let params = &self.source.header.params;
 
-        let key = self.get_header_param("key", params.key.as_ref())?;
+        let key = *self.get_header_param("key", params.key.as_ref())?;
         let voices = self.get_header_param("voices", params.voices.as_ref())?;
         let time = self.get_header_param("time", params.time.as_ref())?;
         let tempo = self.get_header_param("tempo", params.tempo.as_ref())?;
@@ -53,7 +53,7 @@ impl<'a> Converter<'a> {
         smf.tracks.push(tempo_track);
 
         for (id, voice) in voices.iter().enumerate() {
-            let track = self.process_voice(id, voice.value, *key)?;
+            let track = self.process_voice(id, voice.value, key, time.bottom)?;
             smf.tracks.push(track);
         }
 
@@ -72,8 +72,15 @@ impl<'a> Converter<'a> {
             .map(|f| &f.value)
     }
 
-    fn process_voice(&mut self, id: usize, voice: Voice, key: Key) -> Result<Track<'static>> {
-        let mut task = VoiceTask::new(id, voice, key);
+    fn process_voice(
+        &mut self,
+        id: usize,
+        voice: Voice,
+        key: Key,
+        quarter_unit: usize,
+    ) -> Result<Track<'static>> {
+        let params = PlaybackParams::new(key, quarter_unit);
+        let mut task = VoiceTask::new(id, voice, params);
         let voice_line = self.source.build_voice_line(voice);
 
         while let Some(ctx) = voice_line.notes.get(task.index()) {
