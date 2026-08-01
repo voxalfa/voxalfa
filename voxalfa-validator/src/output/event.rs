@@ -80,11 +80,17 @@ impl Event {
 pub enum EventKind {
     Dynamic(Dynamic),
     Key(Key),
-    Jump(Jump),
+    Jump(JumpEvent),
     Mark(Mark),
     Touch(Touch),
-    EndingStart(usize),
-    EndingEnd(usize),
+    EndingStart(u8),
+    EndingEnd(u8),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct JumpEvent {
+    pub kind: Jump,
+    pub repeat: u8,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -117,7 +123,7 @@ impl ToEventKind for Key {
     }
 }
 
-impl ToEventKind for Jump {
+impl ToEventKind for JumpEvent {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Jump(*self)
     }

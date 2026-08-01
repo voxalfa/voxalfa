@@ -43,6 +43,7 @@ pub struct SectionParams {
     pub jump: Field<Jump>,
     pub mark: Field<Mark>,
     pub touches: Field<TimedList<Touch>>,
+    pub repeat: Field<usize>,
 }
 
 impl SectionParams {
@@ -62,6 +63,7 @@ impl FieldAssign for SectionParams {
             "jump" => context.assign_field(data, &mut self.jump),
             "mark" => context.assign_field(data, &mut self.mark),
             "touches" => context.assign_field(data, &mut self.touches),
+            "repeat" => context.assign_field(data, &mut self.repeat),
             "dynamics" => {}
             _ => {
                 context.reporter.error(

@@ -130,6 +130,7 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Params, params.tempo.as_ref());
         self.add_assignment(Assignment::Params, params.touches.as_ref());
         self.add_assignment(Assignment::Params, params.jump.as_ref());
+        self.add_assignment(Assignment::Params, params.repeat.as_ref());
     }
 
     fn proces_initial_params(&mut self, params: &InitialParams) {

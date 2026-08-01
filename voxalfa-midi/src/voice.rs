@@ -6,7 +6,7 @@ use midly::{
 };
 use voxalfa_validator::{
     ast::solfa::Note,
-    data_types::{Dynamic, Key, Touch, Voice},
+    data_types::{Dynamic, Key, Mark, Touch, Voice},
     output::{
         NoteContext,
         event::{Event, EventKind, NoteTimeline},
@@ -35,8 +35,10 @@ pub struct VoiceTask {
     dynamic: DynamicState,
     slur: bool,
     marks: [usize; 3],
-    endings_jump: HashMap<usize, usize>,
+    endings_jump: HashMap<u8, usize>,
     jump_table: HashMap<usize, u8>,
+    final_mark: Option<Mark>,
+    abort: bool,
 }
 
 impl VoiceTask {
@@ -58,6 +60,8 @@ impl VoiceTask {
             marks: [0; 3],
             slur: false,
             jump: None,
+            final_mark: None,
+            abort: false,
         }
     }
 
@@ -152,6 +156,10 @@ impl VoiceTask {
         }
     }
 
+    pub fn done(&self) -> bool {
+        self.abort
+    }
+
     pub fn step(&mut self) {
         self.index += 1;
     }
@@ -207,13 +215,20 @@ impl VoiceTask {
             }
 
             EventKind::Mark(mark) => {
+                if self.final_mark == Some(mark) {
+                    self.abort = true;
+                }
+
                 self.marks[mark as usize] = self.index;
             }
 
             EventKind::Jump(jump) => {
-                if !self.jump_table.contains_key(&self.index) {
-                    self.jump = Some(self.marks[jump.mark() as usize]);
-                    self.jump_table.insert(self.index, 0); // TODO: actual repeat count
+                let entry = self.jump_table.entry(self.index).or_insert(jump.repeat);
+
+                if *entry > 0 {
+                    self.final_mark = jump.kind.final_mark();
+                    self.jump = Some(self.marks[jump.kind.mark() as usize]);
+                    *entry -= 1;
                 }
             }
 

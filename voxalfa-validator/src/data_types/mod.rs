@@ -6,9 +6,6 @@ mod time_signature;
 mod touch;
 mod voice;
 
-// TODO?
-// mod articulations;
-
 pub use dynamics::Dynamic;
 pub use key::{BaseKey, Key, KeyAccidental};
 pub use navigation::{Jump, Mark};

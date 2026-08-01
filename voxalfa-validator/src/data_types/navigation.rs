@@ -9,6 +9,13 @@ pub enum Jump {
 }
 
 impl Jump {
+    pub fn final_mark(&self) -> Option<Mark> {
+        match self {
+            Jump::DSF | Jump::DCF => Some(Mark::Fine),
+            _ => None,
+        }
+    }
+
     pub fn mark(&self) -> Mark {
         match self {
             Jump::DS | Jump::DSC | Jump::DSF => Mark::Segno,
@@ -48,6 +55,7 @@ impl std::fmt::Display for Jump {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mark {
+    ToCoda,
     Segno,
     Coda,
     Fine,
@@ -61,6 +69,7 @@ impl TryFrom<String> for Mark {
             "S" => Ok(Self::Segno),
             "C" => Ok(Self::Coda),
             "F" => Ok(Self::Fine),
+            "TC" => Ok(Self::Fine),
             _ => Err(()),
         }
     }
@@ -72,6 +81,7 @@ impl std::fmt::Display for Mark {
             Self::Segno => write!(f, "S"),
             Self::Coda => write!(f, "C"),
             Self::Fine => write!(f, "F"),
+            Self::ToCoda => write!(f, "TC"),
         }
     }
 }

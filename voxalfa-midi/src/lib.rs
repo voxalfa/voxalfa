@@ -85,6 +85,10 @@ impl<'a> Converter<'a> {
         while let Some(ctx) = voice_line.notes.get(task.index()) {
             task.handle_events(&voice_line.timeline);
 
+            if task.done() {
+                break;
+            }
+
             if task.jump() {
                 continue;
             }
