@@ -6,15 +6,15 @@ use midly::{
 };
 use voxalfa_validator::{
     ast::solfa::Note,
-    data_types::{Dynamic, Key, Mark, Touch, Voice},
+    data_types::{Dynamic, Jump, Key, Mark, Touch, Voice},
     output::{
         NoteContext,
-        event::{Event, EventKind, NoteTimeline},
+        event::{Event, EventKind, JumpEvent, NoteTimeline},
     },
 };
 
 use crate::{
-    BASE_MIDI_KEY, PPQ,
+    BASE_MIDI_KEY, PPQN,
     dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
     error::{ConvertError, Result},
 };
@@ -34,10 +34,11 @@ pub struct VoiceTask {
     pending_notes: Vec<PendingNote>,
     dynamic: DynamicState,
     slur: bool,
-    marks: [usize; 3],
+    segno: usize,
     endings_jump: HashMap<u8, usize>,
     jump_table: HashMap<usize, u8>,
-    final_mark: Option<Mark>,
+    target_mark: Option<Mark>,
+    waited_event: Option<EventKind>,
     abort: bool,
 }
 
@@ -57,10 +58,11 @@ impl VoiceTask {
             dynamic: DynamicState::default(),
             endings_jump: HashMap::new(),
             jump_table: HashMap::new(),
-            marks: [0; 3],
+            segno: 0,
             slur: false,
             jump: None,
-            final_mark: None,
+            target_mark: None,
+            waited_event: None,
             abort: false,
         }
     }
@@ -156,6 +158,10 @@ impl VoiceTask {
         }
     }
 
+    pub fn is_waiting(&self) -> bool {
+        self.waited_event.is_some()
+    }
+
     pub fn done(&self) -> bool {
         self.abort
     }
@@ -185,52 +191,14 @@ impl VoiceTask {
     }
 
     pub fn handle_event(&mut self, event: &Event) {
+        self.waited_event.take_if(|e| *e == event.kind);
+
         match event.kind {
-            EventKind::Key(key) => {
-                self.params.key = key;
-            }
-
-            EventKind::Dynamic(Dynamic::Cre | Dynamic::Dec)
-                if self.dynamic.transition.is_some() =>
-            {
-                self.dynamic.update = true;
-            }
-
-            EventKind::Dynamic(Dynamic::Cre) => {
-                self.dynamic.transition = Some(DynamicTransition {
-                    level: self.dynamic.current,
-                    kind: DynamicTransitionKind::Cre,
-                });
-            }
-
-            EventKind::Dynamic(Dynamic::Dec) => {
-                self.dynamic.transition = Some(DynamicTransition {
-                    level: self.dynamic.current,
-                    kind: DynamicTransitionKind::Dec,
-                });
-            }
-
-            EventKind::Dynamic(dynamic) => {
-                self.dynamic.current = dynamic;
-            }
-
-            EventKind::Mark(mark) => {
-                if self.final_mark == Some(mark) {
-                    self.abort = true;
-                }
-
-                self.marks[mark as usize] = self.index;
-            }
-
-            EventKind::Jump(jump) => {
-                let entry = self.jump_table.entry(self.index).or_insert(jump.repeat);
-
-                if *entry > 0 {
-                    self.final_mark = jump.kind.final_mark();
-                    self.jump = Some(self.marks[jump.kind.mark() as usize]);
-                    *entry -= 1;
-                }
-            }
+            EventKind::Key(key) => self.params.key = key,
+            EventKind::Touch(touch) => self.pending_touch = Some(touch),
+            EventKind::Mark(mark) => self.handle_mark_event(mark),
+            EventKind::Jump(jump) => self.handle_jump_event(jump),
+            EventKind::Dynamic(dynamic) => self.handle_dynamic_event(dynamic),
 
             EventKind::EndingStart(id) => {
                 if let Some(address) = self.endings_jump.get(&id) {
@@ -241,9 +209,58 @@ impl VoiceTask {
             EventKind::EndingEnd(id) => {
                 self.endings_jump.insert(id, self.index + 1);
             }
+        }
+    }
 
-            EventKind::Touch(touch) => {
-                self.pending_touch = Some(touch);
+    fn handle_mark_event(&mut self, mark: Mark) {
+        match mark {
+            Mark::Segno => self.segno = self.index,
+            Mark::Fine if self.target_mark == mark.into() => self.abort = true,
+            Mark::ToCoda if self.target_mark == mark.into() => {
+                self.waited_event = Some(EventKind::Mark(Mark::Coda));
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_jump_event(&mut self, jump: JumpEvent) {
+        let entry = self.jump_table.entry(self.index).or_insert(jump.repeat);
+
+        if *entry > 0 {
+            let address = match jump.kind {
+                Jump::DS | Jump::DSC | Jump::DSF => self.segno,
+                _ => 0,
+            };
+
+            self.jump = Some(address);
+            self.target_mark = jump.kind.target_mark();
+
+            *entry -= 1;
+        }
+    }
+
+    fn handle_dynamic_event(&mut self, dynamic: Dynamic) {
+        match dynamic {
+            Dynamic::Cre | Dynamic::Dec if self.dynamic.transition.is_some() => {
+                self.dynamic.update = true;
+            }
+
+            Dynamic::Cre => {
+                self.dynamic.transition = Some(DynamicTransition {
+                    level: self.dynamic.current,
+                    kind: DynamicTransitionKind::Cre,
+                });
+            }
+
+            Dynamic::Dec => {
+                self.dynamic.transition = Some(DynamicTransition {
+                    level: self.dynamic.current,
+                    kind: DynamicTransitionKind::Dec,
+                });
+            }
+
+            _ => {
+                self.dynamic.current = dynamic;
             }
         }
     }
@@ -334,7 +351,7 @@ impl VoiceTask {
     fn get_midi_note_ticks(&self, ctx: &NoteContext<'_>) -> u32 {
         let denominator = ctx.factor as u32;
         let numerator = ctx.note.duration as u32;
-        ((PPQ as u32 * numerator) / denominator) / (4 / self.params.quarter_unit)
+        ((PPQN as u32 * numerator) / denominator) / (4 / self.params.quarter_unit)
     }
 
     fn get_touch_ticks(&self, duration: u32, touch: Option<Touch>) -> (u32, u32) {
@@ -394,122 +411,4 @@ struct PendingNote {
     key: u7,
     duration: u32,
     touch: Option<Touch>,
-}
-
-#[cfg(test)]
-mod tests {
-    use midly::num::u7;
-    use voxalfa_validator::{
-        ast::solfa::Note,
-        data_types::{BaseKey, Key, KeyAccidental, Voice},
-    };
-
-    use crate::voice::{PlaybackParams, VoiceTask};
-
-    struct TestTask(VoiceTask);
-
-    impl TestTask {
-        fn new(base: BaseKey, accidental: KeyAccidental, voice: Voice) -> Self {
-            let params = PlaybackParams {
-                key: Key { base, accidental },
-                quarter_unit: 4,
-            };
-
-            Self(VoiceTask::new(voice as usize, voice, params))
-        }
-
-        fn inner(&self) -> &VoiceTask {
-            &self.0
-        }
-
-        fn midi(&self, note_str: &str) -> u7 {
-            self.inner()
-                .get_midi_note(Note::try_from(note_str).unwrap())
-                .expect("invald MIDI key value")
-        }
-    }
-
-    #[test]
-    fn test_nearest_octave_key_resolution() {
-        // G Major: G3 (55, distance 5 to C4) is closer than G4 (67, distance 7)
-        assert_eq!(
-            TestTask::new(BaseKey::G, KeyAccidental::Neutral, Voice::A).midi("d"),
-            u7::from(55)
-        );
-
-        // F Major: F4 (65, distance 5 to C4) is closer than F3 (53, distance 7)
-        assert_eq!(
-            TestTask::new(BaseKey::F, KeyAccidental::Neutral, Voice::A).midi("d"),
-            u7::from(65)
-        );
-
-        // A Major: A3 (57, distance 3 to C4) is closer than A4 (69, distance 9)
-        assert_eq!(
-            TestTask::new(BaseKey::A, KeyAccidental::Neutral, Voice::A).midi("d"),
-            u7::from(57)
-        );
-    }
-
-    #[test]
-    fn test_voice_octave_transposition() {
-        // Base anchor for Alto in Key of C is C4 (MIDI 60)
-        let alto = TestTask::new(BaseKey::C, KeyAccidental::Neutral, Voice::A);
-        assert_eq!(alto.midi("d"), u7::from(60));
-
-        // Soprano (S) should be 1 octave higher (+12 semitones) -> C5 (MIDI 72)
-        let soprano = TestTask::new(BaseKey::C, KeyAccidental::Neutral, Voice::S);
-        assert_eq!(soprano.midi("d"), u7::from(72));
-
-        // Bass (B) should be 1 octave lower (-12 semitones) -> C3 (MIDI 48)
-        let bass = TestTask::new(BaseKey::C, KeyAccidental::Neutral, Voice::B);
-        assert_eq!(bass.midi("d"), u7::from(48));
-    }
-
-    #[test]
-    fn test_voice_octave_transposition_with_nearest_key() {
-        // In G Major: Alto anchor is G3 (55)
-        let alto_g = TestTask::new(BaseKey::G, KeyAccidental::Neutral, Voice::A);
-        assert_eq!(alto_g.midi("d"), u7::from(55));
-
-        // Soprano in G Major -> G4 (55 + 12 = 67)
-        let soprano_g = TestTask::new(BaseKey::G, KeyAccidental::Neutral, Voice::S);
-        assert_eq!(soprano_g.midi("d"), u7::from(67));
-
-        // Bass in G Major -> G2 (55 - 12 = 43)
-        let bass_g = TestTask::new(BaseKey::G, KeyAccidental::Neutral, Voice::B);
-        assert_eq!(bass_g.midi("d"), u7::from(43));
-    }
-
-    #[test]
-    fn test_octave_shifts_with_nearest_key() {
-        let task = TestTask::new(BaseKey::G, KeyAccidental::Neutral, Voice::A);
-
-        assert_eq!(task.midi("d"), u7::from(55)); // Base anchor: G3
-        assert_eq!(task.midi("d+1"), u7::from(67)); // Shift up: G4
-        assert_eq!(task.midi("d-1"), u7::from(43)); // Shift down: G2
-    }
-
-    #[test]
-    fn test_accidental_keys_nearest_octave() {
-        // Ab Major: Ab3 (56) is closer to C4 (60) than Ab4 (68)
-        let a_flat = TestTask::new(BaseKey::A, KeyAccidental::Flat, Voice::A);
-        assert_eq!(a_flat.midi("d"), u7::from(56));
-
-        // F# Major: F#4 (66) vs F#3 (54)
-        let f_sharp = TestTask::new(BaseKey::F, KeyAccidental::Sharp, Voice::A);
-        assert_eq!(f_sharp.midi("d"), u7::from(66));
-    }
-
-    #[test]
-    fn test_scale_degrees_relative_to_nearest_do() {
-        let task = TestTask::new(BaseKey::G, KeyAccidental::Neutral, Voice::A);
-
-        assert_eq!(task.midi("d"), u7::from(55)); // Do -> G3
-        assert_eq!(task.midi("r"), u7::from(57)); // Re -> A3
-        assert_eq!(task.midi("m"), u7::from(59)); // Mi -> B3
-        assert_eq!(task.midi("f"), u7::from(60)); // Fa -> C4
-        assert_eq!(task.midi("s"), u7::from(62)); // Sol -> D4
-        assert_eq!(task.midi("l"), u7::from(64)); // La -> E4
-        assert_eq!(task.midi("t"), u7::from(66)); // Ti -> F#4
-    }
 }

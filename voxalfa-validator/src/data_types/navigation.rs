@@ -9,17 +9,11 @@ pub enum Jump {
 }
 
 impl Jump {
-    pub fn final_mark(&self) -> Option<Mark> {
+    pub fn target_mark(&self) -> Option<Mark> {
         match self {
             Jump::DSF | Jump::DCF => Some(Mark::Fine),
+            Jump::DSC | Jump::DCC => Some(Mark::ToCoda),
             _ => None,
-        }
-    }
-
-    pub fn mark(&self) -> Mark {
-        match self {
-            Jump::DS | Jump::DSC | Jump::DSF => Mark::Segno,
-            Jump::DC | Jump::DCC | Jump::DCF => Mark::Coda,
         }
     }
 }
@@ -69,7 +63,7 @@ impl TryFrom<String> for Mark {
             "S" => Ok(Self::Segno),
             "C" => Ok(Self::Coda),
             "F" => Ok(Self::Fine),
-            "TC" => Ok(Self::Fine),
+            "TC" => Ok(Self::ToCoda),
             _ => Err(()),
         }
     }

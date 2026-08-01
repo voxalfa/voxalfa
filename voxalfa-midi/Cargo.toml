@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 voxalfa-validator = { workspace = true }
 thiserror = { workspace = true }
+insta = { workspace = true }
 
 [dependencies.midly]
 version = "0.5.3"

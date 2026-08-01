@@ -1,0 +1,51 @@
+---
+source: voxalfa-midi/src/tests/utils.rs
+expression: output
+---
+FILE: test_simple_loop
+
+=== SOURCE ===
+[$] key={C} | time={4,4} | tempo={50} | voices={A}
+
+---
+
+[A] |d :r !m :f ||
+
+--
+
+[$] mark={S} | jump={DS}
+
+[A] |s :l !t :d+1 ||
+
+=== MIDI TRACKS ===
+--- Track 0 [Tempo / Meta] ---
+[00000 t / +000 t] Event 00 | Meta: Tempo(u24(1200000))
+[00000 t / +000 t] Event 01 | Meta: TimeSignature(4, 2, 24, 8)
+[00000 t / +000 t] Event 02 | Meta: EndOfTrack
+
+--- Track 1 ---
+[00000 t / +000 t] Event 00 | Ch 00 | NoteOn  key: 060 (C4) vel: 080
+[00480 t / +480 t] Event 01 | Ch 00 | NoteOff key: 060 (C4) vel: 000
+[00480 t / +000 t] Event 02 | Ch 00 | NoteOn  key: 062 (D4) vel: 080
+[00960 t / +480 t] Event 03 | Ch 00 | NoteOff key: 062 (D4) vel: 000
+[00960 t / +000 t] Event 04 | Ch 00 | NoteOn  key: 064 (E4) vel: 080
+[01440 t / +480 t] Event 05 | Ch 00 | NoteOff key: 064 (E4) vel: 000
+[01440 t / +000 t] Event 06 | Ch 00 | NoteOn  key: 065 (F4) vel: 080
+[01920 t / +480 t] Event 07 | Ch 00 | NoteOff key: 065 (F4) vel: 000
+[01920 t / +000 t] Event 08 | Ch 00 | NoteOn  key: 067 (G4) vel: 080
+[02400 t / +480 t] Event 09 | Ch 00 | NoteOff key: 067 (G4) vel: 000
+[02400 t / +000 t] Event 10 | Ch 00 | NoteOn  key: 069 (A4) vel: 080
+[02880 t / +480 t] Event 11 | Ch 00 | NoteOff key: 069 (A4) vel: 000
+[02880 t / +000 t] Event 12 | Ch 00 | NoteOn  key: 071 (B4) vel: 080
+[03360 t / +480 t] Event 13 | Ch 00 | NoteOff key: 071 (B4) vel: 000
+[03360 t / +000 t] Event 14 | Ch 00 | NoteOn  key: 072 (C5) vel: 080
+[03840 t / +480 t] Event 15 | Ch 00 | NoteOff key: 072 (C5) vel: 000
+[03840 t / +000 t] Event 16 | Ch 00 | NoteOn  key: 067 (G4) vel: 080
+[04320 t / +480 t] Event 17 | Ch 00 | NoteOff key: 067 (G4) vel: 000
+[04320 t / +000 t] Event 18 | Ch 00 | NoteOn  key: 069 (A4) vel: 080
+[04800 t / +480 t] Event 19 | Ch 00 | NoteOff key: 069 (A4) vel: 000
+[04800 t / +000 t] Event 20 | Ch 00 | NoteOn  key: 071 (B4) vel: 080
+[05280 t / +480 t] Event 21 | Ch 00 | NoteOff key: 071 (B4) vel: 000
+[05280 t / +000 t] Event 22 | Ch 00 | NoteOn  key: 072 (C5) vel: 080
+[05760 t / +480 t] Event 23 | Ch 00 | NoteOff key: 072 (C5) vel: 000
+[05760 t / +000 t] Event 24 | Meta: EndOfTrack

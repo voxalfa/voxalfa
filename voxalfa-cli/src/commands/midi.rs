@@ -27,10 +27,11 @@ pub fn execute(params: MidiParams) -> Result<()> {
         if output.has_error() {
             reporter.register_diagnostics(file, output.diagnostics);
         } else {
-            let mut converter = Converter::new(&output);
+            let converter = Converter::new(&output);
             let output_path = Path::new(&file.path).with_extension("mid");
+            let smf = converter.convert()?;
 
-            converter.convert(output_path)?;
+            smf.save(output_path)?;
         }
     }
 

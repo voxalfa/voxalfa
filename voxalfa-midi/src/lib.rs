@@ -4,7 +4,8 @@ mod dynamics;
 mod tempo;
 mod voice;
 
-use std::path::PathBuf;
+#[cfg(test)]
+mod tests;
 
 use midly::{Format, Header, Smf, Timing, Track, num::u15};
 use voxalfa_validator::{
@@ -20,7 +21,7 @@ use crate::{
     voice::{PlaybackParams, VoiceTask},
 };
 
-pub const PPQ: u16 = 480;
+pub const PPQN: u16 = 480;
 pub const BASE_MIDI_KEY: i8 = 60; // middle C
 
 #[allow(unused)]
@@ -34,10 +35,10 @@ impl<'a> Converter<'a> {
         Self { source }
     }
 
-    pub fn convert(&mut self, output_path: PathBuf) -> Result<()> {
+    pub fn convert(mut self) -> Result<Smf<'static>> {
         let mut smf = Smf::new(Header::new(
             Format::Parallel,
-            Timing::Metrical(u15::from(PPQ)),
+            Timing::Metrical(u15::from(PPQN)),
         ));
 
         let params = &self.source.header.params;
@@ -56,9 +57,7 @@ impl<'a> Converter<'a> {
             smf.tracks.push(track);
         }
 
-        smf.save(output_path)?;
-
-        Ok(())
+        Ok(smf)
     }
 
     fn get_header_param<T>(
@@ -78,9 +77,9 @@ impl<'a> Converter<'a> {
         key: Key,
         quarter_unit: usize,
     ) -> Result<Track<'static>> {
+        let voice_line = self.source.build_voice_line(voice);
         let params = PlaybackParams::new(key, quarter_unit);
         let mut task = VoiceTask::new(id, voice, params);
-        let voice_line = self.source.build_voice_line(voice);
 
         while let Some(ctx) = voice_line.notes.get(task.index()) {
             task.handle_events(&voice_line.timeline);
@@ -93,10 +92,12 @@ impl<'a> Converter<'a> {
                 continue;
             }
 
-            match ctx.note.kind {
-                PulseColumnKind::Note(note) => task.handle_note(note, ctx)?,
-                PulseColumnKind::EmptyNote => task.handle_pause(ctx),
-                PulseColumnKind::ProlongedNote(_) => task.prolongate(ctx),
+            if !task.is_waiting() {
+                match ctx.note.kind {
+                    PulseColumnKind::Note(note) => task.handle_note(note, ctx)?,
+                    PulseColumnKind::EmptyNote => task.handle_pause(ctx),
+                    PulseColumnKind::ProlongedNote(_) => task.prolongate(ctx),
+                }
             }
 
             task.step();
@@ -117,7 +118,7 @@ impl<'a> Converter<'a> {
         let mut task = TempoTask::new(initial_tempo, initial_time);
 
         for section in &self.source.ir.sections {
-            let ticks = PPQ as u32 * section.items[0].views.len() as u32;
+            let ticks = PPQN as u32 * section.items[0].views.len() as u32;
 
             if let Some(time) = &section.params.time {
                 task.handle_signature(&time.value);

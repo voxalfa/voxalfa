@@ -49,7 +49,7 @@ impl EventBuffer {
 
             if let Some(mark) = &section.params.mark {
                 let timestamp = match mark.value {
-                    Mark::Fine => self.elapsed + sub_section.get_ticks(),
+                    Mark::Fine | Mark::ToCoda => self.elapsed + sub_section.get_ticks(),
                     _ => self.elapsed,
                 };
 

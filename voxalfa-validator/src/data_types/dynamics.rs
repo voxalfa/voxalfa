@@ -24,13 +24,6 @@ pub enum Dynamic {
 }
 
 impl Dynamic {
-    pub fn expected_params(self) -> usize {
-        match self {
-            Dynamic::Cre | Dynamic::Dec => 2,
-            _ => 1,
-        }
-    }
-
     pub fn get_next(self) -> Option<Self> {
         DYNAMIC_LEVELS
             .iter()

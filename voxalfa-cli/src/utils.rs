@@ -3,7 +3,10 @@ use std::{fs, path::PathBuf};
 use glob::glob;
 use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
 
-use crate::{error::Result, types::SourceFile};
+use crate::{
+    error::{Error, Result},
+    types::SourceFile,
+};
 
 pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>> {
     let mut results = Vec::new();
@@ -20,7 +23,11 @@ pub fn read_files(file_paths: &[String]) -> Result<Vec<SourceFile>> {
         }
     }
 
-    Ok(results)
+    if results.is_empty() {
+        Err(Error::NoFileMatch)
+    } else {
+        Ok(results)
+    }
 }
 
 pub fn read_file(path_buf: PathBuf) -> Result<SourceFile> {
