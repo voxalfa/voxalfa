@@ -170,7 +170,7 @@ impl<'a> Validator<'a> {
 
         let reference = solfa.iter().max_by_key(|s| s.pulses.len());
 
-        for line in solfa.iter().skip(1) {
+        for line in solfa.iter() {
             if let Some(reference) = reference {
                 let current_len = line.pulses.len();
                 let reference_len = reference.pulses.len();
@@ -208,21 +208,16 @@ impl<'a> Validator<'a> {
         time_signature: &SymbolRef<TimeSignature>,
     ) {
         let pulse_len = line.pulses.len();
-        let mut count = 0;
-        let mut offset = 0;
 
-        while count < pulse_len {
-            if count + offset == pulse_len {
-                break;
-            }
+        let start_offset = line
+            .pulses
+            .iter()
+            .position(|p| p.accent.value == PulseAccent::Strong)
+            .unwrap_or(0);
 
-            let pulse = &line.pulses[offset % pulse_len];
-
-            offset += 1;
-
-            if count == 0 && pulse.accent.value != PulseAccent::Strong {
-                continue;
-            }
+        for count in 0..pulse_len {
+            let current_index = (start_offset + count) % pulse_len;
+            let pulse = &line.pulses[current_index];
 
             let position = count % time_signature.value.top;
             let expected = time_signature.value.get_accent(position);
@@ -240,38 +235,33 @@ impl<'a> Validator<'a> {
                     ),
                 );
             }
-
-            count += 1;
         }
     }
 
     fn validate_voices(&mut self, section: &Section) {
-        let Some(voices) = &self.header.params.voices else {
-            return;
-        };
-
         let range = self.tree.get_scope_range(section.sid);
-        let expected_len = voices.value.len();
-        let context_range = self.tree.get_symbol_range(voices.sid);
 
-        let voices = section
-            .items
-            .iter()
-            .flat_map(|sub| sub.solfa.iter().map(|s| &s.voice))
-            .collect::<Vec<_>>();
+        if let Some(voices_def) = &self.header.params.voices {
+            let expected_len = voices_def.value.len();
+            let context_range = self.tree.get_symbol_range(voices_def.sid);
 
-        if voices.len() != expected_len {
-            self.reporter.error(
-                range,
-                DiagnosticKind::VoiceCountMismatch(expected_len, voices.len(), context_range),
-            );
-        }
+            let voices = section
+                .items
+                .iter()
+                .flat_map(|sub| sub.solfa.iter().map(|s| &s.voice))
+                .collect::<Vec<_>>();
 
-        for (id, voice) in voices.iter().enumerate() {
-            let range = self.tree.get_symbol_range(voice.sid);
+            if voices.len() != expected_len {
+                self.reporter.error(
+                    range,
+                    DiagnosticKind::VoiceCountMismatch(expected_len, voices.len(), context_range),
+                );
+            }
 
-            if let Some(voices) = &self.header.params.voices {
-                if let Some(expected) = voices.value.get(id) {
+            for (id, voice) in voices.iter().enumerate() {
+                let range = self.tree.get_symbol_range(voice.sid);
+
+                if let Some(expected) = voices_def.value.get(id) {
                     if voice.value != expected.value {
                         self.reporter.error(
                             range,
@@ -279,20 +269,22 @@ impl<'a> Validator<'a> {
                         );
                     }
                 } else {
-                    let context_range = self.tree.get_symbol_range(voices.sid);
+                    let context_range = self.tree.get_symbol_range(voices_def.sid);
 
                     self.reporter.error(
                         range,
                         DiagnosticKind::UndefinedVoice(voice.value, context_range),
                     );
                 }
-            } else {
-                let context_range = self.tree.get_scope_range(self.header.sid);
-
-                self.reporter
-                    .error(range, DiagnosticKind::UndefinedVoiceMetadata(context_range));
             }
-        }
+        } else {
+            let context_range = self.tree.get_scope_range(self.header.sid);
+
+            self.reporter.error(
+                range,
+                DiagnosticKind::UndefinedVoiceParameter(context_range),
+            );
+        };
     }
 
     fn validate_lyrics_join(&mut self, sections: &[Section]) {

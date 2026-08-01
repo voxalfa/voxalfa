@@ -1,0 +1,23 @@
+---
+source: voxalfa-validator/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[#] title="foo 
+
+---
+
+=== DIAGNOSTICS ===
+error[E026]: 'voices' prameter has not been defined
+ --> missing_error.vfa:4:1
+  |
+ 1 | 
+   | - consider adding 'voice' metadata
+ 4 | ---
+   | ^^^ error
+
+error[E002]: missing '"'
+ --> missing_error.vfa:2:1
+  |
+ 2 | [#] title="foo 
+   | ^^^^^^^^^^^^^^^ error

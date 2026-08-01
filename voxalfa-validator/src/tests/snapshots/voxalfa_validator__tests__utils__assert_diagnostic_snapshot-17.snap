@@ -1,0 +1,18 @@
+---
+source: voxalfa-validator/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[$] voices={S}
+---
+
+[S] |d :r !m :f ||
+
+=== DIAGNOSTICS ===
+error[E027]: 'time' parameter has not been defined
+ --> undefined_time_parameter_error.vfa:4:1
+  |
+ 1 | 
+   | - consider adding 'time' parameter
+ 4 | 
+   | ^ error

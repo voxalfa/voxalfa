@@ -578,6 +578,7 @@ dependencies = [
 name = "voxalfa-validator"
 version = "0.1.0-alpha"
 dependencies = [
+ "insta",
  "semver",
  "thiserror",
  "tree-sitter",

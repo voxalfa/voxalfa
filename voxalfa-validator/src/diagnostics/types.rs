@@ -62,14 +62,12 @@ pub enum DiagnosticKind {
     MismatchedPulseAccent(PulseAccent, PulseAccent, Range),
     #[error("trailing lyric, no solfa column matched")]
     TrailingLyric(Vec<Range>),
-    #[error("voice distribution doesn't match splits")]
-    InvalidVoiceDistribution(Range),
     #[error("expected {0} verses, got {1}")]
     VerseMismatch(usize, usize, Range),
     #[error("'verses' metadata has not been defined")]
     UndefinedVersesMetadata(Range),
-    #[error("'voices' metadata has not been defined")]
-    UndefinedVoiceMetadata(Range),
+    #[error("'voices' prameter has not been defined")]
+    UndefinedVoiceParameter(Range),
     #[error("'time' parameter has not been defined")]
     UndefinedTimeParameter(Range),
     #[error("parameter override should be done at the top level")]
@@ -117,19 +115,18 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidNoteProlongation => "E021",
             DiagnosticKind::MismatchedPulseAccent(_, _, _) => "E022",
             DiagnosticKind::TrailingLyric(_) => "E023",
-            DiagnosticKind::InvalidVoiceDistribution(_) => "E024",
-            DiagnosticKind::VerseMismatch(_, _, _) => "E025",
-            DiagnosticKind::UndefinedVersesMetadata(_) => "E026",
-            DiagnosticKind::UndefinedVoiceMetadata(_) => "E027",
-            DiagnosticKind::UndefinedTimeParameter(_) => "E028",
-            DiagnosticKind::NonTopLevelParamsOverride(_) => "E029",
-            DiagnosticKind::ExpectedLyricJoin(_) => "E030",
-            DiagnosticKind::UnusedLyricJoin(_) => "E031",
-            DiagnosticKind::InvalidSectionMerge(_) => "E032",
-            DiagnosticKind::UnmatchedTimestamp => "E033",
-            DiagnosticKind::NonTopLevelSectionMetadata(_) => "E034",
-            DiagnosticKind::UnknownDirective(_) => "E035",
-            DiagnosticKind::DirectiveNotAllowed(_) => "E036",
+            DiagnosticKind::VerseMismatch(_, _, _) => "E024",
+            DiagnosticKind::UndefinedVersesMetadata(_) => "E025",
+            DiagnosticKind::UndefinedVoiceParameter(_) => "E026",
+            DiagnosticKind::UndefinedTimeParameter(_) => "E027",
+            DiagnosticKind::NonTopLevelParamsOverride(_) => "E028",
+            DiagnosticKind::ExpectedLyricJoin(_) => "E029",
+            DiagnosticKind::UnusedLyricJoin(_) => "E030",
+            DiagnosticKind::InvalidSectionMerge(_) => "E031",
+            DiagnosticKind::UnmatchedTimestamp => "E032",
+            DiagnosticKind::NonTopLevelSectionMetadata(_) => "E033",
+            DiagnosticKind::UnknownDirective(_) => "E034",
+            DiagnosticKind::DirectiveNotAllowed(_) => "E035",
         }
     }
 
@@ -154,8 +151,7 @@ impl DiagnosticKind {
                     range: *range,
                 }]
             }
-            DiagnosticKind::InvalidVoiceDistribution(range)
-            | DiagnosticKind::VoiceCountMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::VoiceCountMismatch(_, _, range) => vec![DiagnosticRelatedInfo {
                 message: "voices defined here".to_string(),
                 range: *range,
             }],
@@ -174,7 +170,7 @@ impl DiagnosticKind {
                 message: "consider adding 'verses' metadata".to_string(),
                 range: *range,
             }],
-            DiagnosticKind::UndefinedVoiceMetadata(range) => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::UndefinedVoiceParameter(range) => vec![DiagnosticRelatedInfo {
                 message: "consider adding 'voice' metadata".to_string(),
                 range: *range,
             }],

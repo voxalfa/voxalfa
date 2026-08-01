@@ -259,7 +259,7 @@ impl<'a> IRBuilder<'a> {
         for pulse_id in 0..first.pulses.len() {
             let max_column = solfa
                 .iter()
-                .map(|line| line.pulses[pulse_id].columns.len())
+                .flat_map(|line| line.pulses.get(pulse_id).map(|p| p.columns.len()))
                 .max()
                 .unwrap_or(0);
 
