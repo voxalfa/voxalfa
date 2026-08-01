@@ -103,8 +103,6 @@ impl EventBuffer {
                 relative_offset = note_end;
                 elapsed += note_ticks;
             }
-
-            relative_offset += 1.;
         }
     }
 

@@ -6,7 +6,7 @@ use midly::{
 };
 use voxalfa_validator::{
     ast::solfa::Note,
-    data_types::{Dynamic, Key, Voice},
+    data_types::{Dynamic, Key, Touch, Voice},
     output::{
         NoteContext,
         event::{Event, EventKind, NoteTimeline},
@@ -28,7 +28,9 @@ pub struct VoiceTask {
     voice: Voice,
     track: Track<'static>,
     active_note: Option<u7>,
-    pending_ticks: u32,
+    play_ticks: u32,
+    rest_ticks: u32,
+    pending_touch: Option<Touch>,
     pending_notes: Vec<PendingNote>,
     dynamic: DynamicState,
     slur: bool,
@@ -46,7 +48,9 @@ impl VoiceTask {
             channel: u4::from(id as u8),
             track: Track::new(),
             active_note: None,
-            pending_ticks: 0,
+            play_ticks: 0,
+            rest_ticks: 0,
+            pending_touch: None,
             pending_notes: Vec::new(),
             dynamic: DynamicState::default(),
             endings_jump: HashMap::new(),
@@ -68,21 +72,36 @@ impl VoiceTask {
     }
 
     pub fn handle_note(&mut self, note: Note, ctx: &NoteContext<'_>) -> Result<()> {
+        let touch = self.pending_touch.take();
+
         if self.dynamic.transition.is_some() {
             let key = self.get_midi_note(note)?;
             let duration = self.get_midi_note_ticks(ctx);
 
-            self.pending_notes.push(PendingNote { key, duration });
+            self.pending_notes.push(PendingNote {
+                key,
+                duration,
+                touch,
+            });
         } else {
             self.apply_note_context(ctx);
-            self.handle_active_note(0);
+            self.handle_active_note();
+
+            let raw_duration = self.get_midi_note_ticks(ctx);
+            let (play_ticks, rest_ticks) = self.get_touch_ticks(raw_duration, touch);
 
             let midi_note = self.get_midi_note(note)?;
-            let velocity = self.get_velocity(self.dynamic.current);
+            let mut velocity = self.get_velocity(self.dynamic.current);
+
+            if touch == Some(Touch::Accent) {
+                velocity = u8::max(velocity.as_int() + 20, 127).into();
+            }
 
             self.note_on(midi_note, velocity);
+
             self.active_note = Some(midi_note);
-            self.pending_ticks = self.get_midi_note_ticks(ctx);
+            self.play_ticks = play_ticks;
+            self.rest_ticks = rest_ticks;
         }
 
         Ok(())
@@ -90,14 +109,9 @@ impl VoiceTask {
 
     pub fn handle_pause(&mut self, ctx: &NoteContext<'_>) {
         self.apply_note_context(ctx);
+        self.handle_active_note();
 
-        let ticks = self.get_midi_note_ticks(ctx);
-
-        if self.handle_active_note(ticks) {
-            self.pending_ticks = ticks;
-        } else {
-            self.pending_ticks += ticks;
-        }
+        self.rest_ticks += self.get_midi_note_ticks(ctx);
     }
 
     pub fn prolongate(&mut self, ctx: &NoteContext<'_>) {
@@ -109,15 +123,15 @@ impl VoiceTask {
             last.duration += ticks;
         } else {
             self.apply_note_context(ctx);
-            self.pending_ticks += ticks;
+            self.play_ticks += ticks;
         }
     }
 
     pub fn finalize(mut self) -> Track<'static> {
-        self.handle_active_note(0);
+        self.handle_active_note();
 
         self.track.push(TrackEvent {
-            delta: u28::from(self.pending_ticks),
+            delta: u28::from(self.play_ticks),
             kind: TrackEventKind::Meta(MetaMessage::EndOfTrack),
         });
 
@@ -131,7 +145,7 @@ impl VoiceTask {
     pub fn jump(&mut self) -> bool {
         if let Some(pointer) = self.jump.take() {
             self.index = pointer;
-            self.handle_active_note(0);
+            self.handle_active_note();
             true
         } else {
             false
@@ -212,17 +226,21 @@ impl VoiceTask {
             EventKind::EndingEnd(id) => {
                 self.endings_jump.insert(id, self.index + 1);
             }
+
+            EventKind::Touch(touch) => {
+                self.pending_touch = Some(touch);
+            }
         }
     }
 
-    fn handle_active_note(&mut self, ticks: u32) -> bool {
+    fn handle_active_note(&mut self) {
         if let Some(last_note) = self.active_note.take() {
             self.note_off(last_note);
-            self.pending_ticks = ticks;
-
-            true
+            self.play_ticks = self.rest_ticks;
+            self.rest_ticks = 0;
         } else {
-            false
+            self.play_ticks += self.rest_ticks;
+            self.rest_ticks = 0;
         }
     }
 
@@ -251,12 +269,14 @@ impl VoiceTask {
                 .clamp(0.0, 127.0) as u8;
 
             let velocity = u7::from(vel_val);
+            let (play_ticks, rest_ticks) = self.get_touch_ticks(note.duration, note.touch);
 
-            self.handle_active_note(0);
+            self.handle_active_note();
             self.note_on(note.key, velocity);
 
             self.active_note = Some(note.key);
-            self.pending_ticks = note.duration;
+            self.play_ticks = play_ticks;
+            self.rest_ticks = rest_ticks;
 
             elapsed_ticks += note.duration;
         }
@@ -275,7 +295,7 @@ impl VoiceTask {
 
     fn note_on(&mut self, key: u7, vel: u7) {
         self.track.push(TrackEvent {
-            delta: u28::from(self.pending_ticks),
+            delta: u28::from(self.play_ticks),
             kind: TrackEventKind::Midi {
                 channel: self.channel,
                 message: MidiMessage::NoteOn { key, vel },
@@ -285,7 +305,7 @@ impl VoiceTask {
 
     fn note_off(&mut self, note: u7) {
         self.track.push(TrackEvent {
-            delta: u28::from(self.pending_ticks),
+            delta: u28::from(self.play_ticks),
             kind: TrackEventKind::Midi {
                 channel: self.channel,
                 message: MidiMessage::NoteOff {
@@ -299,7 +319,19 @@ impl VoiceTask {
     fn get_midi_note_ticks(&self, ctx: &NoteContext<'_>) -> u32 {
         let denominator = ctx.factor as u32;
         let numerator = ctx.note.duration as u32;
-        ((PPQ as u32 * numerator) / denominator) / (4 * self.params.quarter_unit)
+        ((PPQ as u32 * numerator) / denominator) / (4 / self.params.quarter_unit)
+    }
+
+    fn get_touch_ticks(&self, duration: u32, touch: Option<Touch>) -> (u32, u32) {
+        match touch {
+            Some(Touch::Staccato) => {
+                let play_ticks = duration / 2;
+                let rest_ticks = duration - play_ticks;
+                (play_ticks, rest_ticks)
+            }
+            Some(Touch::Fermata) => (duration + (duration / 2), 0),
+            _ => (duration, 0),
+        }
     }
 
     fn get_velocity(&self, dynamic: Dynamic) -> u7 {
@@ -346,6 +378,7 @@ impl PlaybackParams {
 struct PendingNote {
     key: u7,
     duration: u32,
+    touch: Option<Touch>,
 }
 
 #[cfg(test)]

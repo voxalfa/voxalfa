@@ -31,7 +31,7 @@ impl std::fmt::Display for Tempo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Tempo::Custom(value) => write!(f, "{value}"),
-            named => write!(f, "{}", named.bpm()),
+            _ => write!(f, "{}", format!("{self:?}").to_lowercase()),
         }
     }
 }

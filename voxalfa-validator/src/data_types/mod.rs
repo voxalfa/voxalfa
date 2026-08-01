@@ -3,6 +3,7 @@ mod key;
 mod navigation;
 mod tempo;
 mod time_signature;
+mod touch;
 mod voice;
 
 // TODO?
@@ -13,6 +14,7 @@ pub use key::{BaseKey, Key, KeyAccidental};
 pub use navigation::{Jump, Mark};
 pub use tempo::Tempo;
 pub use time_signature::TimeSignature;
+pub use touch::Touch;
 pub use voice::Voice;
 
 use crate::ast::symbols::SymbolRef;

@@ -15,8 +15,8 @@ use crate::{
     ir::{
         BodyIR, PulseView, SectionIR, SubSectionIR,
         lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
-        solfa::{PulseColumnKind, PulseIR, SolfaLineIR},
-        utils::{BeatBuffer, UnderlineBuffer},
+        solfa::{PulseColumn, PulseColumnKind, PulseIR, SolfaLineIR},
+        utils::{BeatBuffer, UnderlineBuffer, UnderlineMarker},
     },
     ts_utils::range::RangeUtil,
 };
@@ -72,7 +72,7 @@ impl<'a> IRBuilder<'a> {
     }
 
     fn build_sub_section_ir(&mut self, section: SubSection) -> SubSectionIR {
-        let solfa = section
+        let mut solfa = section
             .solfa
             .into_iter()
             .map(|s| self.build_solfa_line_ir(s))
@@ -83,6 +83,8 @@ impl<'a> IRBuilder<'a> {
             .into_iter()
             .map(|l| self.build_lyric_line_ir(l))
             .collect();
+
+        self.expand_empty_notes(&mut solfa);
 
         let views = self.build_pulse_view(&solfa);
 
@@ -249,6 +251,49 @@ impl<'a> IRBuilder<'a> {
         underline_buffer.add_offset(partials.len());
 
         partials
+    }
+
+    fn expand_empty_notes(&self, solfa: &mut [SolfaLineIR]) {
+        let Some(first) = solfa.first() else { return };
+
+        for pulse_id in 0..first.pulses.len() {
+            let max_column = solfa
+                .iter()
+                .map(|line| line.pulses[pulse_id].columns.len())
+                .max()
+                .unwrap_or(0);
+
+            if max_column > 1 {
+                for line in solfa.iter_mut() {
+                    self.pad_pulse_at(line, pulse_id, max_column);
+                }
+            }
+        }
+    }
+
+    fn pad_pulse_at(&self, line: &mut SolfaLineIR, pulse_id: usize, max_column: usize) {
+        let Some(pulse) = line.pulses.get_mut(pulse_id) else {
+            return;
+        };
+
+        let is_single_empty = matches!(
+            pulse.columns.as_slice(),
+            [PulseColumn {
+                kind: PulseColumnKind::EmptyNote,
+                ..
+            }]
+        );
+
+        if is_single_empty {
+            pulse.padded = true;
+            pulse.factor = max_column;
+
+            pulse.columns.resize_with(max_column, || PulseColumn {
+                duration: 1,
+                underline: UnderlineMarker::default(),
+                kind: PulseColumnKind::EmptyNote,
+            });
+        }
     }
 
     fn build_pulse_view(&mut self, solfa: &[SolfaLineIR]) -> Vec<PulseView> {

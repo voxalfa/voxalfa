@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Jump, Key, Mark},
+    data_types::{Dynamic, Jump, Key, Mark, Touch},
     validation::event::EventBuffer,
 };
 
@@ -82,6 +82,7 @@ pub enum EventKind {
     Key(Key),
     Jump(Jump),
     Mark(Mark),
+    Touch(Touch),
     EndingStart(usize),
     EndingEnd(usize),
 }
@@ -125,5 +126,11 @@ impl ToEventKind for Jump {
 impl ToEventKind for Mark {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Mark(*self)
+    }
+}
+
+impl ToEventKind for Touch {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Touch(*self)
     }
 }

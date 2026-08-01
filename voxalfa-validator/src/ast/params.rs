@@ -3,7 +3,7 @@ use crate::{
         parser::Parser,
         symbols::{Field, FieldAssign},
     },
-    data_types::{Dynamic, Jump, Key, List, Mark, Tempo, TimeSignature, TimedList, Voice},
+    data_types::{Dynamic, Jump, Key, List, Mark, Tempo, TimeSignature, TimedList, Touch, Voice},
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
 };
@@ -42,6 +42,7 @@ pub struct SectionParams {
     pub key: Field<Key>,
     pub jump: Field<Jump>,
     pub mark: Field<Mark>,
+    pub touches: Field<TimedList<Touch>>,
 }
 
 impl SectionParams {
@@ -60,6 +61,7 @@ impl FieldAssign for SectionParams {
             "ending" => context.assign_field(data, &mut self.ending),
             "jump" => context.assign_field(data, &mut self.jump),
             "mark" => context.assign_field(data, &mut self.mark),
+            "touches" => context.assign_field(data, &mut self.touches),
             "dynamics" => {}
             _ => {
                 context.reporter.error(

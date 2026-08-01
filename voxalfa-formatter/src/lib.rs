@@ -128,6 +128,7 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Params, params.key.as_ref());
         self.add_assignment(Assignment::Params, params.time.as_ref());
         self.add_assignment(Assignment::Params, params.tempo.as_ref());
+        self.add_assignment(Assignment::Params, params.touches.as_ref());
         self.add_assignment(Assignment::Params, params.jump.as_ref());
     }
 
@@ -163,6 +164,10 @@ impl<'a> Formatter<'a> {
         let mut buffer = String::new();
         let mut clock = 0;
         let accent = pulse.accent.to_string();
+
+        if pulse.padded {
+            return accent;
+        }
 
         for (step, column) in pulse.columns.iter().enumerate() {
             let lead = match (step, clock, pulse.factor) {

@@ -72,18 +72,12 @@ impl<'a> Validator<'a> {
                     .resolve_root_params(section_id, sub_id, &body.sections)
                     .and_then(|p| p.dynamics.as_ref());
 
-                self.validate_timestamps(dynamics);
-
+                let touches = section.params.touches.as_ref();
                 let next_section = body.sections.get(section_id + 1);
                 let is_last = next_section.is_some_and(|s| !s.merge) || next_section.is_none();
 
-                if let Some(events) = dynamics {
-                    buffer.process_local_events(sub_section, &events.value);
-
-                    if is_last {
-                        self.validate_event_buffer(&events.value, &mut buffer);
-                    }
-                }
+                self.process_events(dynamics, sub_section, is_last, &mut buffer);
+                self.process_events(touches, sub_section, is_last, &mut buffer);
 
                 if sub_id == section.items.len() - 1 {
                     buffer.add_offset(sub_section.views.len());
@@ -99,6 +93,24 @@ impl<'a> Validator<'a> {
         ValidatorOutput {
             timelines: self.timelines,
             reporter: self.reporter,
+        }
+    }
+
+    fn process_events<T: ToEventKind>(
+        &mut self,
+        events: Option<&SymbolRef<TimedList<T>>>,
+        sub_section: &SubSectionIR,
+        is_last: bool,
+        buffer: &mut EventBuffer,
+    ) {
+        self.validate_timestamps(events);
+
+        if let Some(events) = events {
+            buffer.process_local_events(sub_section, &events.value);
+
+            if is_last {
+                self.validate_event_buffer(&events.value, buffer);
+            }
         }
     }
 

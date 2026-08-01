@@ -47,7 +47,6 @@ impl<'a> Converter<'a> {
         let time = self.get_header_param("time", params.time.as_ref())?;
         let tempo = self.get_header_param("tempo", params.tempo.as_ref())?;
 
-        // TODO: mid track tempo/time signature change
         let tempo_track = self.create_tempo_track(tempo, time);
 
         smf.tracks.push(tempo_track);

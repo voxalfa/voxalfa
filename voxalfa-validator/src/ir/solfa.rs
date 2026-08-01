@@ -34,6 +34,7 @@ impl SolfaLineIR {
 
 #[derive(Debug)]
 pub struct PulseIR {
+    pub padded: bool,
     pub sid: ScopeId,
     pub accent: PulseAccent,
     pub columns: Vec<PulseColumn>,
@@ -46,6 +47,7 @@ impl PulseIR {
             sid,
             accent,
             columns: Vec::new(),
+            padded: false,
             factor: 1,
         }
     }
