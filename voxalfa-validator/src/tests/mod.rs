@@ -315,3 +315,81 @@ fn test_undefined_time_parameter_error() {
 
     assert_diagnostic_snapshot("undefined_time_parameter_error", source);
 }
+
+#[test]
+fn test_non_top_level_override_error() {
+    let source = r#"
+[$] time={4,4} | voices={S,T}
+---
+
+[S] |d :r !m :f ||
+
+++
+
+[$] key={C}
+
+[T] |d :r !m :f ||
+"#;
+
+    assert_diagnostic_snapshot("non_top_level_override_error", source);
+}
+
+#[test]
+fn test_unused_lyrics_join_error() {
+    let source = r#"
+[#] verses={1}
+
+[$] time={4,4} | voices={S}
+---
+
+[S] |d :r !m :f ||
+[1] do re mi fa\ @@
+
+"#;
+
+    assert_diagnostic_snapshot("unused_lyrics_join_error", source);
+}
+
+#[test]
+fn test_unmatched_timestamp_error() {
+    let source = r#"
+[$] time={4,4} | voices={S}
+---
+
+[$] dynamics={f:6}
+
+[S] |d :r !m :f ||
+"#;
+
+    assert_diagnostic_snapshot("unmatched_timestamp_error", source);
+}
+
+#[test]
+fn test_invalid_section_merge_error() {
+    let source = r#"
+[$] time={4,4} | voices={S,T}
+---
+
+[S] |d :r !m :f |s :l !t :d+1 ||
+[T] |d :r !m :f |s :l !t :d+1 ||
+
+<<
+
+[S] |d :r !m :f ||
+"#;
+
+    assert_diagnostic_snapshot("ivalid_section_merge_error", source);
+}
+
+#[test]
+
+fn test_unknown_directive_error() {
+    let source = r#"
+;; @invalid foo 
+[$] time={4,4} | voices={S}
+---
+[S] |d :r !m :f ||
+"#;
+
+    assert_diagnostic_snapshot("unknown_directive_error", source);
+}

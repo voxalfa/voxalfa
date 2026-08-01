@@ -80,12 +80,8 @@ pub enum DiagnosticKind {
     InvalidSectionMerge(Range),
     #[error("timestamp is unmatched")]
     UnmatchedTimestamp,
-    #[error("section metadata should be declared at the top level")]
-    NonTopLevelSectionMetadata(Range),
     #[error("unknown compiler directive '@{0}'")]
     UnknownDirective(String),
-    #[error("compiler directives are only allowed inside the header")]
-    DirectiveNotAllowed(Range),
 }
 
 impl DiagnosticKind {
@@ -124,9 +120,7 @@ impl DiagnosticKind {
             DiagnosticKind::UnusedLyricJoin(_) => "E030",
             DiagnosticKind::InvalidSectionMerge(_) => "E031",
             DiagnosticKind::UnmatchedTimestamp => "E032",
-            DiagnosticKind::NonTopLevelSectionMetadata(_) => "E033",
-            DiagnosticKind::UnknownDirective(_) => "E034",
-            DiagnosticKind::DirectiveNotAllowed(_) => "E035",
+            DiagnosticKind::UnknownDirective(_) => "E033",
         }
     }
 
@@ -182,10 +176,6 @@ impl DiagnosticKind {
                 message: "set parameter override here".to_string(),
                 range: *range,
             }],
-            DiagnosticKind::NonTopLevelSectionMetadata(range) => vec![DiagnosticRelatedInfo {
-                message: "declare section metadata here".to_string(),
-                range: *range,
-            }],
             DiagnosticKind::ExpectedLyricJoin(range) => vec![DiagnosticRelatedInfo {
                 message: "next section here".to_string(),
                 range: *range,
@@ -196,10 +186,6 @@ impl DiagnosticKind {
             }],
             DiagnosticKind::InvalidSectionMerge(range) => vec![DiagnosticRelatedInfo {
                 message: "root section defined here".to_string(),
-                range: *range,
-            }],
-            DiagnosticKind::DirectiveNotAllowed(range) => vec![DiagnosticRelatedInfo {
-                message: "move the directive inside the header".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),
