@@ -9,10 +9,13 @@ pub fn assert_diagnostic_snapshot(source_name: &str, content: &str) {
     let diagnostics = output.diagnostics;
 
     if diagnostics.is_empty() {
-        insta::assert_snapshot!(format!(
-            "=== INPUT ===\n{}\n\n(No diagnostics reported)",
-            content.trim()
-        ));
+        insta::assert_snapshot!(
+            source_name,
+            format!(
+                "=== INPUT ===\n{}\n\n(No diagnostics reported)",
+                content.trim()
+            )
+        );
 
         return;
     }
@@ -27,10 +30,11 @@ pub fn assert_diagnostic_snapshot(source_name: &str, content: &str) {
         if i > 0 {
             output.push_str("\n");
         }
+
         output.push_str(&format_annotated_diagnostic(source_name, content, diag));
     }
 
-    insta::assert_snapshot!(output);
+    insta::assert_snapshot!(source_name, output);
 }
 
 fn format_annotated_diagnostic(source_name: &str, content: &str, diag: &Diagnostic) -> String {
@@ -59,6 +63,7 @@ fn format_annotated_diagnostic(source_name: &str, content: &str, diag: &Diagnost
 
     for related in diag.kind.get_extra_info() {
         let line_num = byte_to_line_num(content, related.range.start_byte);
+
         if let Some(line_content) = lines.get(line_num - 1) {
             output.push_str(&format!("{:2} | {}\n", line_num, line_content));
             output.push_str(&format!(
