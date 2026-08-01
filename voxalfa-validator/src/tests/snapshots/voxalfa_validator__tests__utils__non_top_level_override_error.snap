@@ -3,7 +3,7 @@ source: voxalfa-validator/src/tests/utils.rs
 expression: output
 ---
 === INPUT ===
-[$] time={4,4} voices={S,T}
+[$] time={4,4} | voices={S,T}
 ---
 
 [S] |d :r !m :f ||
@@ -22,9 +22,3 @@ error[E028]: parameter override should be done at the top level
    | --- set parameter override here
  8 | 
    | ^ error
-
-error[E002]: missing '|'
- --> non_top_level_override_error.vfa:2:1
-  |
- 2 | [$] time={4,4} voices={S,T}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ error
