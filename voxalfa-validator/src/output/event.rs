@@ -62,18 +62,16 @@ impl NoteTimeline {
 #[derive(Debug, Clone)]
 pub struct Event {
     pub kind: EventKind,
-    pub span: Option<f32>,
 }
 
 impl Event {
-    pub fn new(kind: EventKind, span: Option<f32>) -> Self {
-        Self { kind, span }
+    pub fn new(kind: EventKind) -> Self {
+        Self { kind }
     }
 
-    pub fn simple<T: ToEventKind>(value: T) -> Self {
+    pub fn with<T: ToEventKind>(value: T) -> Self {
         Self {
             kind: value.to_event_kind(),
-            span: None,
         }
     }
 }

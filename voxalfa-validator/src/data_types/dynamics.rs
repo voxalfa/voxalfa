@@ -1,11 +1,22 @@
+const DYNAMIC_LEVELS: [Dynamic; 8] = [
+    Dynamic::PPP,
+    Dynamic::PP,
+    Dynamic::P,
+    Dynamic::MP,
+    Dynamic::MF,
+    Dynamic::F,
+    Dynamic::FF,
+    Dynamic::FFF,
+];
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Dynamic {
+    PPP,
+    PP,
     P,
     MP,
-    PP,
-    PPP,
-    F,
     MF,
+    F,
     FF,
     FFF,
     Cre,
@@ -18,6 +29,21 @@ impl Dynamic {
             Dynamic::Cre | Dynamic::Dec => 2,
             _ => 1,
         }
+    }
+
+    pub fn get_next(self) -> Option<Self> {
+        DYNAMIC_LEVELS
+            .iter()
+            .copied()
+            .find(|d| *d as usize > self as usize)
+    }
+
+    pub fn get_prev(self) -> Option<Self> {
+        DYNAMIC_LEVELS
+            .iter()
+            .rev()
+            .copied()
+            .find(|d| self as usize > *d as usize)
     }
 }
 

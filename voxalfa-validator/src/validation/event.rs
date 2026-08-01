@@ -42,18 +42,18 @@ impl EventBuffer {
             let sid = sub_section.sid;
 
             if let Some(key) = &section.params.key {
-                self.push_event(sid, self.elapsed, Event::simple(key.value));
+                self.push_event(sid, self.elapsed, Event::with(key.value));
             }
 
             if let Some(mark) = &section.params.mark {
-                self.push_event(sid, self.elapsed, Event::simple(mark.value));
+                self.push_event(sid, self.elapsed, Event::with(mark.value));
             }
 
             if let Some(jump) = &section.params.jump {
                 self.push_event(
                     sid,
                     self.elapsed + sub_section.get_ticks(),
-                    Event::simple(jump.value),
+                    Event::with(jump.value),
                 );
             }
 
@@ -61,13 +61,13 @@ impl EventBuffer {
                 self.push_event(
                     sid,
                     self.elapsed,
-                    Event::new(EventKind::EndingStart(ending.value), None),
+                    Event::new(EventKind::EndingStart(ending.value)),
                 );
 
                 self.push_event(
                     sid,
                     self.elapsed + sub_section.get_ticks(),
-                    Event::new(EventKind::EndingEnd(ending.value), None),
+                    Event::new(EventKind::EndingEnd(ending.value)),
                 );
             }
         }
@@ -123,29 +123,32 @@ impl EventBuffer {
             }
 
             if current.value.is_range() {
-                let end = current.end.unwrap_or_default();
+                let timestamp = current.end.and_then(|e| self.get_timestamp(e, params));
 
-                if self.check_eq(end, params.note_start) || self.check_eq(end, params.note_end) {
+                if let Some(timestamp) = timestamp {
+                    self.push_event(sub_id, timestamp, Event::new(kind));
                     self.mark_event(kind, id);
+                    continue;
                 }
             }
 
-            let timestamp = if self.check_eq(current.start, params.note_start) {
-                params.elapsed
-            } else if self.check_eq(current.start, params.note_end) {
-                params.elapsed + params.note_ticks
-            } else {
-                continue;
+            if let Some(timestamp) = self.get_timestamp(current.start, params) {
+                self.push_event(sub_id, timestamp, Event::new(kind));
+
+                if !current.value.is_range() {
+                    self.mark_event(kind, id);
+                }
             };
+        }
+    }
 
-            let span = current.end.map(|end| end - current.start);
-            let event = Event::new(kind, span);
-
-            self.push_event(sub_id, timestamp, event);
-
-            if !current.value.is_range() {
-                self.mark_event(kind, id);
-            }
+    fn get_timestamp(&self, value: f32, params: &EventMatchParams) -> Option<Timestamp> {
+        if self.check_eq(value, params.note_start) {
+            Some(params.elapsed)
+        } else if self.check_eq(value, params.note_end) {
+            Some(params.elapsed + params.note_ticks)
+        } else {
+            None
         }
     }
 

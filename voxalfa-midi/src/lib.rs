@@ -1,5 +1,6 @@
 pub mod error;
 
+mod dynamics;
 mod tempo;
 mod voice;
 
@@ -21,7 +22,6 @@ use crate::{
 
 pub const PPQ: u16 = 480;
 pub const BASE_MIDI_KEY: i8 = 60; // middle C
-pub const DEFAULT_VELOCITY: u8 = 90;
 
 #[allow(unused)]
 #[derive(Debug)]

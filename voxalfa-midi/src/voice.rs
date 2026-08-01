@@ -6,7 +6,7 @@ use midly::{
 };
 use voxalfa_validator::{
     ast::solfa::Note,
-    data_types::{Key, Voice},
+    data_types::{Dynamic, Key, Voice},
     output::{
         NoteContext,
         event::{Event, EventKind, NoteTimeline},
@@ -14,7 +14,8 @@ use voxalfa_validator::{
 };
 
 use crate::{
-    BASE_MIDI_KEY, DEFAULT_VELOCITY, PPQ,
+    BASE_MIDI_KEY, PPQ,
+    dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
     error::{ConvertError, Result},
 };
 
@@ -28,7 +29,8 @@ pub struct VoiceTask {
     track: Track<'static>,
     active_note: Option<u7>,
     pending_ticks: u32,
-    velocity: u7,
+    pending_notes: Vec<PendingNote>,
+    dynamic: DynamicState,
     slur: bool,
     marks: [usize; 3],
     endings_jump: HashMap<usize, usize>,
@@ -45,11 +47,12 @@ impl VoiceTask {
             track: Track::new(),
             active_note: None,
             pending_ticks: 0,
-            velocity: u7::from(DEFAULT_VELOCITY),
-            slur: false,
+            pending_notes: Vec::new(),
+            dynamic: DynamicState::default(),
             endings_jump: HashMap::new(),
             jump_table: HashMap::new(),
             marks: [0; 3],
+            slur: false,
             jump: None,
         }
     }
@@ -65,20 +68,28 @@ impl VoiceTask {
     }
 
     pub fn handle_note(&mut self, note: Note, ctx: &NoteContext<'_>) -> Result<()> {
-        self.handle_note_context(ctx);
-        self.handle_active_note(0);
+        if self.dynamic.transition.is_some() {
+            let key = self.get_midi_note(note)?;
+            let duration = self.get_midi_note_ticks(ctx);
 
-        let midi_note = self.get_midi_note(note)?;
+            self.pending_notes.push(PendingNote { key, duration });
+        } else {
+            self.apply_note_context(ctx);
+            self.handle_active_note(0);
 
-        self.note_on(midi_note);
-        self.active_note = Some(midi_note);
-        self.pending_ticks = self.get_midi_note_ticks(ctx);
+            let midi_note = self.get_midi_note(note)?;
+            let velocity = self.get_velocity(self.dynamic.current);
+
+            self.note_on(midi_note, velocity);
+            self.active_note = Some(midi_note);
+            self.pending_ticks = self.get_midi_note_ticks(ctx);
+        }
 
         Ok(())
     }
 
     pub fn handle_pause(&mut self, ctx: &NoteContext<'_>) {
-        self.handle_note_context(ctx);
+        self.apply_note_context(ctx);
 
         let ticks = self.get_midi_note_ticks(ctx);
 
@@ -90,8 +101,16 @@ impl VoiceTask {
     }
 
     pub fn prolongate(&mut self, ctx: &NoteContext<'_>) {
-        self.handle_note_context(ctx);
-        self.pending_ticks += self.get_midi_note_ticks(ctx);
+        let ticks = self.get_midi_note_ticks(ctx);
+
+        if self.dynamic.transition.is_some()
+            && let Some(last) = self.pending_notes.last_mut()
+        {
+            last.duration += ticks;
+        } else {
+            self.apply_note_context(ctx);
+            self.pending_ticks += ticks;
+        }
     }
 
     pub fn finalize(mut self) -> Track<'static> {
@@ -129,6 +148,13 @@ impl VoiceTask {
         for event in events {
             self.handle_event(event);
         }
+
+        if self.dynamic.update
+            && let Some(transition) = self.dynamic.transition.take()
+        {
+            self.dynamic.update = false;
+            self.handle_pending_notes(transition);
+        }
     }
 
     pub fn handle_pending_events(&mut self, timeline: &NoteTimeline) {
@@ -142,7 +168,29 @@ impl VoiceTask {
                 self.params.key = key;
             }
 
-            EventKind::Dynamic(_dynamic) => {}
+            EventKind::Dynamic(Dynamic::Cre | Dynamic::Dec)
+                if self.dynamic.transition.is_some() =>
+            {
+                self.dynamic.update = true;
+            }
+
+            EventKind::Dynamic(Dynamic::Cre) => {
+                self.dynamic.transition = Some(DynamicTransition {
+                    level: self.dynamic.current,
+                    kind: DynamicTransitionKind::Cre,
+                });
+            }
+
+            EventKind::Dynamic(Dynamic::Dec) => {
+                self.dynamic.transition = Some(DynamicTransition {
+                    level: self.dynamic.current,
+                    kind: DynamicTransitionKind::Dec,
+                });
+            }
+
+            EventKind::Dynamic(dynamic) => {
+                self.dynamic.current = dynamic;
+            }
 
             EventKind::Mark(mark) => {
                 self.marks[mark as usize] = self.index;
@@ -178,8 +226,44 @@ impl VoiceTask {
         }
     }
 
+    fn handle_pending_notes(&mut self, transition: DynamicTransition) {
+        let notes = std::mem::take(&mut self.pending_notes);
+
+        if notes.is_empty() {
+            return;
+        }
+
+        let start_vel = u8::from(self.get_velocity(transition.level)) as f32;
+        let end_vel = u8::from(self.get_target_velocity(transition)) as f32;
+
+        let total_ticks = notes.iter().map(|n| n.duration).sum::<u32>();
+        let mut elapsed_ticks: u32 = 0;
+
+        for note in notes {
+            let progress = if total_ticks > 0 {
+                elapsed_ticks as f32 / total_ticks as f32
+            } else {
+                0.0
+            };
+
+            let vel_val = (start_vel + (end_vel - start_vel) * progress)
+                .round()
+                .clamp(0.0, 127.0) as u8;
+
+            let velocity = u7::from(vel_val);
+
+            self.handle_active_note(0);
+            self.note_on(note.key, velocity);
+
+            self.active_note = Some(note.key);
+            self.pending_ticks = note.duration;
+
+            elapsed_ticks += note.duration;
+        }
+    }
+
     // FIXME: figure out a way to apply slurs?
-    fn handle_note_context(&mut self, ctx: &NoteContext<'_>) {
+    fn apply_note_context(&mut self, ctx: &NoteContext<'_>) {
         if ctx.note.underline.left {
             self.slur = true;
         }
@@ -189,15 +273,12 @@ impl VoiceTask {
         }
     }
 
-    fn note_on(&mut self, note: u7) {
+    fn note_on(&mut self, key: u7, vel: u7) {
         self.track.push(TrackEvent {
             delta: u28::from(self.pending_ticks),
             kind: TrackEventKind::Midi {
                 channel: self.channel,
-                message: MidiMessage::NoteOn {
-                    key: note,
-                    vel: self.velocity,
-                },
+                message: MidiMessage::NoteOn { key, vel },
             },
         });
     }
@@ -220,6 +301,30 @@ impl VoiceTask {
         let numerator = ctx.note.duration as u32;
         ((PPQ as u32 * numerator) / denominator) / (4 * self.params.quarter_unit)
     }
+
+    fn get_velocity(&self, dynamic: Dynamic) -> u7 {
+        match dynamic {
+            Dynamic::PPP => u7::from(16),
+            Dynamic::PP => u7::from(32),
+            Dynamic::P => u7::from(48),
+            Dynamic::MP => u7::from(64),
+            Dynamic::MF => u7::from(80),
+            Dynamic::F => u7::from(96),
+            Dynamic::FF => u7::from(112),
+            Dynamic::FFF => u7::from(127),
+            _ => unreachable!("invalid velicity access"),
+        }
+    }
+
+    fn get_target_velocity(&self, transition: DynamicTransition) -> u7 {
+        let dynamic = match transition.kind {
+            _ if transition.level == self.dynamic.current => Some(self.dynamic.current),
+            DynamicTransitionKind::Cre => transition.level.get_next(),
+            DynamicTransitionKind::Dec => transition.level.get_prev(),
+        };
+
+        self.get_velocity(dynamic.unwrap_or(transition.level))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -235,6 +340,12 @@ impl PlaybackParams {
             quarter_unit: quarter_unit as u32,
         }
     }
+}
+
+#[derive(Debug)]
+struct PendingNote {
+    key: u7,
+    duration: u32,
 }
 
 #[cfg(test)]
