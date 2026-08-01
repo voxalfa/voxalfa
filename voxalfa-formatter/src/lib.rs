@@ -1,6 +1,9 @@
 mod primitives;
 mod types;
 
+#[cfg(test)]
+mod tests;
+
 use std::io::{self, Write};
 
 use voxalfa_validator::{

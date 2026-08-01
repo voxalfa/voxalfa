@@ -561,6 +561,7 @@ dependencies = [
 name = "voxalfa-formatter"
 version = "0.1.0-alpha"
 dependencies = [
+ "insta",
  "voxalfa-validator",
 ]
 

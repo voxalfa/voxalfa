@@ -1,0 +1,36 @@
+---
+source: voxalfa-formatter/src/tests/utils.rs
+expression: output
+---
+FILE: test_line_formatting
+
+=== SOURCE ===
+
+        ;; @version 0.1.0-alpha
+  [#] title=  "foo"
+[#]  author={"bar",  "lorem"}  
+    [#] verses={1}
+[$] time={4, 4}    | voices={ S}
+---
+
+
+
+[S] |d :r !m :f ||
+[1] do re mi fa
+
+
+
+=== FORMATTED ===
+;; @version 0.1.0-alpha
+
+[#] title="foo"
+[#] author={"bar","lorem"}
+[#] verses={1}
+
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa

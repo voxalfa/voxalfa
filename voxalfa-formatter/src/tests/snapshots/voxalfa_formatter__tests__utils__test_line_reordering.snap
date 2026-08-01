@@ -1,0 +1,35 @@
+---
+source: voxalfa-formatter/src/tests/utils.rs
+expression: output
+---
+FILE: test_line_reordering
+
+=== SOURCE ===
+
+[$] time={4,4} | voices={S}
+[#] verses={1}
+
+;; @version 0.1.0-alpha
+
+---
+
+[$] jump={DC} | key={C}
+
+[1] do re mi fa so la ti@2
+[S] |d.r :m.f+1 !s.l :t.-||
+
+
+=== FORMATTED ===
+;; @version 0.1.0-alpha
+
+[#] verses={1}
+
+[$] time={4,4} | voices={S}
+
+---
+
+[$] key={C} | jump={DC}
+
+[S] |d  .r  :m  .f+1!s  .l  :t  .-  ||
+
+[1] do  re  mi  fa  so  la  ti@2

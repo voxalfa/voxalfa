@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 voxalfa-validator = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }

@@ -1,0 +1,28 @@
+---
+source: voxalfa-formatter/src/tests/utils.rs
+expression: output
+---
+FILE: test_space_formatting
+
+=== SOURCE ===
+
+  [#] title=  "foo"
+[#]  author={"bar",  "lorem"}  
+
+[$] time={4, 4}    | voices={ S}
+
+---
+
+[S] |d :r !m :f ||
+
+
+
+=== FORMATTED ===
+[#] title="foo"
+[#] author={"bar","lorem"}
+
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d:r!m:f||

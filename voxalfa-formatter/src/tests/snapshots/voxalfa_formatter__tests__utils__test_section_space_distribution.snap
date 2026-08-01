@@ -1,0 +1,38 @@
+---
+source: voxalfa-formatter/src/tests/utils.rs
+expression: output
+---
+FILE: test_section_space_distribution
+
+=== SOURCE ===
+
+[#] verses={1}
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d.r :m.f+1 !s.l :t,d-1 ||
+[1] do re mi fa so la ti dooo\@@
+
+--
+
+[S] |d :r !m :f |`ss`:l !t :d ||
+[1] do re m fa soso@2 `la` ti do
+
+
+=== FORMATTED ===
+[#] verses={1}
+
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d   .r   :m   .f+1 !s   .l   :t   .d-1 ||
+
+[1] do   re   mi   fa   so   la   ti   dooo\@@
+
+--
+
+[S] |d        :r        !m        :f        |`s  .s`  :l        !t        :d        ||
+
+[1] do        re        m         fa        soso@2    `la`      ti        do
