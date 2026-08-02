@@ -1,6 +1,5 @@
 pub mod error;
 
-mod dynamics;
 mod tempo;
 mod voice;
 
@@ -11,14 +10,16 @@ use midly::{Format, Header, Smf, Timing, Track, num::u15};
 use voxalfa_validator::{
     ast::symbols::SymbolRef,
     data_types::{Key, Tempo, TimeSignature, Voice},
-    ir::solfa::PulseColumnKind,
-    output::FinalOutput,
+    output::{
+        FinalOutput,
+        evaluator::{PlaybackParams, TimelineEvaluator},
+    },
 };
 
 use crate::{
     error::{ConvertError, Result},
     tempo::TempoTask,
-    voice::{PlaybackParams, VoiceTask},
+    voice::VoiceTask,
 };
 
 pub const PPQN: u16 = 480;
@@ -80,35 +81,11 @@ impl<'a> Converter<'a> {
     ) -> Result<Track<'static>> {
         let voice_line = self.source.build_voice_line(voice);
         let params = PlaybackParams::new(key, quarter_unit);
-        let mut task = VoiceTask::new(id, voice, params);
+        let evaluator = TimelineEvaluator::new(params);
+        let task = VoiceTask::new(id, voice, evaluator);
+        let track = task.process(&voice_line)?;
 
-        while let Some(ctx) = voice_line.notes.get(task.index()) {
-            task.handle_events(&voice_line.timeline);
-
-            if task.done() {
-                break;
-            }
-
-            if task.jump() {
-                continue;
-            }
-
-            if !task.is_waiting() {
-                match ctx.note.kind {
-                    PulseColumnKind::Note(note) => task.handle_note(note, ctx)?,
-                    PulseColumnKind::EmptyNote => task.handle_pause(ctx),
-                    PulseColumnKind::ProlongedNote(_) => task.prolongate(ctx),
-                }
-            }
-
-            task.step();
-
-            if task.index() >= voice_line.notes.len() {
-                task.handle_pending_events(&voice_line.timeline);
-            }
-        }
-
-        Ok(task.finalize())
+        Ok(track)
     }
 
     fn create_tempo_track(

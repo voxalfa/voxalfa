@@ -1,4 +1,4 @@
-use voxalfa_validator::data_types::Dynamic;
+use crate::data_types::Dynamic;
 
 #[derive(Debug)]
 pub struct DynamicState {

@@ -1,86 +1,86 @@
-use std::collections::HashMap;
-
 use midly::{
     MetaMessage, MidiMessage, Track, TrackEvent, TrackEventKind,
     num::{u4, u7, u28},
 };
 use voxalfa_validator::{
     ast::solfa::Note,
-    data_types::{Dynamic, Jump, Key, Mark, Touch, Voice},
+    data_types::{Dynamic, Touch, Voice},
+    ir::solfa::PulseColumnKind,
     output::{
-        event::{Event, EventKind, JumpEvent, NoteTimeline},
-        voice::NoteContext,
+        dynamics::{DynamicTransition, DynamicTransitionKind},
+        evaluator::TimelineEvaluator,
+        event::NoteTimeline,
+        voice::{NoteContext, VoiceLine},
     },
 };
 
 use crate::{
     BASE_MIDI_KEY, MAX_PAUSE, PPQN,
-    dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
     error::{ConvertError, Result},
 };
 
 #[derive(Debug)]
 pub struct VoiceTask {
-    index: usize,
-    jump: Option<usize>,
     channel: u4,
-    params: PlaybackParams,
     voice: Voice,
     track: Track<'static>,
     active_note: Option<u7>,
     play_ticks: u32,
     rest_ticks: u32,
-    pending_touch: Option<Touch>,
     pending_notes: Vec<PendingNote>,
-    dynamic: DynamicState,
     slur: bool,
-    segno: usize,
-    endings_jump: HashMap<u8, usize>,
-    jump_table: HashMap<usize, u8>,
-    target_mark: Option<Mark>,
-    waited_event: Option<EventKind>,
-    abort: bool,
+    context: TimelineEvaluator,
 }
 
 impl VoiceTask {
-    pub fn new(id: usize, voice: Voice, params: PlaybackParams) -> Self {
+    pub fn new(id: usize, voice: Voice, context: TimelineEvaluator) -> Self {
         Self {
             voice,
-            params,
-            index: 0,
             channel: u4::from(id as u8),
             track: Track::new(),
             active_note: None,
             play_ticks: 0,
             rest_ticks: 0,
-            pending_touch: None,
             pending_notes: Vec::new(),
-            dynamic: DynamicState::default(),
-            endings_jump: HashMap::new(),
-            jump_table: HashMap::new(),
-            segno: 0,
             slur: false,
-            jump: None,
-            target_mark: None,
-            waited_event: None,
-            abort: false,
+            context,
         }
     }
 
-    pub fn get_midi_note(&self, note: Note) -> Result<u7> {
-        let result = BASE_MIDI_KEY + self.params.key.offset() + note.offset() + self.voice.offset();
+    pub fn process(mut self, voice_line: &VoiceLine) -> Result<Track<'static>> {
+        while let Some(ctx) = voice_line.notes.get(self.context.index()) {
+            self.handle_events(&voice_line.timeline);
 
-        if !(0..=127).contains(&result) {
-            Err(ConvertError::InvalidMidiKey(result))
-        } else {
-            Ok(u7::from(result as u8))
+            if self.context.done() {
+                break;
+            }
+
+            if self.context.jump() {
+                continue;
+            }
+
+            if !self.context.is_waiting() {
+                match ctx.note.kind {
+                    PulseColumnKind::Note(note) => self.handle_note(note, ctx)?,
+                    PulseColumnKind::EmptyNote => self.handle_pause(ctx),
+                    PulseColumnKind::ProlongedNote(_) => self.prolongate(ctx),
+                }
+            }
+
+            self.context.step();
+
+            if self.context.index() >= voice_line.notes.len() {
+                self.handle_pending_events(&voice_line.timeline);
+            }
         }
+
+        Ok(self.finalize())
     }
 
-    pub fn handle_note(&mut self, note: Note, ctx: &NoteContext<'_>) -> Result<()> {
-        let touch = self.pending_touch.take();
+    fn handle_note(&mut self, note: Note, ctx: &NoteContext<'_>) -> Result<()> {
+        let touch = self.context.take_pedning_touch();
 
-        if self.dynamic.transition.is_some() {
+        if self.context.dynamic.transition.is_some() {
             let key = self.get_midi_note(note)?;
             let duration = self.get_midi_note_ticks(ctx);
 
@@ -97,7 +97,7 @@ impl VoiceTask {
             let (play_ticks, rest_ticks) = self.get_touch_ticks(raw_duration, touch);
 
             let midi_note = self.get_midi_note(note)?;
-            let mut velocity = self.get_velocity(self.dynamic.current);
+            let mut velocity = self.get_velocity(self.context.dynamic.current);
 
             if touch == Some(Touch::Accent) {
                 velocity = u8::max(velocity.as_int() + 20, 127).into();
@@ -113,17 +113,17 @@ impl VoiceTask {
         Ok(())
     }
 
-    pub fn handle_pause(&mut self, ctx: &NoteContext<'_>) {
+    fn handle_pause(&mut self, ctx: &NoteContext<'_>) {
         self.apply_note_context(ctx);
         self.handle_active_note();
 
         self.rest_ticks += self.get_midi_note_ticks(ctx);
     }
 
-    pub fn prolongate(&mut self, ctx: &NoteContext<'_>) {
+    fn prolongate(&mut self, ctx: &NoteContext<'_>) {
         let ticks = self.get_midi_note_ticks(ctx);
 
-        if self.dynamic.transition.is_some()
+        if self.context.dynamic.transition.is_some()
             && let Some(last) = self.pending_notes.last_mut()
         {
             last.duration += ticks;
@@ -133,7 +133,7 @@ impl VoiceTask {
         }
     }
 
-    pub fn finalize(mut self) -> Track<'static> {
+    fn finalize(mut self) -> Track<'static> {
         self.handle_active_note();
 
         self.track.push(TrackEvent {
@@ -144,125 +144,17 @@ impl VoiceTask {
         self.track
     }
 
-    pub fn index(&self) -> usize {
-        self.index
-    }
+    fn handle_events(&mut self, timeline: &NoteTimeline) {
+        self.context.handle_events(timeline);
 
-    pub fn jump(&mut self) -> bool {
-        if let Some(pointer) = self.jump.take() {
-            self.index = pointer;
-            self.handle_active_note();
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn is_waiting(&self) -> bool {
-        self.waited_event.is_some()
-    }
-
-    pub fn done(&self) -> bool {
-        self.abort
-    }
-
-    pub fn step(&mut self) {
-        self.index += 1;
-    }
-
-    pub fn handle_events(&mut self, timeline: &NoteTimeline) {
-        let events = timeline.get_events(self.index);
-
-        for event in events {
-            self.handle_event(event);
-        }
-
-        if self.dynamic.update
-            && let Some(transition) = self.dynamic.transition.take()
-        {
-            self.dynamic.update = false;
+        if let Some(transition) = self.context.poll_dynamic_update() {
             self.handle_pending_notes(transition);
         }
     }
 
-    pub fn handle_pending_events(&mut self, timeline: &NoteTimeline) {
+    fn handle_pending_events(&mut self, timeline: &NoteTimeline) {
         self.handle_events(timeline);
-        self.jump();
-    }
-
-    pub fn handle_event(&mut self, event: &Event) {
-        self.waited_event.take_if(|e| *e == event.kind);
-
-        match event.kind {
-            EventKind::Key(key) => self.params.key = key,
-            EventKind::Touch(touch) => self.pending_touch = Some(touch),
-            EventKind::Mark(mark) => self.handle_mark_event(mark),
-            EventKind::Jump(jump) => self.handle_jump_event(jump),
-            EventKind::Dynamic(dynamic) => self.handle_dynamic_event(dynamic),
-
-            EventKind::EndingStart(id) => {
-                if let Some(address) = self.endings_jump.get(&id) {
-                    self.index = *address;
-                }
-            }
-
-            EventKind::EndingEnd(id) => {
-                self.endings_jump.insert(id, self.index + 1);
-            }
-        }
-    }
-
-    fn handle_mark_event(&mut self, mark: Mark) {
-        match mark {
-            Mark::Segno => self.segno = self.index,
-            Mark::Fine if self.target_mark == mark.into() => self.abort = true,
-            Mark::ToCoda if self.target_mark == mark.into() => {
-                self.waited_event = Some(EventKind::Mark(Mark::Coda));
-            }
-            _ => {}
-        }
-    }
-
-    fn handle_jump_event(&mut self, jump: JumpEvent) {
-        let entry = self.jump_table.entry(self.index).or_insert(jump.repeat);
-
-        if *entry > 0 {
-            let address = match jump.kind {
-                Jump::DS | Jump::DSC | Jump::DSF => self.segno,
-                _ => 0,
-            };
-
-            self.jump = Some(address);
-            self.target_mark = jump.kind.target_mark();
-
-            *entry -= 1;
-        }
-    }
-
-    fn handle_dynamic_event(&mut self, dynamic: Dynamic) {
-        match dynamic {
-            Dynamic::Cre | Dynamic::Dec if self.dynamic.transition.is_some() => {
-                self.dynamic.update = true;
-            }
-
-            Dynamic::Cre => {
-                self.dynamic.transition = Some(DynamicTransition {
-                    level: self.dynamic.current,
-                    kind: DynamicTransitionKind::Cre,
-                });
-            }
-
-            Dynamic::Dec => {
-                self.dynamic.transition = Some(DynamicTransition {
-                    level: self.dynamic.current,
-                    kind: DynamicTransitionKind::Dec,
-                });
-            }
-
-            _ => {
-                self.dynamic.current = dynamic;
-            }
-        }
+        self.context.jump();
     }
 
     fn handle_active_note(&mut self) {
@@ -350,7 +242,7 @@ impl VoiceTask {
     fn get_midi_note_ticks(&self, ctx: &NoteContext<'_>) -> u32 {
         let denominator = ctx.factor as u32;
         let numerator = ctx.note.duration as u32;
-        ((PPQN as u32 * numerator) / denominator) / (4 / self.params.quarter_unit)
+        ((PPQN as u32 * numerator) / denominator) / (4 / self.context.params.quarter_unit)
     }
 
     fn get_touch_ticks(&self, duration: u32, touch: Option<Touch>) -> (u32, u32) {
@@ -387,26 +279,24 @@ impl VoiceTask {
 
     fn get_target_velocity(&self, transition: DynamicTransition) -> u7 {
         let dynamic = match transition.kind {
-            _ if transition.level == self.dynamic.current => Some(self.dynamic.current),
+            _ if transition.level == self.context.dynamic.current => {
+                Some(self.context.dynamic.current)
+            }
             DynamicTransitionKind::Cre => transition.level.get_next(),
             DynamicTransitionKind::Dec => transition.level.get_prev(),
         };
 
         self.get_velocity(dynamic.unwrap_or(transition.level))
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct PlaybackParams {
-    pub key: Key,
-    pub quarter_unit: u32,
-}
+    fn get_midi_note(&self, note: Note) -> Result<u7> {
+        let result =
+            BASE_MIDI_KEY + self.context.params.key.offset() + note.offset() + self.voice.offset();
 
-impl PlaybackParams {
-    pub fn new(key: Key, quarter_unit: usize) -> Self {
-        Self {
-            key,
-            quarter_unit: quarter_unit as u32,
+        if !(0..=127).contains(&result) {
+            Err(ConvertError::InvalidMidiKey(result))
+        } else {
+            Ok(u7::from(result as u8))
         }
     }
 }
