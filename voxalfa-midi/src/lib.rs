@@ -22,6 +22,7 @@ use crate::{
 };
 
 pub const PPQN: u16 = 480;
+pub const MAX_PAUSE: u32 = (PPQN as u32) / 20;
 pub const BASE_MIDI_KEY: i8 = 60; // middle C
 
 #[allow(unused)]

@@ -1,10 +1,12 @@
+use std::collections::BTreeMap;
+
 use crate::{
     ast::{
         body::{Body, Section},
         header::Header,
         lyrics::LyricToken,
         params::SubSectionParams,
-        solfa::{PulseAccent, SolfaLine},
+        solfa::{Pulse, PulseAccent},
         symbols::{SymbolRef, SymbolTree},
     },
     data_types::{TimeSignature, TimedList},
@@ -48,6 +50,7 @@ impl<'a> Validator<'a> {
             self.validate_voices(section);
         }
 
+        self.validate_time_signature(&body.sections);
         self.validate_lyrics_join(&body.sections);
     }
 
@@ -160,8 +163,6 @@ impl<'a> Validator<'a> {
     }
 
     fn validate_pulses(&mut self, section: &Section) {
-        let time_signature = self.header.params.time.clone();
-
         let solfa = section
             .items
             .iter()
@@ -171,60 +172,69 @@ impl<'a> Validator<'a> {
         let reference = solfa.iter().max_by_key(|s| s.pulses.len());
 
         for line in solfa.iter() {
-            if let Some(reference) = reference {
-                let current_len = line.pulses.len();
-                let reference_len = reference.pulses.len();
+            let Some(reference) = reference else { continue };
 
-                if current_len != reference.pulses.len() {
-                    let range = self.tree.get_scope_range(line.sid);
-                    let context_range = self.tree.get_scope_range(reference.sid);
+            let current_len = line.pulses.len();
+            let reference_len = reference.pulses.len();
 
-                    self.reporter.error(
-                        range,
-                        DiagnosticKind::PulseCountMismatch(
-                            reference_len,
-                            current_len,
-                            context_range,
-                        ),
-                    );
-                }
+            if current_len != reference.pulses.len() {
+                let range = self.tree.get_scope_range(line.sid);
+                let context_range = self.tree.get_scope_range(reference.sid);
+
+                self.reporter.error(
+                    range,
+                    DiagnosticKind::PulseCountMismatch(reference_len, current_len, context_range),
+                );
             }
+        }
+    }
 
-            if let Some(time_signature) = &time_signature {
-                self.validate_time_signature(line, time_signature);
-            } else {
+    fn validate_time_signature(&mut self, sections: &[Section]) {
+        let time_signature = &self.header.params.time;
+        let mut voice_lines: BTreeMap<_, Vec<&Pulse>> = BTreeMap::new();
+
+        let solfa_lines = sections
+            .iter()
+            .flat_map(|section| &section.items)
+            .flat_map(|sub| &sub.solfa);
+
+        for line in solfa_lines {
+            if time_signature.is_none() {
                 let range = self.tree.get_scope_range(line.sid);
                 let context_range = self.tree.get_scope_range(self.header.sid);
 
                 self.reporter
                     .error(range, DiagnosticKind::UndefinedTimeParameter(context_range));
+            } else {
+                voice_lines
+                    .entry(line.voice.value)
+                    .or_default()
+                    .extend(&line.pulses);
+            }
+        }
+
+        if let Some(value) = time_signature {
+            for lines in voice_lines.values() {
+                self.validate_linear_voice(lines, value);
             }
         }
     }
 
-    fn validate_time_signature(
-        &mut self,
-        line: &SolfaLine,
-        time_signature: &SymbolRef<TimeSignature>,
-    ) {
-        let pulse_len = line.pulses.len();
-
-        let start_offset = line
-            .pulses
+    fn validate_linear_voice(&mut self, pulses: &[&Pulse], time_sig: &SymbolRef<TimeSignature>) {
+        let start_offset = pulses
             .iter()
             .position(|p| p.accent.value == PulseAccent::Strong)
-            .unwrap_or(0);
+            .unwrap_or_default();
 
-        for count in 0..pulse_len {
-            let current_index = (start_offset + count) % pulse_len;
-            let pulse = &line.pulses[current_index];
+        let top = time_sig.value.top;
 
-            let position = count % time_signature.value.top;
-            let expected = time_signature.value.get_accent(position);
+        for (pulse_id, pulse) in pulses.iter().enumerate() {
+            let position = (pulse_id + top - (start_offset % top)) % top;
+            let expected = time_sig.value.get_accent(position);
 
             if pulse.accent.value != expected {
                 let range = self.tree.get_symbol_range(pulse.accent.sid);
-                let context_range = self.tree.get_symbol_range(time_signature.sid);
+                let context_range = self.tree.get_symbol_range(time_sig.sid);
 
                 self.reporter.error(
                     range,

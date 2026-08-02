@@ -8,13 +8,13 @@ use voxalfa_validator::{
     ast::solfa::Note,
     data_types::{Dynamic, Jump, Key, Mark, Touch, Voice},
     output::{
-        NoteContext,
         event::{Event, EventKind, JumpEvent, NoteTimeline},
+        voice::NoteContext,
     },
 };
 
 use crate::{
-    BASE_MIDI_KEY, PPQN,
+    BASE_MIDI_KEY, MAX_PAUSE, PPQN,
     dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
     error::{ConvertError, Result},
 };
@@ -314,7 +314,6 @@ impl VoiceTask {
         }
     }
 
-    // FIXME: figure out a way to apply slurs?
     fn apply_note_context(&mut self, ctx: &NoteContext<'_>) {
         if ctx.note.underline.left {
             self.slur = true;
@@ -362,7 +361,13 @@ impl VoiceTask {
                 (play_ticks, rest_ticks)
             }
             Some(Touch::Fermata) => (duration + (duration / 2), 0),
-            _ => (duration, 0),
+            _ if self.slur => (duration, 0),
+            _ => {
+                let rest_ticks = (duration / 10).min(MAX_PAUSE);
+                let play_ticks = duration - rest_ticks;
+
+                (play_ticks, rest_ticks)
+            }
         }
     }
 

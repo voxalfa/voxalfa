@@ -1,5 +1,6 @@
 pub mod event;
 pub mod render;
+pub mod voice;
 
 use crate::{
     ast::{
@@ -11,11 +12,12 @@ use crate::{
     ir::{
         BodyIR, PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricPrimitive, LyricStringIR},
-        solfa::{PulseColumn, PulseColumnKind},
+        solfa::PulseColumnKind,
     },
     output::{
-        event::{Event, NoteTimeline, TimelineMap, Timestamp, get_note_ticks},
+        event::TimelineMap,
         render::RenderType,
+        voice::{NoteContext, VoiceLine},
     },
 };
 
@@ -38,7 +40,7 @@ impl FinalOutput {
         let max_note_width = self.resolve_max_note_width(render_type);
         let max_lyrics_width = self.resolve_max_lyrics_width(render_type);
 
-        max_lyrics_width.max(max_note_width)
+        max_lyrics_width.max(max_note_width).max(3)
     }
 
     pub fn resolve_column_factor(&self) -> usize {
@@ -248,40 +250,4 @@ impl FinalOutput {
             PulseColumnKind::EmptyNote => 1,
         }
     }
-}
-
-#[derive(Debug)]
-pub struct VoiceLine<'a> {
-    pub timeline: NoteTimeline,
-    pub notes: Vec<NoteContext<'a>>,
-}
-
-impl<'a> VoiceLine<'a> {
-    pub fn new(notes: Vec<NoteContext<'a>>, flat_timeline: Vec<&(Timestamp, Event)>) -> Self {
-        let mut ticks = 0;
-        let mut timeline = NoteTimeline::default();
-
-        for index in 0..=notes.len() {
-            let events = flat_timeline
-                .iter()
-                .filter(|(t, _e)| *t == ticks)
-                .map(|(_, e)| e);
-
-            for event in events {
-                timeline.add_event(index, event.clone());
-            }
-
-            if let Some(ctx) = notes.get(index) {
-                ticks += get_note_ticks(ctx.note.duration, ctx.factor);
-            }
-        }
-
-        Self { timeline, notes }
-    }
-}
-
-#[derive(Debug)]
-pub struct NoteContext<'a> {
-    pub note: &'a PulseColumn,
-    pub factor: usize,
 }
