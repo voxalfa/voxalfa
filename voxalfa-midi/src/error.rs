@@ -10,6 +10,9 @@ pub enum ConvertError {
 
     #[error("{0}")]
     Io(#[from] std::io::Error),
+
+    #[error("track {0} has a duration of {1} ticks, expected {2} (fatal error)")]
+    OutOfSync(usize, u32, u32),
 }
 
 pub type Result<T> = std::result::Result<T, ConvertError>;

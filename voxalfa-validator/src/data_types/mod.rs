@@ -9,7 +9,7 @@ mod voice;
 pub use dynamics::Dynamic;
 pub use key::{BaseKey, Key, KeyAccidental};
 pub use navigation::{Jump, Mark};
-pub use tempo::Tempo;
+pub use tempo::{ExtendedTempo, ProgressiveTempo, StaticTempo};
 pub use time_signature::TimeSignature;
 pub use touch::Touch;
 pub use voice::Voice;

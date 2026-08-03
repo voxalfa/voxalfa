@@ -1,9 +1,9 @@
 use crate::ast::solfa::PulseAccent;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct TimeSignature {
-    pub top: usize,
-    pub bottom: usize,
+    pub top: u8,
+    pub bottom: u8,
 }
 
 impl TimeSignature {
@@ -66,7 +66,7 @@ mod tests {
         for (signature, expected) in test_cases {
             let mut pulses = Vec::new();
 
-            for pos in 0..signature.top {
+            for pos in 0..signature.top as usize {
                 pulses.push(signature.get_accent(pos));
             }
 

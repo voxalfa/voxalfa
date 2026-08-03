@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Jump, Key, Mark, Touch},
+    data_types::{Dynamic, Jump, Key, Mark, ProgressiveTempo, StaticTempo, TimeSignature, Touch},
     validation::event::EventBuffer,
 };
 
@@ -80,11 +80,15 @@ impl Event {
 pub enum EventKind {
     Dynamic(Dynamic),
     Key(Key),
+    TimeSignature(TimeSignature),
+    Tempo(StaticTempo),
     Jump(JumpEvent),
     Mark(Mark),
     Touch(Touch),
     EndingStart(u8),
     EndingEnd(u8),
+    TempoStart(ProgressiveTempo),
+    TempoEnd(ProgressiveTempo),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -107,6 +111,12 @@ pub trait ToEventKind {
     }
 }
 
+impl ToEventKind for TimeSignature {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::TimeSignature(*self)
+    }
+}
+
 impl ToEventKind for Dynamic {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Dynamic(*self)
@@ -120,6 +130,12 @@ impl ToEventKind for Dynamic {
 impl ToEventKind for Key {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Key(*self)
+    }
+}
+
+impl ToEventKind for StaticTempo {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Tempo(*self)
     }
 }
 

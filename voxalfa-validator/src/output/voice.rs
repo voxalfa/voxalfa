@@ -1,16 +1,22 @@
 use crate::{
+    data_types::Voice,
     ir::solfa::PulseColumn,
     output::event::{Event, NoteTimeline, Timestamp, get_note_ticks},
 };
 
 #[derive(Debug)]
 pub struct VoiceLine<'a> {
+    pub voice: Voice,
     pub timeline: NoteTimeline,
     pub notes: Vec<NoteContext<'a>>,
 }
 
 impl<'a> VoiceLine<'a> {
-    pub fn new(notes: Vec<NoteContext<'a>>, flat_timeline: Vec<&(Timestamp, Event)>) -> Self {
+    pub fn new(
+        voice: Voice,
+        notes: Vec<NoteContext<'a>>,
+        flat_timeline: Vec<&(Timestamp, Event)>,
+    ) -> Self {
         let mut ticks = 0;
         let mut timeline = NoteTimeline::default();
 
@@ -29,7 +35,11 @@ impl<'a> VoiceLine<'a> {
             }
         }
 
-        Self { timeline, notes }
+        Self {
+            voice,
+            timeline,
+            notes,
+        }
     }
 }
 

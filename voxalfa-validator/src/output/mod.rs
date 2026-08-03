@@ -2,6 +2,7 @@ pub mod dynamics;
 pub mod evaluator;
 pub mod event;
 pub mod render;
+pub mod tempo;
 pub mod voice;
 
 use crate::{
@@ -81,7 +82,7 @@ impl FinalOutput {
             }
         }
 
-        VoiceLine::new(notes, timeline)
+        VoiceLine::new(voice, notes, timeline)
     }
 
     // FIXME: use a dedicated lyric builder task for handling jumps

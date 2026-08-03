@@ -6,7 +6,10 @@ use crate::{
         solfa::{BaseNote, Note, NoteVariation},
         symbols::{ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
     },
-    data_types::{Dynamic, Jump, Key, Mark, Tempo, TimeSignature, TimedValue, Touch, Voice},
+    data_types::{
+        Dynamic, ExtendedTempo, Jump, Key, Mark, StaticTempo, TimeSignature, TimedValue, Touch,
+        Voice,
+    },
     diagnostics::types::DiagnosticKind,
     ts_utils::generated::node_types,
 };
@@ -127,8 +130,8 @@ impl ParseNode for TimeSignature {
     fn parse_node(context: &mut Parser, node: Node<'_>, scope_id: ScopeId) -> Option<Self> {
         let value = context.parse_node::<Vec<SymbolRef<usize>>>(node, scope_id)?;
 
-        let top = value[0].value;
-        let bottom = value[1].value;
+        let top = value[0].value as u8;
+        let bottom = value[1].value as u8;
 
         if value.len() != 2 || top == 0 || bottom == 0 {
             context
@@ -263,7 +266,11 @@ impl ParseBuiltin for Mark {
     const TYPE_NAME: &'static str = "mark";
 }
 
-impl ParseBuiltin for Tempo {
+impl ParseBuiltin for StaticTempo {
+    const TYPE_NAME: &'static str = "tempo";
+}
+
+impl ParseBuiltin for ExtendedTempo {
     const TYPE_NAME: &'static str = "tempo";
 }
 

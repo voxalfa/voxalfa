@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Jump, Key, Mark, Touch},
+    data_types::{Dynamic, Jump, Key, Mark, ProgressiveTempo, StaticTempo, TimeSignature, Touch},
     output::{
         dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
         event::{Event, EventKind, JumpEvent, NoteTimeline},
+        tempo::{TempoState, TempoTransition},
     },
 };
 
@@ -21,6 +22,7 @@ pub struct TimelineEvaluator {
     abort: bool,
     pub params: PlaybackParams,
     pub dynamic: DynamicState,
+    pub tempo: TempoState,
 }
 
 impl TimelineEvaluator {
@@ -36,6 +38,7 @@ impl TimelineEvaluator {
             waited_event: None,
             abort: false,
             pending_touch: None,
+            tempo: TempoState::default(),
             dynamic: DynamicState::default(),
         }
     }
@@ -78,7 +81,21 @@ impl TimelineEvaluator {
     }
 
     pub fn poll_dynamic_update(&mut self) -> Option<DynamicTransition> {
-        self.dynamic.transition.take_if(|_| self.dynamic.update)
+        if self.dynamic.update {
+            self.dynamic.update = false;
+            self.dynamic.transition.take()
+        } else {
+            None
+        }
+    }
+
+    pub fn poll_tempo_update(&mut self) -> Option<TempoTransition> {
+        if self.tempo.update {
+            self.tempo.update = false;
+            self.tempo.transition.take()
+        } else {
+            None
+        }
     }
 
     pub fn handle_event(&mut self, event: &Event) {
@@ -86,10 +103,14 @@ impl TimelineEvaluator {
 
         match event.kind {
             EventKind::Key(key) => self.params.key = key,
+            EventKind::Tempo(tempo) => self.params.tempo = tempo,
+            EventKind::TimeSignature(time) => self.params.time = time,
             EventKind::Touch(touch) => self.pending_touch = Some(touch),
             EventKind::Mark(mark) => self.handle_mark_event(mark),
             EventKind::Jump(jump) => self.handle_jump_event(jump),
             EventKind::Dynamic(dynamic) => self.handle_dynamic_event(dynamic),
+            EventKind::TempoStart(kind) => self.handle_tempo_start(kind),
+            EventKind::TempoEnd(kind) => self.handle_tempo_end(kind),
 
             EventKind::EndingStart(id) => {
                 if let Some(address) = self.endings_jump.get(&id) {
@@ -155,19 +176,35 @@ impl TimelineEvaluator {
             }
         }
     }
+
+    fn handle_tempo_start(&mut self, kind: ProgressiveTempo) {
+        self.tempo.transition = Some(TempoTransition {
+            kind,
+            initial_value: self.params.tempo.bpm(),
+        })
+    }
+
+    fn handle_tempo_end(&mut self, kind: ProgressiveTempo) {
+        if self
+            .tempo
+            .transition
+            .as_ref()
+            .is_some_and(|t| t.kind == kind)
+        {
+            self.tempo.update = true;
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct PlaybackParams {
     pub key: Key,
-    pub quarter_unit: u32,
+    pub time: TimeSignature,
+    pub tempo: StaticTempo,
 }
 
 impl PlaybackParams {
-    pub fn new(key: Key, quarter_unit: usize) -> Self {
-        Self {
-            key,
-            quarter_unit: quarter_unit as u32,
-        }
+    pub fn new(key: Key, time: TimeSignature, tempo: StaticTempo) -> Self {
+        Self { key, time, tempo }
     }
 }

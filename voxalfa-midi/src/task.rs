@@ -1,6 +1,6 @@
 use midly::{
     MetaMessage, MidiMessage, Track, TrackEvent, TrackEventKind,
-    num::{u4, u7, u28},
+    num::{u4, u7, u24, u28},
 };
 use voxalfa_validator::{
     ast::solfa::Note,
@@ -8,8 +8,9 @@ use voxalfa_validator::{
     ir::solfa::PulseColumnKind,
     output::{
         dynamics::{DynamicTransition, DynamicTransitionKind},
-        evaluator::TimelineEvaluator,
+        evaluator::{PlaybackParams, TimelineEvaluator},
         event::NoteTimeline,
+        tempo::TempoTransition,
         voice::{NoteContext, VoiceLine},
     },
 };
@@ -20,34 +21,55 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct VoiceTask {
+pub struct TaskResult {
+    pub voice_track: Track<'static>,
+    pub meta_track: Track<'static>,
+    pub ticks: u32,
+}
+
+#[derive(Debug)]
+pub struct ConverterTask {
     channel: u4,
     voice: Voice,
     track: Track<'static>,
+    meta_track: Track<'static>,
     active_note: Option<u7>,
     play_ticks: u32,
     rest_ticks: u32,
+    total_ticks: u32,
+    meta_ticks: u32,
     pending_notes: Vec<PendingNote>,
-    slur: bool,
+    tempo_start_delta: Option<u32>,
     context: TimelineEvaluator,
+    saved_params: PlaybackParams,
+    slur: bool,
 }
 
-impl VoiceTask {
+impl ConverterTask {
     pub fn new(id: usize, voice: Voice, context: TimelineEvaluator) -> Self {
+        let saved_params = context.params.clone();
+
         Self {
             voice,
+            context,
+            saved_params,
             channel: u4::from(id as u8),
             track: Track::new(),
+            meta_track: Track::new(),
             active_note: None,
             play_ticks: 0,
             rest_ticks: 0,
+            total_ticks: 0,
+            meta_ticks: 0,
             pending_notes: Vec::new(),
+            tempo_start_delta: None,
             slur: false,
-            context,
         }
     }
 
-    pub fn process(mut self, voice_line: &VoiceLine) -> Result<Track<'static>> {
+    pub fn process(mut self, voice_line: &VoiceLine) -> Result<TaskResult> {
+        self.init_meta_track();
+
         while let Some(ctx) = voice_line.notes.get(self.context.index()) {
             self.handle_events(&voice_line.timeline);
 
@@ -113,6 +135,22 @@ impl VoiceTask {
         Ok(())
     }
 
+    fn init_meta_track(&mut self) {
+        self.update_tempo();
+        self.update_time();
+    }
+
+    fn push_meta_message(&mut self, kind: MetaMessage<'static>) {
+        let delta = u28::from(self.total_ticks - self.meta_ticks);
+
+        self.meta_track.push(TrackEvent {
+            delta,
+            kind: TrackEventKind::Meta(kind),
+        });
+
+        self.meta_ticks = self.total_ticks;
+    }
+
     fn handle_pause(&mut self, ctx: &NoteContext<'_>) {
         self.apply_note_context(ctx);
         self.handle_active_note();
@@ -133,7 +171,7 @@ impl VoiceTask {
         }
     }
 
-    fn finalize(mut self) -> Track<'static> {
+    fn finalize(mut self) -> TaskResult {
         self.handle_active_note();
 
         self.track.push(TrackEvent {
@@ -141,7 +179,13 @@ impl VoiceTask {
             kind: TrackEventKind::Meta(MetaMessage::EndOfTrack),
         });
 
-        self.track
+        self.push_meta_message(MetaMessage::EndOfTrack);
+
+        TaskResult {
+            voice_track: self.track,
+            meta_track: self.meta_track,
+            ticks: self.total_ticks,
+        }
     }
 
     fn handle_events(&mut self, timeline: &NoteTimeline) {
@@ -149,6 +193,20 @@ impl VoiceTask {
 
         if let Some(transition) = self.context.poll_dynamic_update() {
             self.handle_pending_notes(transition);
+        }
+
+        if self.saved_params.time != self.context.params.time {
+            self.update_time();
+        }
+
+        if self.saved_params.tempo != self.context.params.tempo {
+            self.update_tempo();
+        }
+
+        if let Some(transition) = self.context.poll_tempo_update() {
+            self.handle_progressive_tempo(transition);
+        } else if self.context.tempo.transition.is_some() && self.tempo_start_delta.is_none() {
+            self.tempo_start_delta = Some(self.total_ticks - self.meta_ticks);
         }
     }
 
@@ -160,9 +218,11 @@ impl VoiceTask {
     fn handle_active_note(&mut self) {
         if let Some(last_note) = self.active_note.take() {
             self.note_off(last_note);
+            self.total_ticks += self.play_ticks + self.rest_ticks;
             self.play_ticks = self.rest_ticks;
             self.rest_ticks = 0;
         } else {
+            self.total_ticks += self.rest_ticks;
             self.play_ticks += self.rest_ticks;
             self.rest_ticks = 0;
         }
@@ -206,6 +266,35 @@ impl VoiceTask {
         }
     }
 
+    fn handle_progressive_tempo(&mut self, transition: TempoTransition) {
+        let start_delta = self.tempo_start_delta.take().unwrap_or_default();
+        let start_bpm = transition.initial_value as f32;
+        let target_bpm = start_bpm * transition.kind.ratio();
+
+        let start_tick = self.meta_ticks + start_delta;
+        let end_tick = self.total_ticks;
+        let duration = end_tick.saturating_sub(start_tick);
+        let steps = duration / (PPQN as u32 / 4); // change tempo every 1/16
+
+        for i in 1..=steps {
+            let progress = i as f32 / steps as f32;
+            let current_bpm = start_bpm + (target_bpm - start_bpm) * progress;
+            let current_target_tick = start_tick + (duration * i) / steps;
+
+            let uspq = self.bpm_to_uspq(current_bpm.round() as u16);
+            let delta = current_target_tick - self.meta_ticks;
+
+            self.meta_track.push(TrackEvent {
+                delta: u28::from(delta),
+                kind: TrackEventKind::Meta(MetaMessage::Tempo(uspq)),
+            });
+
+            self.meta_ticks = current_target_tick;
+        }
+
+        self.saved_params.tempo = self.context.params.tempo;
+    }
+
     fn apply_note_context(&mut self, ctx: &NoteContext<'_>) {
         if ctx.note.underline.left {
             self.slur = true;
@@ -239,10 +328,29 @@ impl VoiceTask {
         });
     }
 
+    fn update_tempo(&mut self) {
+        let bpm = self.context.params.tempo.bpm();
+        let tempo = self.bpm_to_uspq(bpm);
+
+        self.push_meta_message(MetaMessage::Tempo(tempo));
+        self.saved_params.tempo = self.context.params.tempo;
+    }
+
+    fn update_time(&mut self) {
+        let time = self.context.params.time;
+        let denominator = (time.bottom as f32).log2() as u8;
+        let message = MetaMessage::TimeSignature(time.top, denominator, 24, 8);
+
+        self.push_meta_message(message);
+        self.saved_params.time = self.context.params.time;
+    }
+
     fn get_midi_note_ticks(&self, ctx: &NoteContext<'_>) -> u32 {
         let denominator = ctx.factor as u32;
         let numerator = ctx.note.duration as u32;
-        ((PPQN as u32 * numerator) / denominator) / (4 / self.context.params.quarter_unit)
+        let quarter_unit = self.context.params.time.bottom as u32;
+
+        ((PPQN as u32 * numerator) / denominator) / (4 / quarter_unit)
     }
 
     fn get_touch_ticks(&self, duration: u32, touch: Option<Touch>) -> (u32, u32) {
@@ -298,6 +406,11 @@ impl VoiceTask {
         } else {
             Ok(u7::from(result as u8))
         }
+    }
+
+    fn bpm_to_uspq(&self, bpm: u16) -> u24 {
+        let us_per_quarter = (60_000_000.0 / bpm as f64).round() as u32;
+        u24::from(us_per_quarter & 0x00FF_FFFF)
     }
 }
 

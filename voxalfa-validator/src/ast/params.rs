@@ -3,7 +3,10 @@ use crate::{
         parser::Parser,
         symbols::{Field, FieldAssign},
     },
-    data_types::{Dynamic, Jump, Key, List, Mark, Tempo, TimeSignature, TimedList, Touch, Voice},
+    data_types::{
+        Dynamic, ExtendedTempo, Jump, Key, List, Mark, StaticTempo, TimeSignature, TimedList,
+        Touch, Voice,
+    },
     diagnostics::types::DiagnosticKind,
     ts_utils::types::AssignmentData,
 };
@@ -12,7 +15,7 @@ use crate::{
 pub struct InitialParams {
     pub key: Field<Key>,
     pub time: Field<TimeSignature>,
-    pub tempo: Field<Tempo>,
+    pub tempo: Field<StaticTempo>,
     pub voices: Field<List<Voice>>,
 }
 
@@ -36,7 +39,7 @@ impl FieldAssign for InitialParams {
 #[derive(Debug, Default, Clone)]
 pub struct SectionParams {
     pub time: Field<TimeSignature>,
-    pub tempo: Field<Tempo>,
+    pub tempo: Field<ExtendedTempo>,
     pub label: Field<String>,
     pub ending: Field<usize>,
     pub key: Field<Key>,
@@ -48,7 +51,12 @@ pub struct SectionParams {
 
 impl SectionParams {
     pub fn has_events(&self) -> bool {
-        self.key.is_some() || self.jump.is_some() || self.mark.is_some() || self.ending.is_some()
+        self.tempo.is_some()
+            || self.time.is_some()
+            || self.key.is_some()
+            || self.jump.is_some()
+            || self.mark.is_some()
+            || self.ending.is_some()
     }
 }
 

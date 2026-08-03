@@ -1,9 +1,7 @@
 use crate::{
-    data_types::{Mark, TimedList},
+    data_types::TimedList,
     ir::{SectionIR, SubSectionIR},
-    output::event::{
-        Event, EventKind, JumpEvent, SubSectonId, Timestamp, ToEventKind, get_note_ticks,
-    },
+    output::event::{Event, EventKind, SubSectonId, Timestamp, ToEventKind, get_note_ticks},
 };
 
 pub const FLOAT_ERROR: f32 = 0.05; // allow 0.3 and 0.7 to match 1/3 and 2/3
@@ -42,49 +40,15 @@ impl EventBuffer {
 
         for sub_section in &section.items {
             let sid = sub_section.sid;
+            let start_timestamp = self.elapsed;
+            let end_timestamp = self.elapsed + sub_section.get_ticks();
 
-            if let Some(key) = &section.params.key {
-                self.push_event(sid, self.elapsed, Event::with(key.value));
+            for event in section.start_events() {
+                self.push_event(sid, start_timestamp, event);
             }
 
-            if let Some(mark) = &section.params.mark {
-                let timestamp = match mark.value {
-                    Mark::Fine | Mark::ToCoda => self.elapsed + sub_section.get_ticks(),
-                    _ => self.elapsed,
-                };
-
-                self.push_event(sid, timestamp, Event::with(mark.value));
-            }
-
-            if let Some(jump) = &section.params.jump {
-                let repeat = section.params.repeat.as_ref().map(|r| r.value).unwrap_or(1);
-
-                let event = JumpEvent {
-                    kind: jump.value,
-                    repeat: repeat as u8,
-                };
-
-                self.push_event(
-                    sid,
-                    self.elapsed + sub_section.get_ticks(),
-                    Event::new(EventKind::Jump(event)),
-                );
-            }
-
-            if let Some(ending) = &section.params.ending {
-                let ending = ending.value as u8;
-
-                self.push_event(
-                    sid,
-                    self.elapsed,
-                    Event::new(EventKind::EndingStart(ending)),
-                );
-
-                self.push_event(
-                    sid,
-                    self.elapsed + sub_section.get_ticks(),
-                    Event::new(EventKind::EndingEnd(ending)),
-                );
+            for event in section.end_events() {
+                self.push_event(sid, end_timestamp, event);
             }
         }
     }

@@ -11,9 +11,9 @@ use crate::{
         params::{SectionParams, SubSectionParams},
         symbols::ScopeId,
     },
-    data_types::Voice,
+    data_types::{ExtendedTempo, Mark, Voice},
     ir::solfa::PulseIR,
-    output::event::get_note_ticks,
+    output::event::{Event, EventKind, JumpEvent, get_note_ticks},
 };
 
 #[derive(Debug, Default)]
@@ -37,6 +37,70 @@ impl SectionIR {
                 .any(|s| s.voice == *voice)
                 .then_some(s.lyrics.as_slice())
         })
+    }
+
+    pub fn start_events(&self) -> Vec<Event> {
+        let mut result = Vec::new();
+        let params = &self.params;
+
+        if let Some(time) = &self.params.time {
+            result.push(Event::with(time.value));
+        }
+
+        if let Some(tempo) = &self.params.tempo {
+            let event = match tempo.value {
+                ExtendedTempo::Progressive(kind) => Event::new(EventKind::TempoStart(kind)),
+                ExtendedTempo::Static(tempo) => Event::with(tempo),
+            };
+
+            result.push(event);
+        }
+
+        if let Some(makr) = &self.params.mark
+            && matches!(makr.value, Mark::Coda | Mark::Segno)
+        {
+            result.push(Event::with(makr.value));
+        }
+
+        if let Some(key) = &params.key {
+            result.push(Event::with(key.value));
+        }
+
+        if let Some(ending) = &params.ending {
+            result.push(Event::new(EventKind::EndingStart(ending.value as u8)));
+        }
+
+        result
+    }
+
+    pub fn end_events(&self) -> Vec<Event> {
+        let mut result = Vec::new();
+        let params = &self.params;
+
+        if let Some(symbol) = &params.mark
+            && matches!(symbol.value, Mark::ToCoda | Mark::Fine)
+        {
+            result.push(Event::with(symbol.value));
+        }
+
+        if let Some(tempo) = &self.params.tempo
+            && let ExtendedTempo::Progressive(kind) = tempo.value
+        {
+            result.push(Event::new(EventKind::TempoEnd(kind)));
+        }
+
+        if let Some(ending) = &params.ending {
+            result.push(Event::new(EventKind::EndingEnd(ending.value as u8)));
+        }
+
+        if let Some(jump) = &params.jump {
+            result.push(Event::new(EventKind::Jump(JumpEvent {
+                kind: jump.value,
+                repeat: params.repeat.as_ref().map(|r| r.value as u8).unwrap_or(1),
+            })));
+        }
+
+        result
     }
 }
 

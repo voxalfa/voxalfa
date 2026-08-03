@@ -226,7 +226,7 @@ impl<'a> Validator<'a> {
             .position(|p| p.accent.value == PulseAccent::Strong)
             .unwrap_or_default();
 
-        let top = time_sig.value.top;
+        let top = time_sig.value.top as usize;
 
         for (pulse_id, pulse) in pulses.iter().enumerate() {
             let position = (pulse_id + top - (start_offset % top)) % top;
