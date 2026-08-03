@@ -29,7 +29,7 @@ FILE: test_dc_al_coda
 --- Track 0 [Tempo / Meta] ---
 [00000 t / +000 t] Event 00 | Meta: Tempo(u24(1200000))
 [00000 t / +000 t] Event 01 | Meta: TimeSignature(4, 2, 24, 8)
-[00000 t / +000 t] Event 02 | Meta: EndOfTrack
+[07680 t / +7680 t] Event 02 | Meta: EndOfTrack
 
 --- Track 1 ---
 [00000 t / +000 t] Event 00 | Ch 00 | NoteOn  key: 060 (C4) vel: 080
