@@ -87,6 +87,8 @@ impl ConverterTask {
                     PulseColumnKind::EmptyNote => self.handle_pause(ctx),
                     PulseColumnKind::ProlongedNote(_) => self.prolongate(ctx),
                 }
+
+                self.handle_progressive_tempo();
             }
 
             self.context.step();
@@ -202,12 +204,6 @@ impl ConverterTask {
         if self.saved_params.tempo != self.context.params.tempo {
             self.update_tempo();
         }
-
-        if let Some(transition) = self.context.poll_tempo_update() {
-            self.handle_progressive_tempo(transition);
-        } else if self.context.tempo.transition.is_some() && self.tempo_start_delta.is_none() {
-            self.tempo_start_delta = Some(self.total_ticks - self.meta_ticks);
-        }
     }
 
     fn handle_pending_events(&mut self, timeline: &NoteTimeline) {
@@ -266,7 +262,15 @@ impl ConverterTask {
         }
     }
 
-    fn handle_progressive_tempo(&mut self, transition: TempoTransition) {
+    fn handle_progressive_tempo(&mut self) {
+        if let Some(transition) = self.context.poll_tempo_update() {
+            self.emit_progressive_tempo(transition);
+        } else if self.context.tempo.transition.is_some() && self.tempo_start_delta.is_none() {
+            self.tempo_start_delta = Some(self.total_ticks - self.meta_ticks);
+        }
+    }
+
+    fn emit_progressive_tempo(&mut self, transition: TempoTransition) {
         let start_delta = self.tempo_start_delta.take().unwrap_or_default();
         let start_bpm = transition.initial_value as f32;
         let target_bpm = start_bpm * transition.kind.ratio();
