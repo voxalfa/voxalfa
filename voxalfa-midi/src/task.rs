@@ -83,7 +83,7 @@ impl ConverterTask {
 
             if !self.context.is_waiting() {
                 match ctx.note.kind {
-                    PulseColumnKind::Note(note) => self.handle_note(note, ctx)?,
+                    PulseColumnKind::Note(note) => self.handle_note(note, ctx, voice_line)?,
                     PulseColumnKind::EmptyNote => self.handle_pause(ctx),
                     PulseColumnKind::ProlongedNote => self.prolongate(ctx),
                 }
@@ -101,8 +101,20 @@ impl ConverterTask {
         Ok(self.finalize())
     }
 
-    fn handle_note(&mut self, note: Note, ctx: &NoteContext<'_>) -> Result<()> {
+    fn handle_note(
+        &mut self,
+        note: Note,
+        ctx: &NoteContext<'_>,
+        voice_line: &VoiceLine,
+    ) -> Result<()> {
         let touch = self.context.take_pedning_touch();
+
+        // avoid micro-pauses when followed by rest
+        let micro_pause = voice_line
+            .notes
+            .get(self.context.index() + 1)
+            .map(|ctx| !ctx.note.is_empty())
+            .unwrap_or(true);
 
         if self.context.dynamic.transition.is_some() {
             let key = self.get_midi_note(note)?;
@@ -112,13 +124,14 @@ impl ConverterTask {
                 key,
                 duration,
                 touch,
+                micro_pause,
             });
         } else {
             self.apply_note_context(ctx);
             self.handle_active_note();
 
             let raw_duration = self.get_midi_note_ticks(ctx);
-            let (play_ticks, rest_ticks) = self.get_touch_ticks(raw_duration, touch);
+            let (play_ticks, rest_ticks) = self.get_touch_ticks(raw_duration, touch, micro_pause);
 
             let midi_note = self.get_midi_note(note)?;
             let mut velocity = self.get_velocity(self.context.dynamic.current);
@@ -241,7 +254,8 @@ impl ConverterTask {
                 .clamp(0.0, 127.0) as u8;
 
             let velocity = u7::from(vel_val);
-            let (play_ticks, rest_ticks) = self.get_touch_ticks(note.duration, note.touch);
+            let (play_ticks, rest_ticks) =
+                self.get_touch_ticks(note.duration, note.touch, note.micro_pause);
 
             self.handle_active_note();
             self.note_on(note.key, velocity);
@@ -357,16 +371,22 @@ impl ConverterTask {
         ((PPQN as u32 * numerator) / denominator) / (4 / quarter_unit)
     }
 
-    fn get_touch_ticks(&self, duration: u32, touch: Option<Touch>) -> (u32, u32) {
+    fn get_touch_ticks(
+        &self,
+        duration: u32,
+        touch: Option<Touch>,
+        micro_pause: bool,
+    ) -> (u32, u32) {
         match touch {
+            _ if self.slur || !micro_pause => (duration, 0),
             Some(Touch::Staccato) => {
                 let play_ticks = duration / 2;
                 let rest_ticks = duration - play_ticks;
                 (play_ticks, rest_ticks)
             }
             Some(Touch::Fermata) => (duration + (duration / 2), 0),
-            _ if self.slur => (duration, 0),
             _ => {
+                // apply micro-pauses for a less robotic result
                 let rest_ticks = (duration / 10).min(MAX_PAUSE);
                 let play_ticks = duration - rest_ticks;
 
@@ -423,4 +443,5 @@ struct PendingNote {
     key: u7,
     duration: u32,
     touch: Option<Touch>,
+    micro_pause: bool,
 }

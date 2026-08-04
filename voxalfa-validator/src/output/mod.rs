@@ -121,6 +121,10 @@ impl FinalOutput {
         let mut result = String::new();
 
         for (column_id, column) in line.columns.iter().enumerate() {
+            if column.placeholder {
+                continue;
+            }
+
             for (chunk_id, chunk) in column.chunks.iter().enumerate() {
                 for primitive in &chunk.primitives {
                     if primitive.underline.left {

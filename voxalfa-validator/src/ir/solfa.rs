@@ -80,6 +80,12 @@ pub struct PulseColumn {
     pub kind: PulseColumnKind,
 }
 
+impl PulseColumn {
+    pub fn is_empty(&self) -> bool {
+        matches!(self.kind, PulseColumnKind::EmptyNote)
+    }
+}
+
 #[derive(Debug)]
 pub enum PulseColumnKind {
     Note(Note),
