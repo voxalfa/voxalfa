@@ -5,6 +5,8 @@ pub mod render;
 pub mod tempo;
 pub mod voice;
 
+use tree_sitter::Tree;
+
 use crate::{
     ast::{
         header::Header,
@@ -24,9 +26,10 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FinalOutput {
-    pub tree: SymbolTree,
+    pub tree: Option<Tree>,
+    pub symbols: SymbolTree,
     pub header: Header,
     pub ir: BodyIR,
     pub diagnostics: Vec<Diagnostic>,
@@ -35,6 +38,11 @@ pub struct FinalOutput {
 }
 
 impl FinalOutput {
+    pub fn with_tree(mut self, tree: Tree) -> Self {
+        self.tree = Some(tree);
+        self
+    }
+
     pub fn has_error(&self) -> bool {
         self.diagnostics.iter().any(|d| d.is_error())
     }
@@ -132,7 +140,7 @@ impl FinalOutput {
                     }
 
                     let part = match primitive.string {
-                        LyricStringIR::Reference(id) => self.tree.get_lyric_chunk(id),
+                        LyricStringIR::Reference(id) => self.symbols.get_lyric_chunk(id),
                         LyricStringIR::Special(ch) => &ch.to_string(),
                     };
 
@@ -181,7 +189,7 @@ impl FinalOutput {
 
     fn resolve_primitive_width(&self, s: &LyricPrimitive, render_type: RenderType) -> usize {
         let base_width = match (&s.string, render_type) {
-            (LyricStringIR::Reference(id), _) => self.tree.lyrics[*id].chars().count(),
+            (LyricStringIR::Reference(id), _) => self.symbols.lyrics[*id].chars().count(),
             (LyricStringIR::Special(_), RenderType::Text) => 4,
             (LyricStringIR::Special(_), RenderType::Image) => 1,
         };

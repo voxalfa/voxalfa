@@ -32,16 +32,10 @@ pub fn execute(params: FormatParams) -> Result<()> {
             let formatter = Formatter::new(&output);
 
             if params.check {
-                let mut buffer = Vec::new();
-                formatter.format(&mut buffer)?;
-                let expected = String::from_utf8_lossy(&buffer);
+                let expected = formatter.format_to_string()?;
 
                 if expected != file.content {
-                    cli_reporter.register_diff(
-                        file.path.clone(),
-                        file.content.clone(),
-                        expected.into_owned(),
-                    );
+                    cli_reporter.register_diff(file.path.clone(), file.content.clone(), expected);
                 }
             } else {
                 let mut writer = File::create(&file.path)?;

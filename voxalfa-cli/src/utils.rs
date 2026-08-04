@@ -42,7 +42,7 @@ pub fn read_file(path_buf: PathBuf) -> Result<SourceFile> {
 
 pub fn parse_file(content: &str) -> Result<FinalOutput> {
     let mut validator = MultiStepValidator::init()?;
-    let output = validator.process(content);
+    let output = validator.analyze(content);
 
     Ok(output)
 }

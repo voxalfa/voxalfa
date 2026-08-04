@@ -5,7 +5,7 @@ use crate::{
 
 pub fn assert_diagnostic_snapshot(source_name: &str, content: &str) {
     let mut validator = MultiStepValidator::init().unwrap();
-    let output = validator.process(content);
+    let output = validator.analyze(content);
     let diagnostics = output.diagnostics;
 
     if diagnostics.is_empty() {

@@ -1,3 +1,5 @@
+use tree_sitter::Tree;
+
 use crate::{
     ast::parser::Parser,
     error::Error,
@@ -33,13 +35,23 @@ impl MultiStepValidator {
         })
     }
 
-    // TODO: add filters to skip some steps
-    pub fn process(&mut self, source: &str) -> FinalOutput {
-        let parser = Parser::new(source);
-        let parser_out = parser.parse(&mut self.ts_context);
-        let ir_builder = IRBuilder::new(&parser_out.tree);
+    pub fn analyze(&mut self, source: &str) -> FinalOutput {
+        let tree = self.ts_context.parse(source.as_bytes());
 
-        let mut validator = Validator::new(&parser_out.tree, &parser_out.header);
+        if let Some(tree) = tree {
+            self.analyze_tree(source, &tree).with_tree(tree)
+        } else {
+            Default::default()
+        }
+    }
+
+    // TODO: add filters to skip some steps
+    pub fn analyze_tree(&mut self, source: &str, tree: &Tree) -> FinalOutput {
+        let parser = Parser::new(source);
+        let parser_out = parser.parse(tree, &mut self.ts_context);
+        let ir_builder = IRBuilder::new(&parser_out.symbols);
+
+        let mut validator = Validator::new(&parser_out.symbols, &parser_out.header);
         validator.validate_body(&parser_out.body);
 
         let builder_out = ir_builder.build(parser_out.body);
@@ -56,12 +68,13 @@ impl MultiStepValidator {
             .into_diagnostics_vec();
 
         FinalOutput {
-            tree: parser_out.tree,
+            timelines,
+            diagnostics,
+            symbols: parser_out.symbols,
             header: parser_out.header,
             ir: builder_out.body,
             delimiters: parser_out.delimiters,
-            timelines,
-            diagnostics,
+            tree: None,
         }
     }
 }

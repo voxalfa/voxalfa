@@ -5,7 +5,7 @@ members = [
   "voxalfa-formatter",
   "voxalfa-midi",
   "voxalfa-cli",
-  "tree-sitter-voxalfa",
+  "tree-sitter-voxalfa", "voxalfa-lsp",
 ]
 
 [workspace.dependencies]

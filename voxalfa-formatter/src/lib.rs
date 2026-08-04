@@ -63,6 +63,15 @@ impl<'a> Formatter<'a> {
         self.finalize(writer)
     }
 
+    pub fn format_to_string(self) -> Result<String, std::io::Error> {
+        let mut buffer = Vec::new();
+
+        self.format(&mut buffer)?;
+
+        String::from_utf8(buffer)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    }
+
     fn finalize<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
         self.partials.sort();
 
@@ -148,7 +157,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_solfa(&mut self, solfa: &SolfaLineIR) {
-        let scope = self.source.tree.get_scope(solfa.sid);
+        let scope = self.source.symbols.get_scope(solfa.sid);
         let line_id = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
         let mut buffer = format!("[{:?}] ", solfa.voice);
@@ -214,7 +223,7 @@ impl<'a> Formatter<'a> {
         let mut view_id = 0;
         let mut view_offset = 0;
 
-        let scope = self.source.tree.get_scope(line.sid);
+        let scope = self.source.symbols.get_scope(line.sid);
         let line_id = scope.range.start_point.row;
         let last_lyric_id = line.columns.len() - 1;
         let rank = LineRank::Lyrics;
@@ -284,7 +293,7 @@ impl<'a> Formatter<'a> {
                 }
 
                 let lyric_str = match primitve.string {
-                    LyricStringIR::Reference(id) => self.source.tree.get_lyric_chunk(id),
+                    LyricStringIR::Reference(id) => self.source.symbols.get_lyric_chunk(id),
                     LyricStringIR::Special(special) => special.identifer(),
                 };
 
@@ -318,7 +327,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_comments(&mut self) {
-        for comment in &self.source.tree.comments {
+        for comment in &self.source.symbols.comments {
             let (line_id, scope, rank) = self.resolve_comment_position(comment);
             let trimmed = comment.value.trim_end();
 
@@ -338,7 +347,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn resolve_comment_position(&self, comment: &Comment) -> (usize, usize, LineRank) {
-        let line_id = self.source.tree.get_symbol_range(comment.sid).line();
+        let line_id = self.source.symbols.get_symbol_range(comment.sid).line();
 
         if comment.value.starts_with(";;") {
             let scope = self.scope_bounds.partition_point(|&line| line <= line_id);
@@ -368,9 +377,9 @@ impl<'a> Formatter<'a> {
     ) {
         let Some(symbol) = symbol_ref else { return };
 
-        let value_symbol = self.source.tree.get_symbol(symbol.sid);
-        let scope = self.source.tree.get_scope(value_symbol.scope);
-        let key_symbol = self.source.tree.get_symbol(scope.symbols[0]);
+        let value_symbol = self.source.symbols.get_symbol(symbol.sid);
+        let scope = self.source.symbols.get_scope(value_symbol.scope);
+        let key_symbol = self.source.symbols.get_symbol(scope.symbols[0]);
         let line_id = scope.range.start_point.row;
 
         let key_str = key_symbol.kind.as_key_unchecked();

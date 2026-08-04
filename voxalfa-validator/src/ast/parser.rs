@@ -1,5 +1,5 @@
 use semver::{Version, VersionReq};
-use tree_sitter::{Node, QueryCursor, StreamingIterator};
+use tree_sitter::{Node, QueryCursor, StreamingIterator, Tree};
 
 use crate::{
     SUPPORTED_VERSION,
@@ -35,7 +35,7 @@ use crate::{
 pub struct ParserOutput {
     pub header: Header,
     pub body: Body,
-    pub tree: SymbolTree,
+    pub symbols: SymbolTree,
     pub reporter: DiagnosticReporter,
     pub delimiters: Vec<Delimiter>,
 }
@@ -46,9 +46,9 @@ pub struct Parser<'a> {
     header: Header,
     body: Body,
     delimiters: Vec<Delimiter>,
+    abort: bool,
     pub(crate) tree: SymbolTree,
     pub(crate) reporter: DiagnosticReporter,
-    abort: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -64,19 +64,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(mut self, context: &mut TSContext) -> ParserOutput {
-        if let Some(tree) = context.parse(self.source) {
-            let root = tree.root_node();
+    pub fn parse(mut self, tree: &Tree, context: &mut TSContext) -> ParserOutput {
+        let root = tree.root_node();
 
-            self.tree.init_root(root.range());
-            self.handle_root_node(root);
-            self.handle_query(root, context);
-        }
+        self.tree.init_root(root.range());
+        self.handle_root_node(root);
+        self.handle_query(root, context);
 
         ParserOutput {
             header: self.header,
             body: self.body,
-            tree: self.tree,
+            symbols: self.tree,
             reporter: self.reporter,
             delimiters: self.delimiters,
         }
