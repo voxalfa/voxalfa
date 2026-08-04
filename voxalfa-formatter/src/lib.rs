@@ -169,7 +169,7 @@ impl<'a> Formatter<'a> {
         let mut clock = 0;
         let accent = pulse.accent.to_string();
 
-        if pulse.padded {
+        if pulse.expanded {
             return accent;
         }
 

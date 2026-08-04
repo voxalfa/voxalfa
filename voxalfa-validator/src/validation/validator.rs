@@ -190,51 +190,76 @@ impl<'a> Validator<'a> {
     }
 
     fn validate_time_signature(&mut self, sections: &[Section]) {
-        let time_signature = &self.header.params.time;
-        let mut voice_lines: BTreeMap<_, Vec<&Pulse>> = BTreeMap::new();
+        if let Some(time) = &self.header.params.time {
+            let mut groups = vec![(time, Vec::new())];
 
-        let solfa_lines = sections
-            .iter()
-            .flat_map(|section| &section.items)
-            .flat_map(|sub| &sub.solfa);
+            for section in sections {
+                if let Some(time) = &section.params.time {
+                    groups.push((time, Vec::new()));
+                }
 
-        for line in solfa_lines {
-            if time_signature.is_none() {
+                let last_index = groups.len() - 1;
+
+                groups[last_index].1.push(section);
+            }
+
+            self.validate_time_signature_inner(groups);
+        } else {
+            let solfa_lines = sections
+                .iter()
+                .flat_map(|section| &section.items)
+                .flat_map(|sub| &sub.solfa);
+
+            for line in solfa_lines {
                 let range = self.tree.get_scope_range(line.sid);
                 let context_range = self.tree.get_scope_range(self.header.sid);
 
                 self.reporter
                     .error(range, DiagnosticKind::UndefinedTimeParameter(context_range));
-            } else {
+            }
+        }
+    }
+
+    fn validate_time_signature_inner(
+        &mut self,
+        groups: Vec<(&SymbolRef<TimeSignature>, Vec<&Section>)>,
+    ) {
+        for (time, sections) in groups {
+            let mut voice_lines: BTreeMap<_, Vec<&Pulse>> = BTreeMap::new();
+
+            let solfa_lines = sections
+                .iter()
+                .flat_map(|section| &section.items)
+                .flat_map(|sub| &sub.solfa);
+
+            for line in solfa_lines {
                 voice_lines
                     .entry(line.voice.value)
                     .or_default()
                     .extend(&line.pulses);
             }
-        }
 
-        if let Some(value) = time_signature {
             for lines in voice_lines.values() {
-                self.validate_linear_voice(lines, value);
+                self.validate_linear_voice(lines, time);
             }
         }
     }
 
-    fn validate_linear_voice(&mut self, pulses: &[&Pulse], time_sig: &SymbolRef<TimeSignature>) {
+    fn validate_linear_voice(&mut self, pulses: &[&Pulse], time: &SymbolRef<TimeSignature>) {
         let start_offset = pulses
             .iter()
             .position(|p| p.accent.value == PulseAccent::Strong)
             .unwrap_or_default();
 
-        let top = time_sig.value.top as usize;
+        let top = time.value.top as usize;
 
         for (pulse_id, pulse) in pulses.iter().enumerate() {
             let position = (pulse_id + top - (start_offset % top)) % top;
-            let expected = time_sig.value.get_accent(position);
+            let expected = time.value.get_accent(position);
 
             if pulse.accent.value != expected {
                 let range = self.tree.get_symbol_range(pulse.accent.sid);
-                let context_range = self.tree.get_symbol_range(time_sig.sid);
+                let context_range = self.tree.get_symbol_range(time.sid);
 
                 self.reporter.error(
                     range,

@@ -249,7 +249,7 @@ impl FinalOutput {
     fn resolve_note_width(&self, column: &PulseColumnKind, render_type: RenderType) -> usize {
         match column {
             PulseColumnKind::Note(note) => note.width(render_type),
-            PulseColumnKind::ProlongedNote(_) => 1,
+            PulseColumnKind::ProlongedNote => 1,
             PulseColumnKind::EmptyNote => 1,
         }
     }

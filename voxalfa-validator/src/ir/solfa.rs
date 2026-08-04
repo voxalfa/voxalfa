@@ -34,7 +34,7 @@ impl SolfaLineIR {
 
 #[derive(Debug)]
 pub struct PulseIR {
-    pub padded: bool,
+    pub expanded: bool,
     pub sid: ScopeId,
     pub accent: PulseAccent,
     pub columns: Vec<PulseColumn>,
@@ -47,7 +47,7 @@ impl PulseIR {
             sid,
             accent,
             columns: Vec::new(),
-            padded: false,
+            expanded: false,
             factor: 1,
         }
     }
@@ -83,7 +83,7 @@ pub struct PulseColumn {
 #[derive(Debug)]
 pub enum PulseColumnKind {
     Note(Note),
-    ProlongedNote(Note),
+    ProlongedNote,
     EmptyNote,
 }
 
@@ -91,7 +91,7 @@ impl std::fmt::Display for PulseColumnKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PulseColumnKind::Note(note) => write!(f, "{note}"),
-            PulseColumnKind::ProlongedNote(_) => write!(f, "-"),
+            PulseColumnKind::ProlongedNote => write!(f, "-"),
             PulseColumnKind::EmptyNote => write!(f, " "),
         }
     }

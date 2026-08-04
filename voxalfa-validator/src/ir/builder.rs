@@ -5,7 +5,7 @@ use crate::{
             LyricChunkKind, LyricColumn, LyricLine, LyricOperatorKind, LyricString,
             LyricStringKind, LyricToken,
         },
-        solfa::{Note, PulseTokenKind, SolfaLine},
+        solfa::{PulseTokenKind, SolfaLine},
         symbols::{ScopeId, SymbolId, SymbolTree},
     },
     diagnostics::{
@@ -124,13 +124,7 @@ impl<'a> IRBuilder<'a> {
 
                 match &token.value {
                     PulseTokenKind::ProlongedNote => {
-                        if let Some(last_note) = self.resolve_last_note(&line_ir) {
-                            pulse_ir.add_column(PulseColumnKind::ProlongedNote(last_note));
-                        } else {
-                            let range = self.tree.get_symbol_range(token.sid);
-                            self.reporter
-                                .error(range, DiagnosticKind::InvalidNoteProlongation);
-                        }
+                        pulse_ir.add_column(PulseColumnKind::ProlongedNote);
                     }
                     PulseTokenKind::Note(note) => {
                         pulse_ir.add_column(PulseColumnKind::Note(*note));
@@ -169,19 +163,6 @@ impl<'a> IRBuilder<'a> {
         line_ir.fit_underlines(underline_buffer.results());
 
         line_ir
-    }
-
-    fn resolve_last_note(&self, line_ir: &SolfaLineIR) -> Option<Note> {
-        line_ir
-            .pulses
-            .iter()
-            .rev()
-            .find_map(|pulse| pulse.columns.last())
-            .and_then(|column| match &column.kind {
-                PulseColumnKind::Note(note) => Some(*note),
-                PulseColumnKind::ProlongedNote(note) => Some(*note),
-                PulseColumnKind::EmptyNote => None,
-            })
     }
 
     fn build_lyric_line_ir(&mut self, line: LyricLine) -> LyricLineIR {
@@ -257,21 +238,22 @@ impl<'a> IRBuilder<'a> {
         let Some(first) = solfa.first() else { return };
 
         for pulse_id in 0..first.pulses.len() {
-            let max_column = solfa
+            let col_shape = solfa
                 .iter()
-                .flat_map(|line| line.pulses.get(pulse_id).map(|p| p.columns.len()))
-                .max()
-                .unwrap_or(0);
+                .flat_map(|line| line.pulses.get(pulse_id))
+                .map(|p| p.columns.iter().map(|c| c.duration).collect::<Vec<_>>())
+                .max_by_key(|c| c.len())
+                .filter(|p| p.len() > 1);
 
-            if max_column > 1 {
+            if let Some(col_shape) = col_shape {
                 for line in solfa.iter_mut() {
-                    self.pad_pulse_at(line, pulse_id, max_column);
+                    self.expand_pulse_at(line, pulse_id, &col_shape);
                 }
             }
         }
     }
 
-    fn pad_pulse_at(&self, line: &mut SolfaLineIR, pulse_id: usize, max_column: usize) {
+    fn expand_pulse_at(&self, line: &mut SolfaLineIR, pulse_id: usize, col_shape: &[usize]) {
         let Some(pulse) = line.pulses.get_mut(pulse_id) else {
             return;
         };
@@ -285,14 +267,17 @@ impl<'a> IRBuilder<'a> {
         );
 
         if is_single_empty {
-            pulse.padded = true;
-            pulse.factor = max_column;
+            pulse.expanded = true;
+            pulse.factor = col_shape.iter().sum();
+            pulse.columns.clear();
 
-            pulse.columns.resize_with(max_column, || PulseColumn {
-                duration: 1,
-                underline: UnderlineMarker::default(),
-                kind: PulseColumnKind::EmptyNote,
-            });
+            for &duration in col_shape {
+                pulse.columns.push(PulseColumn {
+                    duration,
+                    underline: UnderlineMarker::default(),
+                    kind: PulseColumnKind::EmptyNote,
+                });
+            }
         }
     }
 

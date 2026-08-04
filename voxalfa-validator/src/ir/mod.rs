@@ -115,7 +115,7 @@ pub struct SubSectionIR {
 
 impl SubSectionIR {
     pub fn width(&self) -> usize {
-        self.views.iter().map(|v| v.factor).sum()
+        self.views.iter().map(|v| v.durations.len()).sum()
     }
 
     pub fn get_ticks(&self) -> usize {

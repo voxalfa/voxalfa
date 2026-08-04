@@ -85,10 +85,10 @@ impl ConverterTask {
                 match ctx.note.kind {
                     PulseColumnKind::Note(note) => self.handle_note(note, ctx)?,
                     PulseColumnKind::EmptyNote => self.handle_pause(ctx),
-                    PulseColumnKind::ProlongedNote(_) => self.prolongate(ctx),
+                    PulseColumnKind::ProlongedNote => self.prolongate(ctx),
                 }
 
-                self.handle_progressive_tempo();
+                self.handle_meta_events();
             }
 
             self.context.step();
@@ -196,14 +196,6 @@ impl ConverterTask {
         if let Some(transition) = self.context.poll_dynamic_update() {
             self.handle_pending_notes(transition);
         }
-
-        if self.saved_params.time != self.context.params.time {
-            self.update_time();
-        }
-
-        if self.saved_params.tempo != self.context.params.tempo {
-            self.update_tempo();
-        }
     }
 
     fn handle_pending_events(&mut self, timeline: &NoteTimeline) {
@@ -262,7 +254,15 @@ impl ConverterTask {
         }
     }
 
-    fn handle_progressive_tempo(&mut self) {
+    fn handle_meta_events(&mut self) {
+        if self.saved_params.time != self.context.params.time {
+            self.update_time();
+        }
+
+        if self.saved_params.tempo != self.context.params.tempo {
+            self.update_tempo();
+        }
+
         if let Some(transition) = self.context.poll_tempo_update() {
             self.emit_progressive_tempo(transition);
         } else if self.context.tempo.transition.is_some() && self.tempo_start_delta.is_none() {
