@@ -14,7 +14,7 @@ export default grammar({
 
   rules: {
     source_file: ($) =>
-      seq(optional($.header), $.header_delimiter, optional($.body)),
+      seq(optional($.header), optional(seq($.header_delimiter, $.body))),
 
     header: ($) => repeat1($._header_line),
     header_delimiter: () => "---",
@@ -50,7 +50,6 @@ export default grammar({
         $.language_directive,
         $.metadata_line,
         $.parameter_line,
-        $.dynamics_line,
         $.solfa_line,
         $.lyric_line,
         $._linebreak,

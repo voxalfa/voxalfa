@@ -130,16 +130,18 @@ impl ParseNode for TimeSignature {
     fn parse_node(context: &mut Parser, node: Node<'_>, scope_id: ScopeId) -> Option<Self> {
         let value = context.parse_node::<Vec<SymbolRef<usize>>>(node, scope_id)?;
 
-        let top = value[0].value as u8;
-        let bottom = value[1].value as u8;
-
-        if value.len() != 2 || top == 0 || bottom == 0 {
+        if let [top, bottom] = value.as_slice()
+            && top.value + bottom.value > 1
+        {
+            Some(TimeSignature {
+                top: top.value as u8,
+                bottom: bottom.value as u8,
+            })
+        } else {
             context
                 .reporter
                 .error(node.range(), DiagnosticKind::InvalidTimeSignature);
             None
-        } else {
-            Some(TimeSignature { top, bottom })
         }
     }
 

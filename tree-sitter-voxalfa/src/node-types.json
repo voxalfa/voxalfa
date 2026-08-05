@@ -32,21 +32,6 @@
     "fields": {}
   },
   {
-    "type": "dynamics_line",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "parameter_assignment",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "float",
     "named": true,
     "fields": {},
@@ -323,16 +308,21 @@
   {
     "type": "metadata_line",
     "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "parameter_assignment",
-          "named": true
-        }
-      ]
+    "fields": {
+      "assignments": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "parameter_assignment",
+            "named": true
+          },
+          {
+            "type": "|",
+            "named": false
+          }
+        ]
+      }
     }
   },
   {
@@ -573,7 +563,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "body",
@@ -618,10 +608,6 @@
       "multiple": true,
       "required": false,
       "types": [
-        {
-          "type": "dynamics_line",
-          "named": true
-        },
         {
           "type": "language_directive",
           "named": true
@@ -816,10 +802,6 @@
   },
   {
     "type": "]",
-    "named": false
-  },
-  {
-    "type": "^",
     "named": false
   },
   {

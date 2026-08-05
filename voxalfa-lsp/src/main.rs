@@ -17,13 +17,12 @@ use voxalfa_formatter::Formatter;
 use voxalfa_validator::MultiStepValidator;
 
 use crate::{
-    completion::voice_measure_snippets,
+    completion::get_completion_context,
     state::{Document, ServerState},
 };
 
 impl LanguageServer for ServerState {
     type Error = ResponseError;
-
     type NotifyResult = ControlFlow<async_lsp::Result<()>>;
 
     fn initialize(
@@ -39,7 +38,7 @@ impl LanguageServer for ServerState {
                 document_formatting_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(false),
-                    trigger_characters: Some(vec!["[".to_string(), "|".to_string()]),
+                    trigger_characters: Some(vec!["{".to_string()]),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -85,12 +84,20 @@ impl LanguageServer for ServerState {
 
     fn completion(
         &mut self,
-        _params: CompletionParams,
+        params: CompletionParams,
     ) -> BoxFuture<'static, Result<Option<CompletionResponse>, Self::Error>> {
-        let items = voice_measure_snippets();
-        let result = CompletionResponse::Array(items);
+        let uri = params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+        let line = position.line as usize;
+        let column = position.character as usize;
 
-        Box::pin(async { Ok(result.into()) })
+        let result = self
+            .documents
+            .get(&uri)
+            .and_then(|d| get_completion_context(d, line, column))
+            .map(|c| CompletionResponse::Array(c.completion_items()));
+
+        Box::pin(async move { Ok(result) })
     }
 
     fn hover(
@@ -112,6 +119,10 @@ impl LanguageServer for ServerState {
         let uri = params.text_document.uri;
 
         let edits = self.documents.get(&uri).and_then(|doc| {
+            if doc.data.has_error() {
+                return None;
+            }
+
             let formatter = Formatter::new(&doc.data);
             let formatted_text = formatter.format_to_string().ok()?;
             let line_count = doc.source.lines().count().saturating_sub(1);
@@ -124,7 +135,7 @@ impl LanguageServer for ServerState {
 
             Some(vec![TextEdit {
                 range: full_range,
-                new_text: formatted_text.to_string(),
+                new_text: formatted_text.trim_end().to_string(), // FIXME
             }])
         });
 

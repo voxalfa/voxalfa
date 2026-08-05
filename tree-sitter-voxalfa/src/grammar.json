@@ -18,15 +18,20 @@
           ]
         },
         {
-          "type": "SYMBOL",
-          "name": "header_delimiter"
-        },
-        {
           "type": "CHOICE",
           "members": [
             {
-              "type": "SYMBOL",
-              "name": "body"
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "header_delimiter"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "body"
+                }
+              ]
             },
             {
               "type": "BLANK"
@@ -174,10 +179,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "dynamics_line"
-        },
-        {
-          "type": "SYMBOL",
           "name": "solfa_line"
         },
         {
@@ -218,29 +219,33 @@
             ]
           },
           {
-            "type": "SEQ",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "parameter_assignment"
-              },
-              {
-                "type": "REPEAT",
-                "content": {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "_kv_separator"
-                    },
-                    {
-                      "type": "SYMBOL",
-                      "name": "parameter_assignment"
-                    }
-                  ]
+            "type": "FIELD",
+            "name": "assignments",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "parameter_assignment"
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "SEQ",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "_kv_separator"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "parameter_assignment"
+                      }
+                    ]
+                  }
                 }
-              }
-            ]
+              ]
+            }
           }
         ]
       }

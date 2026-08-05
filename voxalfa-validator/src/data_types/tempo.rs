@@ -65,7 +65,7 @@ impl TryFrom<String> for StaticTempo {
     type Error = ();
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.to_lowercase().as_str() {
+        match value.as_str() {
             "grave" => Ok(Self::Grave),
             "largo" => Ok(Self::Largo),
             "adagio" => Ok(Self::Adagio),
