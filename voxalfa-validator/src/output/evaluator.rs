@@ -76,7 +76,7 @@ impl TimelineEvaluator {
         }
     }
 
-    pub fn take_pedning_touch(&mut self) -> Option<Touch> {
+    pub fn take_pending_touch(&mut self) -> Option<Touch> {
         self.pending_touch.take()
     }
 

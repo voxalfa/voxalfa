@@ -17,7 +17,7 @@ use crate::{
     ir::{
         BodyIR, PulseView,
         lyrics::{LyricColumnIR, LyricLineIR, LyricPrimitive, LyricStringIR},
-        solfa::PulseColumnKind,
+        solfa::{PulseColumn, PulseColumnKind},
     },
     output::{
         event::TimelineMap,
@@ -25,6 +25,8 @@ use crate::{
         voice::{NoteContext, VoiceLine},
     },
 };
+
+pub const MIN_COLUMN_WIDTH: usize = 4;
 
 #[derive(Debug, Default)]
 pub struct FinalOutput {
@@ -51,7 +53,7 @@ impl FinalOutput {
         let max_note_width = self.resolve_max_note_width(render_type);
         let max_lyrics_width = self.resolve_max_lyrics_width(render_type);
 
-        max_lyrics_width.max(max_note_width).max(3)
+        max_lyrics_width.max(max_note_width).max(MIN_COLUMN_WIDTH)
     }
 
     pub fn resolve_column_factor(&self) -> usize {
@@ -253,16 +255,20 @@ impl FinalOutput {
             .flat_map(|s| &s.solfa)
             .flat_map(|s| &s.pulses)
             .flat_map(|p| &p.columns)
-            .map(|c| self.resolve_note_width(&c.kind, render_type))
+            .map(|c| self.resolve_note_width(c, render_type))
             .max()
             .unwrap_or(1)
     }
 
-    fn resolve_note_width(&self, column: &PulseColumnKind, render_type: RenderType) -> usize {
-        match column {
+    fn resolve_note_width(&self, column: &PulseColumn, render_type: RenderType) -> usize {
+        let base = match column.kind {
             PulseColumnKind::Note(note) => note.width(render_type),
             PulseColumnKind::ProlongedNote => 1,
             PulseColumnKind::EmptyNote => 1,
-        }
+        };
+
+        let extra = column.underline.right ^ column.underline.left;
+
+        base + extra as usize
     }
 }

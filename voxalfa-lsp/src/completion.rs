@@ -69,8 +69,13 @@ impl CompletionContext {
             CompletionContext::SectionParams => self.section_params_snippets(),
             CompletionContext::Section(context) => {
                 vec![
+                    context.build_section_snippet(1, "1 measure"),
+                    context.build_section_snippet(2, "2 measures"),
+                    context.build_section_snippet(3, "3 measures"),
+                    self.snippet_item("verse 1", "Verse 1", "[1] ${0}"),
+                    self.snippet_item("verse 2", "Verse 2", "[2] ${0}"),
+                    self.snippet_item("verse 3", "Verse 3", "[3] ${0}"),
                     self.snippet_item("parameters ($)", "Section Parameters", "[\\$] ${0}"),
-                    context.measure_snippet(),
                 ]
             }
             CompletionContext::Builtin(builtin) => builtin.completion_items(),
@@ -113,6 +118,7 @@ impl CompletionContext {
             ("key", "key", "key={${1:C}}"),
             ("jump", "jump", "jump={${1:DS}}"),
             ("mark", "mark", "mark={${1:S}}"),
+            ("dynamics", "dynamic", "dynamics={${1:f}}"),
             ("touches", "{touch...}", "touches={${1:stc}}"),
             ("repeat", "integer", "repeat={${1:2}}"),
         ];
@@ -240,7 +246,7 @@ pub struct SectionContext {
 }
 
 impl SectionContext {
-    fn measure_snippet(&self) -> CompletionItem {
+    fn build_section_snippet(&self, measures: usize, label_suffix: &str) -> CompletionItem {
         let mut snippet = String::new();
         let mut tab_stop = 1;
 
@@ -251,46 +257,40 @@ impl SectionContext {
 
             snippet.push_str(&format!("[{voice:?}] |"));
 
-            for pos in 0..self.time.top as usize {
-                snippet.push_str(&format!("${{{tab_stop}:{note}}}"));
-                tab_stop += 1;
+            for m in 0..measures {
+                for pos in 0..self.time.top as usize {
+                    snippet.push_str(&format!("${{{tab_stop}:{note}}}"));
+                    tab_stop += 1;
 
-                if pos < (self.time.top as usize - 1) {
-                    let next_accent = self.time.get_accent(pos + 1);
-                    snippet.push_str(&format!(" {next_accent}"));
+                    if pos < (self.time.top as usize - 1) {
+                        let next_accent = self.time.get_accent(pos + 1);
+                        snippet.push_str(&format!(" {next_accent}"));
+                    }
+                }
+
+                if m < measures - 1 {
+                    snippet.push_str(" | ");
+                } else {
+                    snippet.push_str(" ||\n");
                 }
             }
-
-            snippet.push_str(" ||\n");
         }
 
         snippet.push('\n');
 
         for verse in 0..self.verses {
-            snippet.push_str(&format!("[{}] ", verse + 1));
-
-            for pos in 0..self.time.top as usize {
-                snippet.push_str(&format!("${{{tab_stop}:~}}"));
-                tab_stop += 1;
-
-                if pos < (self.time.top as usize - 1) {
-                    snippet.push(' ');
-                }
-            }
-
-            if verse < self.verses {
-                snippet.push('\n');
-            }
+            snippet.push_str(&format!("[{}] ${{{tab_stop}:~}}\n", verse + 1));
+            tab_stop += 1;
         }
 
         let voice_labels: Vec<String> = self.voices.iter().map(|v| format!("{v:?}")).collect();
-        let label = format!("measure ({})", voice_labels.join(""));
 
         CompletionItem {
-            label: label.clone(),
+            label: format!("section ({label_suffix}, {})", voice_labels.join("")),
             kind: Some(CompletionItemKind::SNIPPET),
             detail: Some(format!(
-                "Insert voices and lyrics measure pattern for {} voice(s), {} verse(s) in {}/{}",
+                "Insert {} pattern for {} voice(s), {} verse(s) in {}/{}",
+                label_suffix,
                 self.voices.len(),
                 self.verses,
                 self.time.top,
@@ -323,7 +323,7 @@ fn get_builtin_context(target: Node<'_>, source: &str) -> Option<Builtin> {
 fn get_section_context(document: &Document, line: usize) -> Option<SectionContext> {
     let header = &document.data.header;
     let voices = header.params.voices.clone()?.value;
-    let verses = header.metadata.verses.clone()?.value;
+    let verses = header.metadata.verses.clone().map(|v| v.value);
     let mut time = header.params.time.clone()?.value;
 
     for section in &document.data.ir.sections {
@@ -340,7 +340,7 @@ fn get_section_context(document: &Document, line: usize) -> Option<SectionContex
 
     Some(SectionContext {
         time,
-        verses: verses as u8,
+        verses: verses.unwrap_or_default() as u8,
         voices: voices.iter().map(|v| v.value).collect(),
     })
 }

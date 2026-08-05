@@ -308,21 +308,16 @@
   {
     "type": "metadata_line",
     "named": true,
-    "fields": {
-      "assignments": {
-        "multiple": true,
-        "required": true,
-        "types": [
-          {
-            "type": "parameter_assignment",
-            "named": true
-          },
-          {
-            "type": "|",
-            "named": false
-          }
-        ]
-      }
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "parameter_assignment",
+          "named": true
+        }
+      ]
     }
   },
   {

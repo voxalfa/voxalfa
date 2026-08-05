@@ -219,33 +219,29 @@
             ]
           },
           {
-            "type": "FIELD",
-            "name": "assignments",
-            "content": {
-              "type": "SEQ",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "parameter_assignment"
-                },
-                {
-                  "type": "REPEAT",
-                  "content": {
-                    "type": "SEQ",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "_kv_separator"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "parameter_assignment"
-                      }
-                    ]
-                  }
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "parameter_assignment"
+              },
+              {
+                "type": "REPEAT",
+                "content": {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "_kv_separator"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "parameter_assignment"
+                    }
+                  ]
                 }
-              ]
-            }
+              }
+            ]
           }
         ]
       }

@@ -107,7 +107,7 @@ impl ConverterTask {
         ctx: &NoteContext<'_>,
         voice_line: &VoiceLine,
     ) -> Result<()> {
-        let touch = self.context.take_pedning_touch();
+        let touch = self.context.take_pending_touch();
 
         // avoid micro-pauses when followed by rest
         let micro_pause = voice_line
@@ -378,13 +378,13 @@ impl ConverterTask {
         micro_pause: bool,
     ) -> (u32, u32) {
         match touch {
-            _ if self.slur || !micro_pause => (duration, 0),
             Some(Touch::Staccato) => {
                 let play_ticks = duration / 2;
                 let rest_ticks = duration - play_ticks;
                 (play_ticks, rest_ticks)
             }
-            Some(Touch::Fermata) => (duration + (duration / 2), 0),
+            Some(Touch::Fermata) => (duration + (duration / 2), duration / 5),
+            _ if self.slur || !micro_pause => (duration, 0),
             _ => {
                 // apply micro-pauses for a less robotic result
                 let rest_ticks = (duration / 10).min(MAX_PAUSE);
