@@ -575,7 +575,11 @@ impl<'a> Parser<'a> {
         parent_sid: ScopeId,
         directives: &mut HeaderDirective,
     ) {
-        if let Some(data) = self.resolve_assignment_data(node, parent_sid) {
+        let sid = self
+            .tree
+            .add_scope(ScopeKind::DirectiveLine, node.range(), parent_sid.into());
+
+        if let Some(data) = self.resolve_assignment_data(node, sid) {
             directives.assign_field(data, self);
         }
 
@@ -608,12 +612,14 @@ impl<'a> Parser<'a> {
                 .add_scope(ScopeKind::AssignmentLine, node.range(), parent_sid.into());
 
         for child in node.named_children(&mut node.walk()) {
-            let scope_id =
-                self.tree
-                    .add_scope(ScopeKind::Assignment, child.range(), root_sid.into());
+            if child.kind_id() == node_types::PARAMETER_ASSIGNMENT {
+                let scope_id =
+                    self.tree
+                        .add_scope(ScopeKind::Assignment, child.range(), root_sid.into());
 
-            if let Some(source) = self.resolve_assignment_data(child, scope_id) {
-                params.assign_field(source, self);
+                if let Some(source) = self.resolve_assignment_data(child, scope_id) {
+                    params.assign_field(source, self);
+                }
             }
         }
     }

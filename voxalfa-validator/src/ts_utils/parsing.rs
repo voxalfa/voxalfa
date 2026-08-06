@@ -159,11 +159,11 @@ where
     T: ParseNode + ToPrimitve,
 {
     fn parse_node(context: &mut Parser, node: Node<'_>, parent_sid: ScopeId) -> Option<Self> {
-        let scope_id = context
-            .tree
-            .add_scope(ScopeKind::List, node.range(), Some(parent_sid));
-
         if node.kind_id() == node_types::LIST {
+            let scope_id = context
+                .tree
+                .add_scope(ScopeKind::List, node.range(), Some(parent_sid));
+
             let mut result = Vec::new();
 
             for child in node.named_children(&mut node.walk()) {
@@ -181,7 +181,7 @@ where
             let value = context.parse_node::<T>(node, parent_sid)?;
             let sid = context
                 .tree
-                .add_symbol(T::symbol_kind(), node.range(), scope_id);
+                .add_symbol(T::symbol_kind(), node.range(), parent_sid);
 
             Some(vec![SymbolRef { sid, value }])
         }

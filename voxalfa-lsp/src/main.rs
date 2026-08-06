@@ -4,6 +4,7 @@ mod diagnostics;
 mod docs;
 mod parameters;
 mod state;
+mod symbols;
 mod utils;
 
 use std::ops::ControlFlow;
@@ -23,6 +24,7 @@ use crate::{
     completion::get_completion_context,
     docs::create_documentation,
     state::{Document, ServerState},
+    symbols::resolve_document_symbols,
     utils::{convert_position, convert_range},
 };
 
@@ -46,6 +48,7 @@ impl LanguageServer for ServerState {
                     ..Default::default()
                 }),
                 references_provider: Some(OneOf::Left(true)),
+                document_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
@@ -128,9 +131,17 @@ impl LanguageServer for ServerState {
 
     fn document_symbol(
         &mut self,
-        _params: DocumentSymbolParams,
+        params: DocumentSymbolParams,
     ) -> Response<Option<DocumentSymbolResponse>, Self::Error> {
-        todo!()
+        let uri = params.text_document.uri;
+
+        let response = self
+            .documents
+            .get(&uri)
+            .map(|d| &d.data.symbols)
+            .and_then(resolve_document_symbols);
+
+        Box::pin(async { Ok(response) })
     }
 
     fn definition(

@@ -109,6 +109,12 @@ pub enum ScopeKind {
     List,
 }
 
+impl ScopeKind {
+    pub fn is_hidden(&self) -> bool {
+        matches!(self, ScopeKind::DirectiveLine | ScopeKind::List)
+    }
+}
+
 #[derive(Debug)]
 pub struct Scope {
     pub range: Range,

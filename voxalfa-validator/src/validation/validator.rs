@@ -123,7 +123,7 @@ impl<'a> Validator<'a> {
         if let Some(verses) = &self.header.metadata.verses {
             let value = sub_section.lyrics.len();
 
-            if value != verses.value {
+            if value > 0 && value != verses.value {
                 let context_range = self.tree.get_symbol_range(verses.sid);
 
                 self.reporter.error(
@@ -277,16 +277,17 @@ impl<'a> Validator<'a> {
         let range = self.tree.get_scope_range(section.sid);
 
         if let Some(voices_def) = &self.header.params.voices {
-            let expected_len = voices_def.value.len();
-            let context_range = self.tree.get_symbol_range(voices_def.sid);
-
             let voices = section
                 .items
                 .iter()
                 .flat_map(|sub| sub.solfa.iter().map(|s| &s.voice))
                 .collect::<Vec<_>>();
 
-            if voices.len() != expected_len {
+            let current_len = voices.len();
+            let expected_len = voices_def.value.len();
+            let context_range = self.tree.get_symbol_range(voices_def.sid);
+
+            if current_len > 0 && current_len != expected_len {
                 self.reporter.error(
                     range,
                     DiagnosticKind::VoiceCountMismatch(expected_len, voices.len(), context_range),
