@@ -1,7 +1,10 @@
 use thiserror::Error;
 
 use crate::{
-    SUPPORTED_VERSION, ast::solfa::PulseAccent, data_types::Voice, ts_utils::range::Range,
+    SUPPORTED_VERSION,
+    ast::{solfa::PulseAccent, symbols::Primitive},
+    data_types::Voice,
+    ts_utils::range::Range,
 };
 
 #[derive(Debug, Clone)]
@@ -30,8 +33,8 @@ pub enum DiagnosticKind {
     UnknownParameter(String),
     #[error("expected {0}, got {1}")]
     ExpectedType(&'static str, &'static str),
-    #[error("invalid {0}")]
-    InvalidType(&'static str),
+    #[error("invalid {0:?}")]
+    InvalidType(Primitive),
     #[error("invalid time signature, expected two non-null integers")]
     InvalidTimeSignature,
     #[error("expected a range for timestamp")]

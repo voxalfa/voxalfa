@@ -1,24 +1,45 @@
+use std::collections::HashMap;
+
 use crate::{
     ast::parser::Parser,
-    ts_utils::{range::Range, types::AssignmentData},
+    data_types::Voice,
+    ts_utils::{
+        range::{Position, Range, RangeUtil},
+        types::AssignmentData,
+    },
 };
+
+pub const ROOT_SCOPE_ID: usize = 0;
 
 pub type SymbolId = usize;
 pub type ScopeId = usize;
 pub type LyricStringId = usize;
 pub type Comment = SymbolRef<String>;
+pub type Field<T> = Option<SymbolRef<T>>;
 
-pub const ROOT_SCOPE_ID: usize = 0;
+#[derive(Debug, Clone)]
+pub struct SymbolRef<T> {
+    pub sid: SymbolId,
+    pub value: T,
+}
+
+pub trait FieldAssign {
+    fn assign_field(&mut self, data: AssignmentData, context: &mut Parser);
+}
 
 #[derive(Debug)]
 pub enum SymbolKind {
     Key(String),
     Value(Value),
-    Comment,
+    Voice(Voice),
     Token,
 }
 
 impl SymbolKind {
+    pub fn primitive_value(primitive: Primitive) -> Self {
+        SymbolKind::Value(Value::Primitive(primitive))
+    }
+
     pub fn as_key_unchecked(&self) -> &str {
         match self {
             SymbolKind::Key(key) => key,
@@ -27,14 +48,40 @@ impl SymbolKind {
     }
 }
 
-#[derive(Debug)]
-pub enum Value {
+#[derive(Debug, Clone, Copy)]
+pub enum Primitive {
     String,
     Integer,
     Float,
     Boolean,
-    Builtin,
-    List,
+    Key,
+    Mark,
+    Dynamic,
+    Jump,
+    Tempo,
+    Voice,
+    Touch,
+}
+
+impl std::fmt::Display for Primitive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", format!("{self:?}").to_lowercase())
+    }
+}
+
+#[derive(Debug)]
+pub enum Value {
+    Primitive(Primitive),
+    List(Primitive),
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Primitive(primitive) => write!(f, "{primitive}"),
+            Value::List(primitive) => write!(f, "{{{primitive}...}}"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -42,12 +89,6 @@ pub struct Symbol {
     pub range: Range,
     pub kind: SymbolKind,
     pub scope: ScopeId,
-}
-
-#[derive(Debug, Clone)]
-pub struct SymbolRef<T> {
-    pub sid: SymbolId,
-    pub value: T,
 }
 
 #[derive(Debug)]
@@ -78,11 +119,18 @@ pub struct Scope {
 }
 
 #[derive(Debug, Default)]
+pub struct SymbolCache {
+    key_refs: HashMap<String, Vec<SymbolId>>,
+    voice_refs: HashMap<Voice, Vec<SymbolId>>,
+    comments: Vec<Comment>,
+    lyrics: Vec<String>,
+}
+
+#[derive(Debug, Default)]
 pub struct SymbolTree {
-    pub symbols: Vec<Symbol>,
-    pub scopes: Vec<Scope>,
-    pub comments: Vec<Comment>,
-    pub lyrics: Vec<String>,
+    symbols: Vec<Symbol>,
+    scopes: Vec<Scope>,
+    cache: SymbolCache,
 }
 
 impl SymbolTree {
@@ -146,20 +194,66 @@ impl SymbolTree {
         &self.scopes[scope_id]
     }
 
+    pub fn store_comment(&mut self, comment: SymbolRef<String>) {
+        self.cache.comments.push(comment);
+    }
+
+    pub fn get_comments(&self) -> &[SymbolRef<String>] {
+        &self.cache.comments
+    }
+
     pub fn store_lyric_chunk(&mut self, chunk: String) -> LyricStringId {
-        self.lyrics.push(chunk);
-        self.lyrics.len().saturating_sub(1)
+        self.cache.lyrics.push(chunk);
+        self.cache.lyrics.len().saturating_sub(1)
     }
 
     pub fn get_lyric_chunk(&self, id: LyricStringId) -> &str {
-        &self.lyrics[id]
+        &self.cache.lyrics[id]
     }
-}
 
-pub type Field<T> = Option<SymbolRef<T>>;
+    pub fn store_key_ref(&mut self, key: String, sid: SymbolId) {
+        self.cache.key_refs.entry(key).or_default().push(sid);
+    }
 
-pub trait FieldAssign {
-    fn assign_field(&mut self, data: AssignmentData, context: &mut Parser);
+    pub fn store_voice_ref(&mut self, voice: Voice, sid: SymbolId) {
+        self.cache.voice_refs.entry(voice).or_default().push(sid);
+    }
+
+    pub fn get_symbol_refs(&self, position: &Position) -> Option<Vec<Range>> {
+        let symbol = self.query_symbol(position)?;
+
+        let symbols = match &symbol.kind {
+            SymbolKind::Key(key) => self.cache.key_refs.get(key),
+            SymbolKind::Voice(voice) => self.cache.voice_refs.get(voice),
+            _ => None,
+        };
+
+        symbols.map(|v| v.iter().map(|&sid| self.symbols[sid].range).collect())
+    }
+
+    pub fn query_symbol(&self, position: &Position) -> Option<&Symbol> {
+        let scope_id = self.query_scope(position);
+
+        self.scopes[scope_id]
+            .symbols
+            .iter()
+            .find(|&sid| self.symbols[*sid].range.contains(position))
+            .map(|&sid| &self.symbols[sid])
+    }
+
+    pub fn query_scope(&self, position: &Position) -> ScopeId {
+        let mut current_id = ROOT_SCOPE_ID;
+
+        while let Some(&child_id) = self.scopes[current_id]
+            .children
+            .iter()
+            .find(|&&cid| self.scopes[cid].range.contains(position))
+        {
+            current_id = child_id;
+        }
+
+        current_id
+    }
 }
 
 #[derive(Debug)]

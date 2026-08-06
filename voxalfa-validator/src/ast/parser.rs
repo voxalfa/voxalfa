@@ -189,7 +189,7 @@ impl<'a> Parser<'a> {
         for child in node.named_children(&mut node.walk()) {
             match child.kind_id() {
                 node_types::PARAMETER_LINE => {
-                    self.handle_global_params_node(child, parent_sid, section);
+                    self.handle_global_params_node(child, sid, section);
                     self.handle_local_params_node(child, sid, &mut result.params)
                 }
                 node_types::SOLFA_LINE => self.handle_solfa_node(child, sid, &mut result),
@@ -265,11 +265,13 @@ impl<'a> Parser<'a> {
         let voice_str = self.resolve_node_string(voice_node)?;
         let voice = Voice::try_from(voice_str.clone());
 
-        let sid = self
-            .tree
-            .add_symbol(SymbolKind::Token, voice_node.range(), parent_sid);
-
         if let Ok(value) = voice {
+            let sid =
+                self.tree
+                    .add_symbol(SymbolKind::Voice(value), voice_node.range(), parent_sid);
+
+            self.tree.store_voice_ref(value, sid);
+
             Some(SymbolRef { sid, value })
         } else {
             self.reporter
@@ -560,10 +562,10 @@ impl<'a> Parser<'a> {
 
     fn handle_comment_node(&mut self, node: Node<'_>) {
         if let Some(comment) = self.resolve_node_string(node) {
-            let sid = self.tree.add_symbol(SymbolKind::Comment, node.range(), 0);
+            let sid = self.tree.add_symbol(SymbolKind::Token, node.range(), 0);
             let value = comment.trim().to_string();
 
-            self.tree.comments.push(Comment { sid, value });
+            self.tree.store_comment(Comment { sid, value });
         }
     }
 
@@ -676,18 +678,22 @@ impl<'a> Parser<'a> {
             );
         }
 
-        let _ = self.tree.add_symbol(
-            SymbolKind::Key(data.key_name.clone()),
-            data.key_range,
-            data.scope_id,
-        );
+        let value = self.parse_node::<T>(data.value_node, data.scope_id);
 
-        let sid = self
-            .tree
-            .add_symbol(T::symbol_kind(), data.value_range, data.scope_id);
+        if let Some(value) = value {
+            let key_sid = self.tree.add_symbol(
+                SymbolKind::Key(data.key_name.clone()),
+                data.key_range,
+                data.scope_id,
+            );
 
-        *field = self
-            .parse_node(data.value_node, data.scope_id)
-            .map(|value| SymbolRef { sid, value });
+            self.tree.store_key_ref(data.key_name.clone(), key_sid);
+
+            let sid = self
+                .tree
+                .add_symbol(T::symbol_kind(), data.value_range, data.scope_id);
+
+            *field = Some(SymbolRef { sid, value });
+        }
     }
 }

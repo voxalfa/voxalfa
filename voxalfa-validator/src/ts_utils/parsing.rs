@@ -4,19 +4,23 @@ use crate::{
     ast::{
         parser::Parser,
         solfa::{BaseNote, Note, NoteVariation},
-        symbols::{ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
+        symbols::{Primitive, ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
     },
     data_types::{
         Dynamic, ExtendedTempo, Jump, Key, Mark, StaticTempo, TimeSignature, TimedValue, Touch,
         Voice,
     },
     diagnostics::types::DiagnosticKind,
-    ts_utils::generated::node_types,
+    ts_utils::{generated::node_types, primitives::ToPrimitve},
 };
 
 pub trait ParseNode: Sized {
     fn parse_node(context: &mut Parser, node: Node<'_>, _scope_id: ScopeId) -> Option<Self>;
     fn symbol_kind() -> SymbolKind;
+}
+
+pub trait ParseBuiltin: TryFrom<String> {
+    const KIND: Primitive;
 }
 
 impl ParseNode for usize {
@@ -33,7 +37,7 @@ impl ParseNode for usize {
 
             context
                 .reporter
-                .error(range, DiagnosticKind::InvalidType("integer"));
+                .error(range, DiagnosticKind::InvalidType(Primitive::Integer));
         } else {
             context
                 .reporter
@@ -44,7 +48,7 @@ impl ParseNode for usize {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Integer)
+        SymbolKind::primitive_value(Primitive::Integer)
     }
 }
 
@@ -62,7 +66,7 @@ impl ParseNode for f32 {
 
             context
                 .reporter
-                .error(range, DiagnosticKind::InvalidType("float"));
+                .error(range, DiagnosticKind::InvalidType(Primitive::Float));
         } else {
             context
                 .reporter
@@ -73,7 +77,7 @@ impl ParseNode for f32 {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Float)
+        SymbolKind::primitive_value(Primitive::Float)
     }
 }
 
@@ -98,7 +102,7 @@ impl ParseNode for String {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::String)
+        SymbolKind::primitive_value(Primitive::String)
     }
 }
 
@@ -122,7 +126,7 @@ impl ParseNode for bool {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Boolean)
+        SymbolKind::primitive_value(Primitive::Boolean)
     }
 }
 
@@ -146,11 +150,14 @@ impl ParseNode for TimeSignature {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::List)
+        SymbolKind::Value(Value::List(Primitive::Integer))
     }
 }
 
-impl<T: ParseNode> ParseNode for Vec<SymbolRef<T>> {
+impl<T> ParseNode for Vec<SymbolRef<T>>
+where
+    T: ParseNode + ToPrimitve,
+{
     fn parse_node(context: &mut Parser, node: Node<'_>, parent_sid: ScopeId) -> Option<Self> {
         let scope_id = context
             .tree
@@ -171,7 +178,7 @@ impl<T: ParseNode> ParseNode for Vec<SymbolRef<T>> {
 
             Some(result)
         } else {
-            let value = context.parse_node(node, parent_sid)?;
+            let value = context.parse_node::<T>(node, parent_sid)?;
             let sid = context
                 .tree
                 .add_symbol(T::symbol_kind(), node.range(), scope_id);
@@ -181,7 +188,7 @@ impl<T: ParseNode> ParseNode for Vec<SymbolRef<T>> {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::List)
+        SymbolKind::Value(Value::List(T::to_primitive()))
     }
 }
 
@@ -212,7 +219,7 @@ impl ParseNode for Note {
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Builtin)
+        SymbolKind::Token
     }
 }
 
@@ -240,44 +247,40 @@ impl<T: ParseNode> ParseNode for TimedValue<T> {
     }
 
     fn symbol_kind() -> SymbolKind {
-        T::symbol_kind()
+        SymbolKind::Token
     }
 }
 
-pub trait ParseBuiltin: TryFrom<String> {
-    const TYPE_NAME: &'static str;
-}
-
 impl ParseBuiltin for Dynamic {
-    const TYPE_NAME: &'static str = "dynamic";
+    const KIND: Primitive = Primitive::Dynamic;
 }
 
 impl ParseBuiltin for Key {
-    const TYPE_NAME: &'static str = "key";
+    const KIND: Primitive = Primitive::Key;
 }
 
 impl ParseBuiltin for Voice {
-    const TYPE_NAME: &'static str = "voice";
+    const KIND: Primitive = Primitive::Voice;
 }
 
 impl ParseBuiltin for Jump {
-    const TYPE_NAME: &'static str = "jump";
+    const KIND: Primitive = Primitive::Jump;
 }
 
 impl ParseBuiltin for Mark {
-    const TYPE_NAME: &'static str = "mark";
+    const KIND: Primitive = Primitive::Mark;
 }
 
 impl ParseBuiltin for StaticTempo {
-    const TYPE_NAME: &'static str = "tempo";
+    const KIND: Primitive = Primitive::Tempo;
 }
 
 impl ParseBuiltin for ExtendedTempo {
-    const TYPE_NAME: &'static str = "tempo";
+    const KIND: Primitive = Primitive::Tempo;
 }
 
 impl ParseBuiltin for Touch {
-    const TYPE_NAME: &'static str = "touch";
+    const KIND: Primitive = Primitive::Touch;
 }
 
 impl<T> ParseNode for T
@@ -294,12 +297,12 @@ where
 
         context
             .reporter
-            .error(range, DiagnosticKind::InvalidType(T::TYPE_NAME));
+            .error(range, DiagnosticKind::InvalidType(Self::KIND));
 
         None
     }
 
     fn symbol_kind() -> SymbolKind {
-        SymbolKind::Value(Value::Builtin)
+        SymbolKind::primitive_value(Self::KIND)
     }
 }

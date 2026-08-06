@@ -1,5 +1,8 @@
+mod builtin;
 mod completion;
 mod diagnostics;
+mod docs;
+mod parameters;
 mod state;
 mod utils;
 
@@ -18,17 +21,18 @@ use voxalfa_validator::MultiStepValidator;
 
 use crate::{
     completion::get_completion_context,
+    docs::create_documentation,
     state::{Document, ServerState},
+    utils::{convert_position, convert_range},
 };
+
+type Response<T, E> = BoxFuture<'static, std::result::Result<T, E>>;
 
 impl LanguageServer for ServerState {
     type Error = ResponseError;
     type NotifyResult = ControlFlow<async_lsp::Result<()>>;
 
-    fn initialize(
-        &mut self,
-        _params: InitializeParams,
-    ) -> BoxFuture<'static, Result<InitializeResult, Self::Error>> {
+    fn initialize(&mut self, _params: InitializeParams) -> Response<InitializeResult, Self::Error> {
         let result = InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -41,6 +45,7 @@ impl LanguageServer for ServerState {
                     trigger_characters: Some(vec!["{".to_string()]),
                     ..Default::default()
                 }),
+                references_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
@@ -67,12 +72,12 @@ impl LanguageServer for ServerState {
     fn did_change(&mut self, params: DidChangeTextDocumentParams) -> Self::NotifyResult {
         let uri = params.text_document.uri;
 
-        if let Some(doc) = self.documents.get_mut(&uri) {
-            if let Some(change) = params.content_changes.into_iter().last() {
-                doc.data = self.validator.analyze(&change.text);
-                doc.source = change.text;
-                self.publish_diagnostics(uri);
-            }
+        if let Some(doc) = self.documents.get_mut(&uri)
+            && let Some(change) = params.content_changes.into_iter().last()
+        {
+            doc.data = self.validator.analyze(&change.text);
+            doc.source = change.text;
+            self.publish_diagnostics(uri);
         }
 
         ControlFlow::Continue(())
@@ -85,7 +90,7 @@ impl LanguageServer for ServerState {
     fn completion(
         &mut self,
         params: CompletionParams,
-    ) -> BoxFuture<'static, Result<Option<CompletionResponse>, Self::Error>> {
+    ) -> Response<Option<CompletionResponse>, Self::Error> {
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
         let line = position.line as usize;
@@ -100,22 +105,68 @@ impl LanguageServer for ServerState {
         Box::pin(async move { Ok(result) })
     }
 
-    fn hover(
-        &mut self,
-        _params: HoverParams,
-    ) -> BoxFuture<'static, Result<Option<Hover>, Self::Error>> {
-        Box::pin(async move {
-            Ok(Some(Hover {
-                contents: HoverContents::Scalar(MarkedString::String("TODO".to_string())),
+    fn hover(&mut self, params: HoverParams) -> Response<Option<Hover>, Self::Error> {
+        let uri = params.text_document_position_params.text_document.uri;
+        let raw_position = params.text_document_position_params.position;
+        let position = convert_position(raw_position);
+
+        let data = self
+            .documents
+            .get(&uri)
+            .and_then(|d| d.data.symbols.query_symbol(&position))
+            .and_then(create_documentation)
+            .map(|value| Hover {
+                contents: HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value,
+                }),
                 range: None,
-            }))
-        })
+            });
+
+        Box::pin(async move { Ok(data) })
+    }
+
+    fn document_symbol(
+        &mut self,
+        _params: DocumentSymbolParams,
+    ) -> Response<Option<DocumentSymbolResponse>, Self::Error> {
+        todo!()
+    }
+
+    fn definition(
+        &mut self,
+        _params: GotoDefinitionParams,
+    ) -> Response<Option<GotoDefinitionResponse>, Self::Error> {
+        todo!()
+    }
+
+    fn references(
+        &mut self,
+        params: ReferenceParams,
+    ) -> Response<Option<Vec<Location>>, Self::Error> {
+        let uri = params.text_document_position.text_document.uri;
+        let raw_position = params.text_document_position.position;
+        let position = convert_position(raw_position);
+
+        let references = self
+            .documents
+            .get(&uri)
+            .and_then(|doc| doc.data.symbols.get_symbol_refs(&position))
+            .map(|ranges| {
+                ranges
+                    .iter()
+                    .map(convert_range)
+                    .map(|r| Location::new(uri.clone(), r))
+                    .collect()
+            });
+
+        Box::pin(async { Ok(references) })
     }
 
     fn formatting(
         &mut self,
         params: DocumentFormattingParams,
-    ) -> BoxFuture<'static, Result<Option<Vec<TextEdit>>, Self::Error>> {
+    ) -> Response<Option<Vec<TextEdit>>, Self::Error> {
         let uri = params.text_document.uri;
 
         let edits = self.documents.get(&uri).and_then(|doc| {

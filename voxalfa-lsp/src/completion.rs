@@ -1,11 +1,11 @@
-use async_lsp::lsp_types::{CompletionItem, CompletionItemKind, InsertTextFormat};
+use async_lsp::lsp_types::{CompletionItem, CompletionItemKind, Documentation, InsertTextFormat};
 use tree_sitter::{Node, Point};
 use voxalfa_validator::{
     data_types::{TimeSignature, Voice},
     ts_utils::generated::node_types,
 };
 
-use crate::state::Document;
+use crate::{builtin::*, parameters::*, state::Document};
 
 pub fn get_completion_context(
     document: &Document,
@@ -64,9 +64,9 @@ impl CompletionContext {
                 self.snippet_item("parameters ($)", "Initial Parameters", "[\\$] ${0}"),
                 self.snippet_item("metadata (#)", "Header metadata", "[#] ${0}"),
             ],
-            CompletionContext::Metadata => self.header_metadata_snippets(),
-            CompletionContext::InitialParams => self.initial_params_snippets(),
-            CompletionContext::SectionParams => self.section_params_snippets(),
+            CompletionContext::Metadata => self.build_param_snippets(HEADER_PARAMS),
+            CompletionContext::InitialParams => self.build_param_snippets(INITIAL_PARAMS),
+            CompletionContext::SectionParams => self.build_param_snippets(SECTION_PARAMS),
             CompletionContext::Section(context) => {
                 vec![
                     context.build_section_snippet(1, "1 measure"),
@@ -82,66 +82,16 @@ impl CompletionContext {
         }
     }
 
-    pub fn header_metadata_snippets(&self) -> Vec<CompletionItem> {
-        let properties = [
-            ("title", "string", "title=\"${1:value}\""),
-            ("author", "{string...}", "author={\"${1:value}\"}"),
-            ("composer", "{string...}", "composer={\"${1:value}\"}"),
-            ("verses", "integer", "verses={${1:1}}"),
-            ("meter", "{number...}", "meter={${1:4}}"),
-            ("description", "string", "description=\"${1:value}\""),
-            ("release", "integer", "release={${1:2026}}"),
-            ("language", "string", "language=\"${1:en}\""),
-            ("tags", "{string...}", "tags={\"${1:tag}\"}"),
-        ];
-
-        self.build_param_snippets(&properties, "Header metadata field")
-    }
-
-    pub fn initial_params_snippets(&self) -> Vec<CompletionItem> {
-        let properties = [
-            ("key", "key", "key={${1:C}}"),
-            ("time", "{integer,integer}", "time={${1:4},${2:4}}"),
-            ("tempo", "tempo | integer", "tempo={${1:allegro}}"),
-            ("voices", "{voice...}", "voices={${1:S}}"),
-        ];
-
-        self.build_param_snippets(&properties, "Initial parameter")
-    }
-
-    pub fn section_params_snippets(&self) -> Vec<CompletionItem> {
-        let properties = [
-            ("time", "{integer,integer}", "time={${1:4},${2:4}}"),
-            ("tempo", "tempo | integer", "tempo={${1:Allegro}}"),
-            ("label", "string", "label=\"${1:Section}\""),
-            ("ending", "integer", "ending={${1:1}}"),
-            ("key", "key", "key={${1:C}}"),
-            ("jump", "jump", "jump={${1:DS}}"),
-            ("mark", "mark", "mark={${1:S}}"),
-            ("dynamics", "dynamic", "dynamics={${1:f}}"),
-            ("touches", "{touch...}", "touches={${1:stc}}"),
-            ("repeat", "integer", "repeat={${1:2}}"),
-        ];
-
-        self.build_param_snippets(&properties, "Section parameter")
-    }
-
-    fn build_param_snippets(
-        &self,
-        properties: &[(&str, &str, &str)],
-        doc_label: &str,
-    ) -> Vec<CompletionItem> {
-        properties
+    fn build_param_snippets(&self, specs: &[ParamSpec]) -> Vec<CompletionItem> {
+        specs
             .iter()
-            .map(|&(name, type_str, snippet)| CompletionItem {
-                label: name.to_string(),
+            .map(|spec| CompletionItem {
+                label: spec.name.to_string(),
                 kind: Some(CompletionItemKind::PROPERTY),
-                detail: Some(format!("{name}: {type_str}")),
-                documentation: Some(async_lsp::lsp_types::Documentation::String(
-                    doc_label.to_string(),
-                )),
+                detail: Some(format!("{}: {}", spec.name, spec.type_str)),
+                documentation: Some(Documentation::String(spec.doc.to_string())),
                 insert_text_format: Some(InsertTextFormat::SNIPPET),
-                insert_text: Some(snippet.to_string()),
+                insert_text: Some(spec.snippet.to_string()),
                 ..Default::default()
             })
             .collect()
@@ -171,70 +121,30 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    fn completion_items(&self) -> Vec<CompletionItem> {
+    pub fn specs(&self) -> &'static [BuiltinValueSpec] {
         match self {
-            Builtin::Voice => [
-                ("S", "Soprano"),
-                ("A", "Alto"),
-                ("T", "Tenor"),
-                ("B", "Bass"),
-            ]
-            .iter()
-            .map(|(v, d)| self.value_item(v, Some(d)))
-            .collect(),
-            Builtin::Key => [
-                "C", "G", "D", "A", "E", "B", "F#", "F", "Bb", "Eb", "Ab", "Db", "Gb",
-            ]
-            .iter()
-            .map(|k| self.value_item(k, None))
-            .collect(),
-            Builtin::Tempo => [
-                ("grave", "Very slow and solemn"),
-                ("largo", "Slow and broad"),
-                ("adagio", "Slow and stately"),
-                ("andante", "At a walking pace"),
-                ("moderato", "At a moderate speed"),
-                ("allegro", "Fast, quickly, and bright"),
-                ("vivace", "Lively and fast"),
-                ("presto", "Very fast"),
-            ]
-            .iter()
-            .map(|(label, detail)| self.value_item(label, Some(detail)))
-            .collect(),
-            Builtin::Mark => ["S", "C", "TC", "F"]
-                .iter()
-                .map(|m| self.value_item(m, None))
-                .collect(),
-            Builtin::Touches => [("stc", "Staccato"), ("acc", "Accent"), ("frm", "Fermata")]
-                .iter()
-                .map(|(label, detail)| self.value_item(label, Some(detail)))
-                .collect(),
-            Builtin::Dynamics => ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sfz"]
-                .iter()
-                .map(|d| self.value_item(d, None))
-                .collect(),
-            Builtin::Jump => [
-                ("DS", "Dal Segno"),
-                ("DC", "Da Capo"),
-                ("DSC", "Dal Segno al Coda"),
-                ("DSF", "Dal Segno al Fine"),
-                ("DCC", "Da Capo al Coda"),
-                ("DCF", "Da Capo al Fine"),
-            ]
-            .iter()
-            .map(|(label, detail)| self.value_item(label, Some(detail)))
-            .collect(),
+            Builtin::Voice => VOICE_BUILTINS,
+            Builtin::Key => KEY_BUILTINS,
+            Builtin::Tempo => TEMPO_BUILTINS,
+            Builtin::Mark => MARK_BUILTINS,
+            Builtin::Touches => TOUCHES_BUILTINS,
+            Builtin::Dynamics => DYNAMICS_BUILTINS,
+            Builtin::Jump => JUMP_BUILTINS,
         }
     }
 
-    fn value_item(&self, label: &str, detail: Option<&str>) -> CompletionItem {
-        CompletionItem {
-            label: label.to_string(),
-            kind: Some(CompletionItemKind::ENUM_MEMBER),
-            detail: detail.map(|d| d.to_string()),
-            insert_text: Some(label.to_string()),
-            ..Default::default()
-        }
+    pub fn completion_items(&self) -> Vec<CompletionItem> {
+        self.specs()
+            .iter()
+            .map(|spec| CompletionItem {
+                label: spec.label.to_string(),
+                kind: Some(CompletionItemKind::ENUM_MEMBER),
+                detail: spec.detail.to_string().into(),
+                documentation: Some(Documentation::String(spec.doc.to_string())),
+                insert_text: Some(spec.label.to_string()),
+                ..Default::default()
+            })
+            .collect()
     }
 }
 

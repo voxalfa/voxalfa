@@ -191,7 +191,7 @@ impl FinalOutput {
 
     fn resolve_primitive_width(&self, s: &LyricPrimitive, render_type: RenderType) -> usize {
         let base_width = match (&s.string, render_type) {
-            (LyricStringIR::Reference(id), _) => self.symbols.lyrics[*id].chars().count(),
+            (LyricStringIR::Reference(id), _) => self.symbols.get_lyric_chunk(*id).chars().count(),
             (LyricStringIR::Special(_), RenderType::Text) => 4,
             (LyricStringIR::Special(_), RenderType::Image) => 1,
         };

@@ -327,7 +327,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_comments(&mut self) {
-        for comment in &self.source.symbols.comments {
+        for comment in self.source.symbols.get_comments() {
             let (line_id, scope, rank) = self.resolve_comment_position(comment);
             let trimmed = comment.value.trim_end();
 
