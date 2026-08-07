@@ -9,14 +9,6 @@ expression: output
 ---
 
 === DIAGNOSTICS ===
-error[E026]: 'voices' prameter has not been defined
- --> key_reassignment_error.vfa:5:1
-  |
- 1 | 
-   | - consider adding 'voice' metadata
- 5 | ---
-   | ^^^ error
-
 warning[E004]: reassignment of key 'title'
  --> key_reassignment_error.vfa:3:1
   |
@@ -24,3 +16,11 @@ warning[E004]: reassignment of key 'title'
    | --------------- 'title' has been assigned here
  3 | [#] title="bar"
    | ^^^^^^^^^^^^^^^ 'title' has been reassigned here
+
+error[E026]: 'voices' prameter has not been defined
+ --> key_reassignment_error.vfa:5:1
+  |
+ 1 | 
+   | - consider adding 'voice' metadata
+ 5 | ---
+   | ^^^ error

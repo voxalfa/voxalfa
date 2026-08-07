@@ -25,8 +25,7 @@ pub fn execute(params: FormatParams) -> Result<()> {
     for file in &files {
         let output = parse_file(&file.content)?;
 
-        // TODO: recoverable error implementation
-        if output.diagnostics.iter().any(|d| d.is_error()) {
+        if output.has_syntax_error() {
             cli_reporter.register_diagnostics(file, output.diagnostics);
         } else {
             let formatter = Formatter::new(&output);

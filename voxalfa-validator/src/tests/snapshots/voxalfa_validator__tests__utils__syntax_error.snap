@@ -9,6 +9,12 @@ expression: output
 ---
 
 === DIAGNOSTICS ===
+error[E001]: syntax error
+ --> syntax_error.vfa:2:1
+  |
+ 2 | [#] title="foo"
+   | ^^^^^^^^^^^^^^^ error
+
 error[E026]: 'voices' prameter has not been defined
  --> syntax_error.vfa:5:1
   |
@@ -16,9 +22,3 @@ error[E026]: 'voices' prameter has not been defined
    | - consider adding 'voice' metadata
  5 | ---
    | ^^^ error
-
-error[E001]: syntax error
- --> syntax_error.vfa:2:1
-  |
- 2 | [#] title="foo"
-   | ^^^^^^^^^^^^^^^ error

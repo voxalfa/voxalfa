@@ -212,6 +212,11 @@ impl Diagnostic {
     pub fn is_error(&self) -> bool {
         matches!(self.level, DiagnosticLevel::Error)
     }
+
+    pub fn is_syntactic(&self) -> bool {
+        matches!(self.stage, ReportStage::Parsing | ReportStage::IRBuild)
+            || matches!(self.kind, DiagnosticKind::ExpectedLyricJoin(_))
+    }
 }
 
 #[derive(Debug)]
@@ -220,9 +225,10 @@ pub struct DiagnosticRelatedInfo {
     pub range: Range,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ReportStage {
     Parsing,
     IRBuild,
     Validation,
+    IRValidation,
 }

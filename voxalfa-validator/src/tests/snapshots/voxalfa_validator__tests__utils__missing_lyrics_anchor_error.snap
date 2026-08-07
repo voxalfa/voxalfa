@@ -17,16 +17,16 @@ expression: output
 [1] do re mi fa
 
 === DIAGNOSTICS ===
+error[E020]: trailing operator, missing '...'
+ --> missing_lyrics_anchor_error.vfa:8:1
+  |
+ 8 | [1] do re mi fa\
+   | ^^^^^^^^^^^^^^^^ error
+
 error[E029]: missing lyrics operator and anchor
  --> missing_lyrics_anchor_error.vfa:8:1
   |
 10 | --
    | -- next section here
- 8 | [1] do re mi fa\
-   | ^^^^^^^^^^^^^^^^ error
-
-error[E020]: trailing operator, missing '...'
- --> missing_lyrics_anchor_error.vfa:8:1
-  |
  8 | [1] do re mi fa\
    | ^^^^^^^^^^^^^^^^ error

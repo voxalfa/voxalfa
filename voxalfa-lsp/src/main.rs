@@ -196,7 +196,7 @@ impl LanguageServer for ServerState {
         let uri = params.text_document.uri;
 
         let edits = self.documents.get(&uri).and_then(|doc| {
-            if doc.data.has_error() {
+            if doc.data.has_syntax_error() {
                 return None;
             }
 

@@ -28,12 +28,12 @@ pub struct IRBuilderOutput {
 }
 
 #[derive(Debug)]
-pub struct IRBuilder<'a> {
+pub struct IrBuilder<'a> {
     pub tree: &'a SymbolTree,
     pub reporter: DiagnosticReporter,
 }
 
-impl<'a> IRBuilder<'a> {
+impl<'a> IrBuilder<'a> {
     pub fn new(tree: &'a SymbolTree) -> Self {
         Self {
             tree,

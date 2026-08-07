@@ -49,6 +49,10 @@ impl FinalOutput {
         self.diagnostics.iter().any(|d| d.is_error())
     }
 
+    pub fn has_syntax_error(&self) -> bool {
+        self.diagnostics.iter().any(|d| d.is_syntactic())
+    }
+
     pub fn resolve_column_width(&self, render_type: RenderType) -> usize {
         let max_note_width = self.resolve_max_note_width(render_type);
         let max_lyrics_width = self.resolve_max_lyrics_width(render_type);
