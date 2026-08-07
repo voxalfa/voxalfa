@@ -4,17 +4,18 @@ mod definition;
 mod diagnostics;
 mod docs;
 mod parameters;
+mod rename;
 mod state;
 mod symbols;
 mod utils;
 
 use core::iter::Iterator;
-use std::ops::ControlFlow;
+use std::{collections::HashMap, ops::ControlFlow};
 
 use async_lsp::{
-    LanguageServer, MainLoop, ResponseError, client_monitor::ClientProcessMonitorLayer,
-    concurrency::ConcurrencyLayer, lsp_types::*, panic::CatchUnwindLayer, server::LifecycleLayer,
-    tracing::TracingLayer,
+    LanguageClient, LanguageServer, MainLoop, ResponseError,
+    client_monitor::ClientProcessMonitorLayer, concurrency::ConcurrencyLayer, lsp_types::*,
+    panic::CatchUnwindLayer, server::LifecycleLayer, tracing::TracingLayer,
 };
 use futures::future::BoxFuture;
 use tower::ServiceBuilder;
@@ -26,6 +27,7 @@ use crate::{
     completion::get_completion_context,
     definition::resolve_symbol_definition,
     docs::create_documentation,
+    rename::resolve_rename_edits,
     state::{Document, ServerState},
     symbols::resolve_document_symbols,
     utils::{convert_position, convert_range},
@@ -53,6 +55,7 @@ impl LanguageServer for ServerState {
                 references_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
                 definition_provider: Some(OneOf::Left(true)),
+                rename_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
@@ -214,6 +217,30 @@ impl LanguageServer for ServerState {
         });
 
         Box::pin(async { Ok(edits) })
+    }
+
+    fn rename(&mut self, params: RenameParams) -> Response<Option<WorkspaceEdit>, Self::Error> {
+        let uri = params.text_document_position.text_document.uri;
+        let raw_position = params.text_document_position.position;
+        let position = convert_position(raw_position);
+
+        let result = self
+            .documents
+            .get(&uri)
+            .and_then(|doc| resolve_rename_edits(params.new_name, position, &doc.data))
+            .map(|edits| WorkspaceEdit {
+                changes: Some(HashMap::from([(uri, edits)])),
+                ..Default::default()
+            });
+
+        if result.is_none() {
+            let _ = self.client.log_message(LogMessageParams {
+                typ: MessageType::ERROR,
+                message: "Failed to rename".to_string(),
+            });
+        }
+
+        Box::pin(async { Ok(result) })
     }
 
     fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Self::NotifyResult {

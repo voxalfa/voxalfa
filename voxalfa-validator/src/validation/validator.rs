@@ -227,16 +227,17 @@ impl<'a> Validator<'a> {
         for (time, sections) in groups {
             let mut voice_lines: BTreeMap<_, Vec<&Pulse>> = BTreeMap::new();
 
-            let solfa_lines = sections
-                .iter()
-                .flat_map(|section| &section.items)
-                .flat_map(|sub| &sub.solfa);
+            let mapped_pulses = sections.iter().flat_map(|section| {
+                section
+                    .items
+                    .iter()
+                    .flat_map(|item| &item.solfa)
+                    .map(|line| &line.pulses)
+                    .enumerate()
+            });
 
-            for line in solfa_lines {
-                voice_lines
-                    .entry(line.voice.value)
-                    .or_default()
-                    .extend(&line.pulses);
+            for (voice_id, pulses) in mapped_pulses {
+                voice_lines.entry(voice_id).or_default().extend(pulses);
             }
 
             for lines in voice_lines.values() {

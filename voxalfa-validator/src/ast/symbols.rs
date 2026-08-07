@@ -127,7 +127,7 @@ pub struct Scope {
 #[derive(Debug, Default)]
 pub struct SymbolCache {
     key_refs: HashMap<String, Vec<SymbolId>>,
-    voice_refs: HashMap<Voice, Vec<SymbolId>>,
+    voice_refs: HashMap<Voice, Vec<SymbolId>>, // FIXME: should be relative to index instead of voice
     comments: Vec<Comment>,
     lyrics: Vec<String>,
 }
@@ -269,7 +269,7 @@ impl SymbolTree {
         current_id
     }
 
-    fn find_voice_refs(&self, position: &Position) -> Option<&Vec<SymbolId>> {
+    pub fn find_voice_refs(&self, position: &Position) -> Option<&Vec<SymbolId>> {
         let voice = self.cache.voice_refs.iter().find_map(|(v, refs)| {
             refs.iter()
                 .any(|&sid| self.symbols[sid].range.contains(position))
