@@ -68,7 +68,6 @@ impl MultiStepValidator {
             symbols: parser_out.symbols,
             header: parser_out.header,
             ir: ir_builder_out.body,
-            delimiters: parser_out.delimiters,
             tree: None,
         }
     }

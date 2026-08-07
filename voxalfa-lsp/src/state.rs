@@ -5,7 +5,6 @@ use async_lsp::{
     lsp_types::{PublishDiagnosticsParams, Url},
     router::Router,
 };
-use tracing::error;
 use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
 
 use crate::diagnostics::convert_diagnostic;
@@ -47,7 +46,7 @@ impl ServerState {
             };
 
             if let Err(err) = self.client.publish_diagnostics(params) {
-                error!("{err}")
+                tracing::error!("{err}")
             }
         }
     }

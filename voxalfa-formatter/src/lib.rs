@@ -410,16 +410,18 @@ impl<'a> Formatter<'a> {
     }
 
     fn push_delimiter(&mut self) {
-        if let Some(delimiter) = self.source.delimiters.get(self.current_scope) {
+        let delimiters = self.source.symbols.get_delimiters();
+
+        if let Some(delimiter) = delimiters.get(self.current_scope) {
             self.partials.push(PartialLine {
                 scope: self.current_scope,
                 rank: LineRank::Delimiter,
-                line_id: delimiter.line,
+                line_id: delimiter.range.line(),
                 content: delimiter.kind.to_string(),
                 index: self.partials.len(),
             });
 
-            self.scope_bounds.push(delimiter.line);
+            self.scope_bounds.push(delimiter.range.line());
             self.current_scope += 1;
         }
     }

@@ -8,10 +8,7 @@ pub mod voice;
 use tree_sitter::Tree;
 
 use crate::{
-    ast::{
-        header::Header,
-        symbols::{Delimiter, SymbolTree},
-    },
+    ast::{header::Header, symbols::SymbolTree},
     data_types::Voice,
     diagnostics::types::Diagnostic,
     ir::{
@@ -36,7 +33,6 @@ pub struct FinalOutput {
     pub ir: BodyIR,
     pub diagnostics: Vec<Diagnostic>,
     pub timelines: TimelineMap,
-    pub delimiters: Vec<Delimiter>,
 }
 
 impl FinalOutput {

@@ -13,8 +13,8 @@ use crate::{
         },
         solfa::{Pulse, PulseAccent, PulseToken, PulseTokenKind, SolfaLine},
         symbols::{
-            Comment, Delimiter, DelimiterKind, Field, FieldAssign, ROOT_SCOPE_ID, ScopeId,
-            ScopeKind, SymbolKind, SymbolRef, SymbolTree,
+            Comment, DelimiterKind, Field, FieldAssign, ROOT_SCOPE_ID, ScopeId, ScopeKind,
+            SymbolKind, SymbolRef, SymbolTree,
         },
     },
     data_types::Voice,
@@ -37,7 +37,6 @@ pub struct ParserOutput {
     pub body: Body,
     pub symbols: SymbolTree,
     pub reporter: DiagnosticReporter,
-    pub delimiters: Vec<Delimiter>,
 }
 
 #[derive(Debug)]
@@ -45,7 +44,6 @@ pub struct Parser<'a> {
     source: &'a [u8],
     header: Header,
     body: Body,
-    delimiters: Vec<Delimiter>,
     abort: bool,
     pub(crate) tree: SymbolTree,
     pub(crate) reporter: DiagnosticReporter,
@@ -58,7 +56,6 @@ impl<'a> Parser<'a> {
             header: Header::default(),
             body: Body::default(),
             tree: SymbolTree::default(),
-            delimiters: Vec::new(),
             reporter: DiagnosticReporter::new(ReportStage::Parsing),
             abort: false,
         }
@@ -76,7 +73,6 @@ impl<'a> Parser<'a> {
             body: self.body,
             symbols: self.tree,
             reporter: self.reporter,
-            delimiters: self.delimiters,
         }
     }
 
@@ -647,10 +643,7 @@ impl<'a> Parser<'a> {
     }
 
     fn add_delimiter(&mut self, node: Node<'_>, kind: DelimiterKind) {
-        self.delimiters.push(Delimiter {
-            kind,
-            line: node.range().line(),
-        });
+        self.tree.store_delimiter(node.range(), kind);
     }
 
     pub(crate) fn parse_node<T: ParseNode>(

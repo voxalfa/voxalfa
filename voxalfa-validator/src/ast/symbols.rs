@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
+use tree_sitter::Point;
+
 use crate::{
     ast::parser::Parser,
     ts_utils::{
-        range::{Position, Range, RangeUtil},
+        range::{Range, RangeUtil},
         types::AssignmentData,
     },
 };
@@ -111,7 +113,10 @@ pub enum ScopeKind {
 
 impl ScopeKind {
     pub fn is_hidden(&self) -> bool {
-        matches!(self, ScopeKind::DirectiveLine | ScopeKind::List)
+        matches!(
+            self,
+            ScopeKind::DirectiveLine | ScopeKind::List | ScopeKind::LyricString
+        )
     }
 
     pub fn is_solfa_line(&self) -> bool {
@@ -121,6 +126,7 @@ impl ScopeKind {
 
 #[derive(Debug)]
 pub struct Scope {
+    pub local_id: usize,
     pub range: Range,
     pub kind: ScopeKind,
     pub parent: Option<ScopeId>,
@@ -134,6 +140,7 @@ pub struct SymbolCache {
     voice_refs: HashMap<VoiceId, Vec<SymbolId>>,
     comments: Vec<Comment>,
     lyrics: Vec<String>,
+    delimiters: Vec<Delimiter>,
 }
 
 #[derive(Debug, Default)]
@@ -174,7 +181,13 @@ impl SymbolTree {
     pub fn add_scope(&mut self, kind: ScopeKind, range: Range, parent: Option<ScopeId>) -> ScopeId {
         let id = self.scopes.len();
 
+        let local_id = parent
+            .map(|p| self.get_scope(p))
+            .map(|s| s.children.len())
+            .unwrap_or_default();
+
         let scope = Scope {
+            local_id,
             range,
             kind,
             parent,
@@ -229,7 +242,7 @@ impl SymbolTree {
         self.cache.voice_refs.entry(voice).or_default().push(sid);
     }
 
-    pub fn get_symbol_refs(&self, position: &Position) -> Option<Vec<Range>> {
+    pub fn get_symbol_refs(&self, position: &Point) -> Option<Vec<Range>> {
         let symbol = self.query_symbol(position)?;
 
         let symbols = match &symbol.kind {
@@ -249,7 +262,7 @@ impl SymbolTree {
             .and_then(|refs| refs.first().map(|sid| self.symbols[*sid].range))
     }
 
-    pub fn query_symbol(&self, position: &Position) -> Option<&Symbol> {
+    pub fn query_symbol(&self, position: &Point) -> Option<&Symbol> {
         let scope_id = self.query_scope(position);
 
         self.scopes[scope_id]
@@ -259,7 +272,7 @@ impl SymbolTree {
             .map(|&sid| &self.symbols[sid])
     }
 
-    pub fn query_scope(&self, position: &Position) -> ScopeId {
+    pub fn query_scope(&self, position: &Point) -> ScopeId {
         let mut current_id = ROOT_SCOPE_ID;
 
         while let Some(&child_id) = self.scopes[current_id]
@@ -287,7 +300,7 @@ impl SymbolTree {
         line_count - 1
     }
 
-    pub fn find_voice_refs(&self, position: &Position) -> Option<&Vec<SymbolId>> {
+    pub fn find_voice_refs(&self, position: &Point) -> Option<&Vec<SymbolId>> {
         let voice = self.cache.voice_refs.iter().find_map(|(v, refs)| {
             refs.iter()
                 .any(|&sid| self.symbols[sid].range.contains(position))
@@ -297,12 +310,20 @@ impl SymbolTree {
 
         voice.and_then(|v| self.cache.voice_refs.get(&v))
     }
+
+    pub fn store_delimiter(&mut self, range: Range, kind: DelimiterKind) {
+        self.cache.delimiters.push(Delimiter { kind, range });
+    }
+
+    pub fn get_delimiters(&self) -> &[Delimiter] {
+        &self.cache.delimiters
+    }
 }
 
 #[derive(Debug)]
 pub struct Delimiter {
     pub kind: DelimiterKind,
-    pub line: usize,
+    pub range: Range,
 }
 
 #[derive(Debug)]
@@ -312,6 +333,15 @@ pub enum DelimiterKind {
     SectionMajor,
     SectionMerge,
     SubSection,
+}
+
+impl DelimiterKind {
+    pub fn is_section(&self) -> bool {
+        matches!(
+            self,
+            DelimiterKind::SectionSplit | DelimiterKind::SectionMajor | DelimiterKind::SectionMerge
+        )
+    }
 }
 
 impl std::fmt::Display for DelimiterKind {

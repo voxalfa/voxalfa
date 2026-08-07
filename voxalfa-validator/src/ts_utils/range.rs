@@ -1,25 +1,4 @@
-pub use tree_sitter::{Point, Range};
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Position {
-    pub line: usize,
-    pub column: usize,
-}
-
-impl Position {
-    pub fn new(line: usize, column: usize) -> Self {
-        Position { line, column }
-    }
-}
-
-impl From<Point> for Position {
-    fn from(point: Point) -> Self {
-        Self {
-            line: point.row,
-            column: point.column,
-        }
-    }
-}
+pub use tree_sitter::{Point as Position, Range};
 
 pub trait RangeUtil {
     fn start(&self) -> Range;
@@ -63,14 +42,14 @@ impl RangeUtil for Range {
     }
 
     fn contains(&self, pos: &Position) -> bool {
-        let start = Position::from(self.start_point);
-        let end = Position::from(self.end_point);
+        let start = self.start_point;
+        let end = self.end_point;
         *pos >= start && *pos <= end
     }
 
     fn overlaps(&self, pos: &Position) -> bool {
-        let start = Position::from(self.start_point);
-        let end = Position::from(self.end_point);
+        let start = self.start_point;
+        let end = self.end_point;
         *pos >= start && *pos < end
     }
 }

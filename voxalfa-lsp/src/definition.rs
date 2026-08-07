@@ -4,7 +4,7 @@ use voxalfa_validator::{
     output::FinalOutput,
 };
 
-use crate::{parameters::INITIAL_PARAMS, utils::convert_range};
+use crate::{parameters::INITIAL_PARAMS, utils::ts_range_to_lsp};
 
 pub fn resolve_symbol_definition(
     uri: Url,
@@ -28,7 +28,7 @@ pub fn resolve_symbol_definition(
     range.map(|r| {
         GotoDefinitionResponse::Scalar(Location {
             uri,
-            range: convert_range(&r),
+            range: ts_range_to_lsp(&r),
         })
     })
 }

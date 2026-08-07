@@ -3,12 +3,12 @@ use async_lsp::lsp_types::{
 };
 use voxalfa_validator::diagnostics::types::{Diagnostic, DiagnosticLevel, DiagnosticRelatedInfo};
 
-use crate::utils::convert_range;
+use crate::{SERVER_NAME, utils::ts_range_to_lsp};
 
 pub fn convert_diagnostic(uri: Url, source: &Diagnostic) -> Vec<lsp_types::Diagnostic> {
     let mut result = Vec::new();
 
-    let range = convert_range(&source.range);
+    let range = ts_range_to_lsp(&source.range);
     let severity = convert_diagnostic_level(source.level);
     let raw_code = source.kind.get_code().to_string();
     let code = NumberOrString::String(raw_code).into();
@@ -20,7 +20,7 @@ pub fn convert_diagnostic(uri: Url, source: &Diagnostic) -> Vec<lsp_types::Diagn
         severity: Some(severity),
         code,
         code_description: None,
-        source: "voxalfa-ls".to_string().into(),
+        source: SERVER_NAME.to_string().into(),
         message: source.kind.to_string(),
         related_information,
         ..Default::default()
@@ -30,8 +30,8 @@ pub fn convert_diagnostic(uri: Url, source: &Diagnostic) -> Vec<lsp_types::Diagn
 
     for info in extra_info {
         result.push(lsp_types::Diagnostic {
-            range: convert_range(&info.range),
-            source: "voxalfa-ls".to_string().into(),
+            range: ts_range_to_lsp(&info.range),
+            source: SERVER_NAME.to_string().into(),
             message: info.message,
             severity: Some(DiagnosticSeverity::HINT),
             ..Default::default()
@@ -52,7 +52,7 @@ fn get_related_info(
     extra_info
         .iter()
         .map(|info| DiagnosticRelatedInformation {
-            location: Location::new(uri.clone(), convert_range(&info.range)),
+            location: Location::new(uri.clone(), ts_range_to_lsp(&info.range)),
             message: info.message.clone(),
         })
         .collect::<Vec<_>>()

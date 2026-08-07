@@ -4,7 +4,7 @@ use voxalfa_validator::ast::symbols::{
     Primitive, ROOT_SCOPE_ID, Scope, ScopeKind, Symbol, SymbolKind, SymbolTree, Value,
 };
 
-use crate::utils::convert_range;
+use crate::utils::ts_range_to_lsp;
 
 pub fn resolve_document_symbols(tree: &SymbolTree) -> Option<DocumentSymbolResponse> {
     let root_scope = tree.get_scope(ROOT_SCOPE_ID);
@@ -45,7 +45,7 @@ fn convert_scope(tree: &SymbolTree, scope: &Scope) -> Option<DocumentSymbol> {
     let children = resolve_scope_children(tree, scope);
     let name = format!("{:?}", scope.kind);
     let kind = map_scope_kind(&scope.kind);
-    let range = convert_range(&scope.range);
+    let range = ts_range_to_lsp(&scope.range);
 
     #[allow(deprecated)]
     Some(DocumentSymbol {
@@ -77,10 +77,10 @@ fn convert_symbol(symbol: &Symbol) -> Option<DocumentSymbol> {
             Some("Voice".to_string()),
             LspSymbolKind::VARIABLE,
         ),
-        SymbolKind::Token => return None,
+        _ => return None,
     };
 
-    let range = convert_range(&symbol.range);
+    let range = ts_range_to_lsp(&symbol.range);
 
     #[allow(deprecated)]
     Some(DocumentSymbol {

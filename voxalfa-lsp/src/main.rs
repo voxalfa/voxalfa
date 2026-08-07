@@ -1,3 +1,4 @@
+mod actions;
 mod builtin;
 mod completion;
 mod definition;
@@ -24,14 +25,17 @@ use voxalfa_formatter::Formatter;
 use voxalfa_validator::MultiStepValidator;
 
 use crate::{
+    actions::resolve_action_commands,
     completion::get_completion_context,
     definition::resolve_symbol_definition,
     docs::create_documentation,
     rename::resolve_rename_edits,
     state::{Document, ServerState},
     symbols::resolve_document_symbols,
-    utils::{convert_position, convert_range},
+    utils::{lsp_pos_to_ts, ts_range_to_lsp},
 };
+
+pub const SERVER_NAME: &str = "voxalfa-ls";
 
 type Response<T, E> = BoxFuture<'static, std::result::Result<T, E>>;
 
@@ -56,15 +60,27 @@ impl LanguageServer for ServerState {
                 document_symbol_provider: Some(OneOf::Left(true)),
                 definition_provider: Some(OneOf::Left(true)),
                 rename_provider: Some(OneOf::Left(true)),
+                code_action_provider: Some(CodeActionProviderCapability::Options(
+                    CodeActionOptions {
+                        code_action_kinds: Some(vec![CodeActionKind::REFACTOR_REWRITE]),
+                        ..Default::default()
+                    },
+                )),
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
-                name: "voxalfa-ls".to_string(),
+                name: SERVER_NAME.to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string().into(),
             }),
         };
 
         Box::pin(async { Ok(result) })
+    }
+
+    fn initialized(&mut self, _params: InitializedParams) -> Self::NotifyResult {
+        tracing::info!("Server initialized successfully");
+
+        ControlFlow::Continue(())
     }
 
     fn did_open(&mut self, params: DidOpenTextDocumentParams) -> Self::NotifyResult {
@@ -75,6 +91,12 @@ impl LanguageServer for ServerState {
 
         self.documents.insert(uri.clone(), document);
         self.publish_diagnostics(uri);
+
+        ControlFlow::Continue(())
+    }
+
+    fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Self::NotifyResult {
+        self.documents.remove(&params.text_document.uri);
 
         ControlFlow::Continue(())
     }
@@ -118,7 +140,7 @@ impl LanguageServer for ServerState {
     fn hover(&mut self, params: HoverParams) -> Response<Option<Hover>, Self::Error> {
         let uri = params.text_document_position_params.text_document.uri;
         let raw_position = params.text_document_position_params.position;
-        let position = convert_position(raw_position);
+        let position = lsp_pos_to_ts(raw_position);
 
         let data = self
             .documents
@@ -157,7 +179,7 @@ impl LanguageServer for ServerState {
     ) -> Response<Option<GotoDefinitionResponse>, Self::Error> {
         let uri = params.text_document_position_params.text_document.uri;
         let raw_position = params.text_document_position_params.position;
-        let position = convert_position(raw_position);
+        let position = lsp_pos_to_ts(raw_position);
 
         let result = self.documents.get(&uri).and_then(|doc| {
             let symbol = doc.data.symbols.query_symbol(&position)?;
@@ -173,7 +195,7 @@ impl LanguageServer for ServerState {
     ) -> Response<Option<Vec<Location>>, Self::Error> {
         let uri = params.text_document_position.text_document.uri;
         let raw_position = params.text_document_position.position;
-        let position = convert_position(raw_position);
+        let position = lsp_pos_to_ts(raw_position);
 
         let references = self
             .documents
@@ -182,7 +204,7 @@ impl LanguageServer for ServerState {
             .map(|ranges| {
                 ranges
                     .iter()
-                    .map(|r| Location::new(uri.clone(), convert_range(r)))
+                    .map(|r| Location::new(uri.clone(), ts_range_to_lsp(r)))
                     .collect()
             });
 
@@ -222,7 +244,7 @@ impl LanguageServer for ServerState {
     fn rename(&mut self, params: RenameParams) -> Response<Option<WorkspaceEdit>, Self::Error> {
         let uri = params.text_document_position.text_document.uri;
         let raw_position = params.text_document_position.position;
-        let position = convert_position(raw_position);
+        let position = lsp_pos_to_ts(raw_position);
 
         let result = self
             .documents
@@ -236,10 +258,33 @@ impl LanguageServer for ServerState {
         Box::pin(async { Ok(result) })
     }
 
-    fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Self::NotifyResult {
-        self.documents.remove(&params.text_document.uri);
+    fn code_action(
+        &mut self,
+        params: CodeActionParams,
+    ) -> Response<Option<Vec<CodeActionOrCommand>>, Self::Error> {
+        let uri = params.text_document.uri;
+        let position = lsp_pos_to_ts(params.range.start);
 
-        ControlFlow::Continue(())
+        let result = self
+            .documents
+            .get(&uri)
+            .and_then(|doc| resolve_action_commands(uri, doc, position));
+
+        Box::pin(async { Ok(result) })
+    }
+
+    fn shutdown(&mut self, _: ()) -> Response<(), Self::Error> {
+        tracing::info!("Shutting down server");
+
+        self.documents.clear();
+
+        Box::pin(async { Ok(()) })
+    }
+
+    fn exit(&mut self, _: ()) -> Self::NotifyResult {
+        tracing::info!("Exiting server loop");
+
+        ControlFlow::Break(Ok(()))
     }
 }
 
