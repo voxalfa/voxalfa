@@ -1,5 +1,6 @@
 mod builtin;
 mod completion;
+mod definition;
 mod diagnostics;
 mod docs;
 mod parameters;
@@ -7,6 +8,7 @@ mod state;
 mod symbols;
 mod utils;
 
+use core::iter::Iterator;
 use std::ops::ControlFlow;
 
 use async_lsp::{
@@ -22,6 +24,7 @@ use voxalfa_validator::MultiStepValidator;
 
 use crate::{
     completion::get_completion_context,
+    definition::resolve_symbol_definition,
     docs::create_documentation,
     state::{Document, ServerState},
     symbols::resolve_document_symbols,
@@ -44,11 +47,12 @@ impl LanguageServer for ServerState {
                 document_formatting_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(false),
-                    trigger_characters: Some(vec!["{".to_string()]),
+                    trigger_characters: Some("{,".chars().map(|c| c.to_string()).collect()),
                     ..Default::default()
                 }),
                 references_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
+                definition_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
@@ -105,7 +109,7 @@ impl LanguageServer for ServerState {
             .and_then(|d| get_completion_context(d, line, column))
             .map(|c| CompletionResponse::Array(c.completion_items()));
 
-        Box::pin(async move { Ok(result) })
+        Box::pin(async { Ok(result) })
     }
 
     fn hover(&mut self, params: HoverParams) -> Response<Option<Hover>, Self::Error> {
@@ -126,7 +130,7 @@ impl LanguageServer for ServerState {
                 range: None,
             });
 
-        Box::pin(async move { Ok(data) })
+        Box::pin(async { Ok(data) })
     }
 
     fn document_symbol(
@@ -146,9 +150,18 @@ impl LanguageServer for ServerState {
 
     fn definition(
         &mut self,
-        _params: GotoDefinitionParams,
+        params: GotoDefinitionParams,
     ) -> Response<Option<GotoDefinitionResponse>, Self::Error> {
-        todo!()
+        let uri = params.text_document_position_params.text_document.uri;
+        let raw_position = params.text_document_position_params.position;
+        let position = convert_position(raw_position);
+
+        let result = self.documents.get(&uri).and_then(|doc| {
+            let symbol = doc.data.symbols.query_symbol(&position)?;
+            resolve_symbol_definition(uri, symbol, &doc.data)
+        });
+
+        Box::pin(async { Ok(result) })
     }
 
     fn references(
@@ -166,8 +179,7 @@ impl LanguageServer for ServerState {
             .map(|ranges| {
                 ranges
                     .iter()
-                    .map(convert_range)
-                    .map(|r| Location::new(uri.clone(), r))
+                    .map(|r| Location::new(uri.clone(), convert_range(r)))
                     .collect()
             });
 
@@ -201,7 +213,7 @@ impl LanguageServer for ServerState {
             }])
         });
 
-        Box::pin(async move { Ok(edits) })
+        Box::pin(async { Ok(edits) })
     }
 
     fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Self::NotifyResult {

@@ -37,7 +37,7 @@ pub fn get_completion_context(
                 Some(context)
             }
         }
-        node_types::BUILTIN => {
+        node_types::BUILTIN | node_types::PARAMETER_ASSIGNMENT => {
             let builtin = get_builtin_context(target, &document.source)?;
             let context = CompletionContext::Builtin(builtin);
 
@@ -214,7 +214,10 @@ impl SectionContext {
 }
 
 fn get_builtin_context(target: Node<'_>, source: &str) -> Option<Builtin> {
-    let identifier = target.prev_named_sibling()?;
+    let identifier = match target.kind_id() {
+        node_types::BUILTIN => target.prev_named_sibling()?,
+        _ => target.named_child(0)?,
+    };
     let source = source.as_bytes();
     let identifier = identifier.utf8_text(source).ok()?;
 

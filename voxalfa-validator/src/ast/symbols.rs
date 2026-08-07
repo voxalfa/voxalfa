@@ -231,10 +231,18 @@ impl SymbolTree {
         let symbols = match &symbol.kind {
             SymbolKind::Key(key) => self.cache.key_refs.get(key),
             SymbolKind::Voice(voice) => self.cache.voice_refs.get(voice),
+            SymbolKind::Value(Value::Primitive(Primitive::Voice)) => self.find_voice_refs(position),
             _ => None,
         };
 
         symbols.map(|v| v.iter().map(|&sid| self.symbols[sid].range).collect())
+    }
+
+    pub fn get_key_definition(&self, key: &str) -> Option<Range> {
+        self.cache
+            .key_refs
+            .get(key)
+            .and_then(|refs| refs.first().map(|sid| self.symbols[*sid].range))
     }
 
     pub fn query_symbol(&self, position: &Position) -> Option<&Symbol> {
@@ -259,6 +267,17 @@ impl SymbolTree {
         }
 
         current_id
+    }
+
+    fn find_voice_refs(&self, position: &Position) -> Option<&Vec<SymbolId>> {
+        let voice = self.cache.voice_refs.iter().find_map(|(v, refs)| {
+            refs.iter()
+                .any(|&sid| self.symbols[sid].range.contains(position))
+                .then_some(v)
+                .copied()
+        });
+
+        voice.and_then(|v| self.cache.voice_refs.get(&v))
     }
 }
 
