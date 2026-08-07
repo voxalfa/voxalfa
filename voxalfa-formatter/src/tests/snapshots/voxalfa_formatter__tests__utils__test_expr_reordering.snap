@@ -30,6 +30,6 @@ FILE: test_expr_reordering
 
 [$] key={C} | jump={DC}
 
-[S] |d  .r  :m  .f+1!s  .l  :t  .-  ||
+[S] |d   .r   :m   .f+1 !s   .l   :t   .-   ||
 
-[1] do  re  mi  fa  so  la  ti@2
+[1] do   re   mi   fa   so   la   ti@2

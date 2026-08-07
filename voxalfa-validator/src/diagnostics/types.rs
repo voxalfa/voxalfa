@@ -33,7 +33,7 @@ pub enum DiagnosticKind {
     UnknownParameter(String),
     #[error("expected {0}, got {1}")]
     ExpectedType(&'static str, &'static str),
-    #[error("invalid {0:?}")]
+    #[error("invalid {0}")]
     InvalidType(Primitive),
     #[error("invalid time signature, expected two non-null integers")]
     InvalidTimeSignature,
@@ -43,7 +43,7 @@ pub enum DiagnosticKind {
     RangeNotAllowed,
     #[error("invalid voice '{0}'")]
     InvalidVoice(String),
-    #[error("undefined voice '{0:?}'")]
+    #[error("undefined voice '{0}'")]
     UndefinedVoice(Voice, Range),
     #[error("expected '{0:?}', got '{1:?}'")]
     VoiceMismatch(Voice, Voice),

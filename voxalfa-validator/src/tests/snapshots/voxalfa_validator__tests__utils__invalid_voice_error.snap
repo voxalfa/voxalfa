@@ -9,14 +9,6 @@ expression: output
 [E] |d :r !m :f ||
 
 === DIAGNOSTICS ===
-error[E017]: expected 1 voices, got 0
- --> invalid_voice_error.vfa:3:1
-  |
- 2 | [$] time={4,4} | voices={A}
-   | --------------------------- voices defined here
- 3 | ---
-   | ^^^ error
-
 error[E012]: invalid voice 'E'
  --> invalid_voice_error.vfa:5:1
   |
