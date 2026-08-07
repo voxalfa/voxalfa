@@ -35,8 +35,8 @@ impl FieldAssign for InitialParams {
         }
 
         if let Some(voices) = &self.voices {
-            for voice in &voices.value {
-                context.tree.store_voice_ref(voice.value, voice.sid);
+            for (id, voice) in voices.value.iter().enumerate() {
+                context.tree.store_voice_ref(id, voice.sid);
             }
         }
     }

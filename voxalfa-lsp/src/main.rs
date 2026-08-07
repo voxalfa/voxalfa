@@ -13,9 +13,9 @@ use core::iter::Iterator;
 use std::{collections::HashMap, ops::ControlFlow};
 
 use async_lsp::{
-    LanguageClient, LanguageServer, MainLoop, ResponseError,
-    client_monitor::ClientProcessMonitorLayer, concurrency::ConcurrencyLayer, lsp_types::*,
-    panic::CatchUnwindLayer, server::LifecycleLayer, tracing::TracingLayer,
+    LanguageServer, MainLoop, ResponseError, client_monitor::ClientProcessMonitorLayer,
+    concurrency::ConcurrencyLayer, lsp_types::*, panic::CatchUnwindLayer, server::LifecycleLayer,
+    tracing::TracingLayer,
 };
 use futures::future::BoxFuture;
 use tower::ServiceBuilder;
@@ -232,13 +232,6 @@ impl LanguageServer for ServerState {
                 changes: Some(HashMap::from([(uri, edits)])),
                 ..Default::default()
             });
-
-        if result.is_none() {
-            let _ = self.client.log_message(LogMessageParams {
-                typ: MessageType::ERROR,
-                message: "Failed to rename".to_string(),
-            });
-        }
 
         Box::pin(async { Ok(result) })
     }

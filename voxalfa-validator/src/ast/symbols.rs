@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::{
     ast::parser::Parser,
-    data_types::Voice,
     ts_utils::{
         range::{Position, Range, RangeUtil},
         types::AssignmentData,
@@ -13,6 +12,7 @@ pub const ROOT_SCOPE_ID: usize = 0;
 
 pub type SymbolId = usize;
 pub type ScopeId = usize;
+pub type VoiceId = usize;
 pub type LyricStringId = usize;
 pub type Comment = SymbolRef<String>;
 pub type Field<T> = Option<SymbolRef<T>>;
@@ -31,7 +31,7 @@ pub trait FieldAssign {
 pub enum SymbolKind {
     Key(String),
     Value(Value),
-    Voice(Voice),
+    Voice(VoiceId),
     Token,
 }
 
@@ -113,6 +113,10 @@ impl ScopeKind {
     pub fn is_hidden(&self) -> bool {
         matches!(self, ScopeKind::DirectiveLine | ScopeKind::List)
     }
+
+    pub fn is_solfa_line(&self) -> bool {
+        matches!(self, Self::SolfaLine)
+    }
 }
 
 #[derive(Debug)]
@@ -127,7 +131,7 @@ pub struct Scope {
 #[derive(Debug, Default)]
 pub struct SymbolCache {
     key_refs: HashMap<String, Vec<SymbolId>>,
-    voice_refs: HashMap<Voice, Vec<SymbolId>>, // FIXME: should be relative to index instead of voice
+    voice_refs: HashMap<VoiceId, Vec<SymbolId>>,
     comments: Vec<Comment>,
     lyrics: Vec<String>,
 }
@@ -221,7 +225,7 @@ impl SymbolTree {
         self.cache.key_refs.entry(key).or_default().push(sid);
     }
 
-    pub fn store_voice_ref(&mut self, voice: Voice, sid: SymbolId) {
+    pub fn store_voice_ref(&mut self, voice: VoiceId, sid: SymbolId) {
         self.cache.voice_refs.entry(voice).or_default().push(sid);
     }
 
@@ -267,6 +271,20 @@ impl SymbolTree {
         }
 
         current_id
+    }
+
+    pub fn create_voice_id(&self, line_sid: ScopeId) -> usize {
+        let sub_section_sid = self.scopes[line_sid].parent.unwrap();
+        let section_sid = self.scopes[sub_section_sid].parent.unwrap();
+
+        let line_count = self.scopes[section_sid]
+            .children
+            .iter()
+            .flat_map(|&sub_sid| &self.scopes[sub_sid].children)
+            .filter(|&&sid| matches!(self.scopes[sid].kind, ScopeKind::SolfaLine))
+            .count();
+
+        line_count - 1
     }
 
     pub fn find_voice_refs(&self, position: &Position) -> Option<&Vec<SymbolId>> {

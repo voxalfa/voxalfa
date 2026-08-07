@@ -266,11 +266,13 @@ impl<'a> Parser<'a> {
         let voice = Voice::try_from(voice_str.clone());
 
         if let Ok(value) = voice {
+            let voice_id = self.tree.create_voice_id(parent_sid);
+
             let sid =
                 self.tree
-                    .add_symbol(SymbolKind::Voice(value), voice_node.range(), parent_sid);
+                    .add_symbol(SymbolKind::Voice(voice_id), voice_node.range(), parent_sid);
 
-            self.tree.store_voice_ref(value, sid);
+            self.tree.store_voice_ref(voice_id, sid);
 
             Some(SymbolRef { sid, value })
         } else {

@@ -20,8 +20,8 @@ pub fn resolve_symbol_definition(
         SymbolKind::Voice(voice) => params
             .voices
             .as_ref()
-            .and_then(|v| v.value.iter().find(|v| v.value == *voice))
-            .map(|v| data.symbols.get_symbol_range(v.sid)),
+            .and_then(|v| v.value.iter().enumerate().find(|(id, _)| id == voice))
+            .map(|(_, v)| data.symbols.get_symbol_range(v.sid)),
         _ => None,
     };
 
