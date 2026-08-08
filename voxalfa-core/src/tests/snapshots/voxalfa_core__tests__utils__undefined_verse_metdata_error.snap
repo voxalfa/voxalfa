@@ -1,0 +1,25 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[$] time={4,4} | voices={S}
+---
+
+[S] |d :r !m :f ||
+[1] do re mi fa
+
+=== DIAGNOSTICS ===
+error[E025]: 'verses' metadata has not been defined
+  ┌─ undefined_verse_metdata_error.vfa:3:4
+  │    
+1 │   ╭ 
+2 │   │ [$] time={4,4} | voices={S}
+3 │   │ ---
+  │ ╭─│───^
+  │ │ ╰' consider adding 'verses' metadata
+4 │ │   
+5 │ │   [S] |d :r !m :f ||
+6 │ │   [1] do re mi fa
+7 │ │   
+  │ ╰──^

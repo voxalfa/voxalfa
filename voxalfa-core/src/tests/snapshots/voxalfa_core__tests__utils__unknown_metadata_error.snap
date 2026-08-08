@@ -1,0 +1,15 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[#] invalid="foo"
+
+---
+
+=== DIAGNOSTICS ===
+error[E005]: unknown metadata field 'invalid'
+  ┌─ unknown_metadata_error.vfa:2:5
+  │
+2 │ [#] invalid="foo"
+  │     ^^^^^^^^^^^^^

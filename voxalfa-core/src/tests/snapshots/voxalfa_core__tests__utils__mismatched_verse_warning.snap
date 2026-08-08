@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [#] verses={1}
@@ -13,7 +13,7 @@ expression: output
 
 === DIAGNOSTICS ===
 warning[E019]: expected 1, got 2
- --> mismatched_verse_warning.vfa:8:1
-  |
- 8 | [2] do re mi fa
-   | ^^^^^^^^^^^^^^^ warning
+  ┌─ mismatched_verse_warning.vfa:8:2
+  │
+8 │ [2] do re mi fa
+  │  ^

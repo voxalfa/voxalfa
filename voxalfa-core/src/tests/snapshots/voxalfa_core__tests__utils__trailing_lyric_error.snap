@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [#] verses={1}
@@ -13,9 +13,9 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E023]: trailing lyric, no solfa column matched
- --> trailing_lyric_error.vfa:8:1
-  |
- 6 | 
-   | - add more columns here
- 8 | [1] do re mi fa so
-   | ^^^^^^^^^^^^^^^^^^ error
+  ┌─ trailing_lyric_error.vfa:8:17
+  │
+7 │ [S] |d :r !m :f ||
+  │ ------------------ add more columns here
+8 │ [1] do re mi fa so
+  │                 ^^

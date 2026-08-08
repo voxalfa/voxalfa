@@ -1,0 +1,39 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[#] verses={1}
+
+[$] time={4,4} | voices={S}
+---
+
+[S] |d :r !m :f ||
+[1] do re mi fa\
+
+--
+
+[S] |d :r !m :f ||
+[1] do re mi fa
+
+=== DIAGNOSTICS ===
+error[E020]: trailing operator, missing '...'
+  ┌─ missing_lyrics_anchor_error.vfa:8:16
+  │
+8 │ [1] do re mi fa\
+  │                ^
+
+error[E029]: missing lyrics operator and anchor
+   ┌─ missing_lyrics_anchor_error.vfa:8:17
+   │  
+ 8 │   [1] do re mi fa\
+   │                   ^
+ 9 │   
+10 │   --
+   │ ╭──'
+11 │ │ 
+12 │ │ [S] |d :r !m :f ||
+13 │ │ [1] do re mi fa
+14 │ │ 
+15 │ │ 
+   │ ╰' next section here

@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 ;; @invalid foo 
@@ -10,7 +10,7 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E033]: unknown compiler directive '@invalid'
- --> unknown_directive_error.vfa:1:1
-  |
- 1 | 
-   | ^ error
+  ┌─ unknown_directive_error.vfa:2:1
+  │
+2 │ ;; @invalid foo 
+  │ ^^^^^^^^^^^^^^^^

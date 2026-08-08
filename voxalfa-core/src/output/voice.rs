@@ -47,4 +47,5 @@ impl<'a> VoiceLine<'a> {
 pub struct NoteContext<'a> {
     pub note: &'a PulseColumn,
     pub factor: usize,
+    pub group_id: usize,
 }

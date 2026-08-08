@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use glob::glob;
-use voxalfa_core::{MultiStepValidator, output::FinalOutput};
+use voxalfa_core::{output::FinalOutput, validation::Validator};
 
 use crate::{
     error::{Error, Result},
@@ -41,7 +41,7 @@ pub fn read_file(path_buf: PathBuf) -> Result<SourceFile> {
 }
 
 pub fn parse_file(content: &str) -> Result<FinalOutput> {
-    let mut validator = MultiStepValidator::init()?;
+    let mut validator = Validator::init()?;
     let output = validator.analyze(content);
 
     Ok(output)

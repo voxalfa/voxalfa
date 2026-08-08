@@ -104,7 +104,7 @@ impl<'a> IrValidator<'a> {
         if let Some(verses) = &self.header.metadata.verses {
             let value = sub_section.lyrics.len();
 
-            if value > 0 && value != verses.value {
+            if !sub_section.solfa.is_empty() && value != verses.value {
                 let context_range = self.tree.get_symbol_range(verses.sid);
 
                 self.reporter.error(

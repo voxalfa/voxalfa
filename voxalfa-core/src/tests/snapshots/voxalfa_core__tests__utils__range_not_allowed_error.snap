@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [$] time={4,4} | voices={A}
@@ -12,7 +12,7 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E011]: range not allowed for this event
- --> range_not_allowed_error.vfa:5:1
-  |
- 5 | [$] dynamics={f:0..3}
-   | ^^^^^^^^^^^^^^^^^^^^^ error
+  ┌─ range_not_allowed_error.vfa:5:15
+  │
+5 │ [$] dynamics={f:0..3}
+  │               ^^^^^^

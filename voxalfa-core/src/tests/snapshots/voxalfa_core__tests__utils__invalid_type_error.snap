@@ -1,0 +1,15 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[$] key={Z}
+
+---
+
+=== DIAGNOSTICS ===
+error[E008]: invalid key
+  ┌─ invalid_type_error.vfa:2:10
+  │
+2 │ [$] key={Z}
+  │          ^

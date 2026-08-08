@@ -54,6 +54,14 @@ impl PulseTokenKind {
         )
     }
 
+    pub fn is_underline(&self) -> bool {
+        matches!(self, Self::UnderlineMarker)
+    }
+
+    pub fn is_prolongation(&self) -> bool {
+        matches!(self, Self::ProlongedNote)
+    }
+
     pub fn is_note(&self) -> bool {
         matches!(
             self,

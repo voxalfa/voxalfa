@@ -11,3 +11,4 @@ tree-sitter-voxalfa = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }
+codespan-reporting = "0.13.1"

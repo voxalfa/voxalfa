@@ -1,0 +1,16 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[#] title="foo"
+[#] author "bar"
+
+---
+
+=== DIAGNOSTICS ===
+error[E001]: syntax error
+  ┌─ syntax_error.vfa:3:1
+  │
+3 │ [#] author "bar"
+  │ ^^^^^^^^^^^^^^^^

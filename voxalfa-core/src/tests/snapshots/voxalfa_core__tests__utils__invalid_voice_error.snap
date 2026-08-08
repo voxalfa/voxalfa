@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [$] time={4,4} | voices={A}
@@ -10,7 +10,7 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E012]: invalid voice 'E'
- --> invalid_voice_error.vfa:5:1
-  |
- 5 | [E] |d :r !m :f ||
-   | ^^^^^^^^^^^^^^^^^^ error
+  ┌─ invalid_voice_error.vfa:5:2
+  │
+5 │ [E] |d :r !m :f ||
+  │  ^

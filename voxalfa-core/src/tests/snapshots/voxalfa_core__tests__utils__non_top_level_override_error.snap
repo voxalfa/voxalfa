@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [$] time={4,4} | voices={S,T}
@@ -16,9 +16,10 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E028]: parameter override should be done at the top level
- --> non_top_level_override_error.vfa:8:1
-  |
- 3 | ---
-   | --- set parameter override here
- 8 | 
-   | ^ error
+  ┌─ non_top_level_override_error.vfa:9:1
+  │
+3 │ ---
+  │    - set parameter override here
+  ·
+9 │ [$] key={C}
+  │ ^^^^^^^^^^^

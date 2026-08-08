@@ -6,7 +6,7 @@ use async_lsp::{
     router::Router,
 };
 use ropey::Rope;
-use voxalfa_core::{MultiStepValidator, output::FinalOutput};
+use voxalfa_core::{output::FinalOutput, validation::Validator};
 
 use crate::diagnostics::convert_diagnostic;
 
@@ -31,12 +31,12 @@ impl Document {
 
 pub struct ServerState {
     pub client: ClientSocket,
-    pub validator: MultiStepValidator,
+    pub validator: Validator,
     pub documents: HashMap<Url, Document>,
 }
 
 impl ServerState {
-    pub fn new_router(client: ClientSocket, validator: MultiStepValidator) -> Router<Self> {
+    pub fn new_router(client: ClientSocket, validator: Validator) -> Router<Self> {
         Router::from_language_server(ServerState {
             client,
             validator,

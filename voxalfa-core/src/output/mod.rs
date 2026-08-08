@@ -1,6 +1,7 @@
 pub mod dynamics;
 pub mod evaluator;
 pub mod event;
+pub mod lyrics;
 pub mod render;
 pub mod tempo;
 pub mod voice;
@@ -70,6 +71,7 @@ impl FinalOutput {
     pub fn build_voice_line(&self, voice: Voice) -> VoiceLine<'_> {
         let mut notes = Vec::new();
         let mut timeline = Vec::new();
+        let mut group_id = 0;
 
         let sub_items = self.body.sections.iter().flat_map(|section| &section.items);
 
@@ -82,12 +84,23 @@ impl FinalOutput {
                 timeline.extend(partial);
             }
 
-            for pulse in &solfa.pulses {
+            for (pulse_id, pulse) in solfa.pulses.iter().enumerate() {
+                let view = &sub.views[pulse_id];
+
                 for note in &pulse.columns {
                     notes.push(NoteContext {
                         note,
+                        group_id,
                         factor: pulse.factor,
                     });
+
+                    if view.factor > 1 {
+                        group_id += 1
+                    }
+                }
+
+                if view.factor == 1 {
+                    group_id += 1;
                 }
             }
         }

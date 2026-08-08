@@ -1,10 +1,10 @@
 use midly::{MidiMessage, Track, TrackEventKind, num::u7};
-use voxalfa_core::MultiStepValidator;
+use voxalfa_core::validation::Validator;
 
 use crate::Converter;
 
 pub fn run_snapshot(source_name: &str, content: &str) {
-    let mut validator = MultiStepValidator::init().unwrap();
+    let mut validator = Validator::init().unwrap();
     let output = validator.analyze(content);
 
     assert!(!output.has_error(), "{:?}", output.diagnostics);

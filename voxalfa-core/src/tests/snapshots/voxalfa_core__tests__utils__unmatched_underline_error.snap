@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [$] time={4,4} | voices={S}
@@ -10,7 +10,7 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E018]: unmatched underline delimiter '`'
- --> unmatched_underline_error.vfa:5:1
-  |
- 5 | [S] |`d :r !m :f |s :l !t :d+1 ||
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error
+  ┌─ unmatched_underline_error.vfa:5:6
+  │
+5 │ [S] |`d :r !m :f |s :l !t :d+1 ||
+  │      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

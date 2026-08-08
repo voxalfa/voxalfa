@@ -1,0 +1,15 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[$] invalid="foo"
+
+---
+
+=== DIAGNOSTICS ===
+error[E006]: unknown parameter 'invalid'
+  ┌─ unknown_parameter_error.vfa:2:5
+  │
+2 │ [$] invalid="foo"
+  │     ^^^^^^^^^^^^^

@@ -22,7 +22,7 @@ use futures::future::BoxFuture;
 use ropey::Rope;
 use tower::ServiceBuilder;
 use tracing::Level;
-use voxalfa_core::MultiStepValidator;
+use voxalfa_core::validation::Validator;
 use voxalfa_formatter::Formatter;
 
 use crate::{
@@ -284,7 +284,7 @@ impl LanguageServer for ServerState {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let validator = MultiStepValidator::init()?;
+    let validator = Validator::init()?;
 
     let (server, _) = MainLoop::new_server(|client| {
         ServiceBuilder::new()

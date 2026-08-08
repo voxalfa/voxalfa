@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [$] time={4,4} | voices={S}
@@ -10,7 +10,7 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E022]: expected ':', got '|'
- --> pulse_accent_mismatch_error.vfa:5:1
-  |
- 5 | [S] |d :r !m |f ||
-   | ^^^^^^^^^^^^^^^^^^ error
+  ┌─ pulse_accent_mismatch_error.vfa:5:14
+  │
+5 │ [S] |d :r !m |f ||
+  │              ^

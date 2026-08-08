@@ -122,7 +122,7 @@ impl<'a> AstValidator<'a> {
                         );
                     }
                 }
-            } else {
+            } else if section.items.iter().any(|sub| !sub.solfa.is_empty()) {
                 let context_range = self.output.symbols.get_scope_range(self.output.header.sid);
 
                 self.reporter.error(
@@ -191,6 +191,7 @@ impl<'a> AstValidator<'a> {
             .unwrap_or_default();
 
         let top = time.value.top as usize;
+        let mut last_is_note = false;
 
         for (pulse_id, pulse) in pulses.iter().enumerate() {
             let position = (pulse_id + top - (start_offset % top)) % top;
@@ -208,6 +209,28 @@ impl<'a> AstValidator<'a> {
                         context_range,
                     ),
                 );
+            }
+
+            if pulse.tokens.is_empty() {
+                last_is_note = false;
+            }
+
+            for (index, token) in pulse.tokens.iter().enumerate() {
+                if token.value.is_prolongation() && !last_is_note {
+                    let range = self.output.symbols.get_symbol_range(token.sid);
+
+                    self.reporter
+                        .error(range, DiagnosticKind::InvalidNoteProlongation);
+                }
+
+                if (index == 0 || index == pulse.tokens.len() - 1) && token.value.is_beat_divider()
+                {
+                    last_is_note = false;
+                }
+
+                if token.value.is_note() {
+                    last_is_note = true;
+                }
             }
         }
     }

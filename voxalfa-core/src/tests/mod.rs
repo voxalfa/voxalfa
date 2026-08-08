@@ -371,11 +371,13 @@ fn test_invalid_section_merge_error() {
 ---
 
 [S] |d :r !m :f |s :l !t :d+1 ||
+++
 [T] |d :r !m :f |s :l !t :d+1 ||
 
 <<
 
-[S] |d :r !m :f ||
+[S] |d :r !m :f |s :l !t :d+1 ||
+[T] |d :r !m :f |s :l !t :d+1 ||
 "#;
 
     assert_diagnostic_snapshot("ivalid_section_merge_error", source);

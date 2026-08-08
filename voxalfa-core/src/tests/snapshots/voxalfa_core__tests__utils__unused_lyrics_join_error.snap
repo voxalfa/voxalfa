@@ -1,6 +1,6 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
-expression: output
+expression: output_str
 ---
 === INPUT ===
 [#] verses={1}
@@ -13,9 +13,10 @@ expression: output
 
 === DIAGNOSTICS ===
 error[E030]: lyrics join is unused (must be followed by a section)
- --> unused_lyrics_join_error.vfa:8:1
-  |
- 9 | 
-   | - consider adding a next section
- 8 | [1] do re mi fa\ @@
-   | ^^^^^^^^^^^^^^^^^^^ error
+   ┌─ unused_lyrics_join_error.vfa:8:16
+   │
+ 8 │ [1] do re mi fa\ @@
+   │                ^^^^
+ 9 │ 
+10 │ 
+   │ - consider adding a next section

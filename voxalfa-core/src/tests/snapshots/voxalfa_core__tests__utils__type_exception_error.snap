@@ -1,0 +1,15 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[#] title={1}
+
+---
+
+=== DIAGNOSTICS ===
+error[E007]: expected string, got integer
+  ┌─ type_exception_error.vfa:2:12
+  │
+2 │ [#] title={1}
+  │            ^
