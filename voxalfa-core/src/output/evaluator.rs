@@ -119,7 +119,7 @@ impl TimelineEvaluator {
             }
 
             EventKind::EndingEnd(id) => {
-                self.endings_jump.insert(id, self.index + 1);
+                self.endings_jump.insert(id, self.index);
             }
         }
     }

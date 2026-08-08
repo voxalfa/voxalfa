@@ -69,15 +69,20 @@ impl CompletionContext {
             CompletionContext::InitialParams => self.build_param_snippets(INITIAL_PARAMS),
             CompletionContext::SectionParams => self.build_param_snippets(SECTION_PARAMS),
             CompletionContext::Section(context) => {
-                vec![
-                    context.build_section_snippet(1, "1 measure"),
-                    context.build_section_snippet(2, "2 measures"),
-                    context.build_section_snippet(3, "3 measures"),
-                    self.snippet_item("verse 1", "Verse 1", "[1] ${0}"),
-                    self.snippet_item("verse 2", "Verse 2", "[2] ${0}"),
-                    self.snippet_item("verse 3", "Verse 3", "[3] ${0}"),
+                let mut items = Vec::new();
+
+                items.extend(context.build_voice_combo_snippets(1));
+                items.extend(context.build_voice_combo_snippets(2));
+                items.extend(context.build_voice_combo_snippets(3));
+
+                items.extend(vec![
+                    self.snippet_item("1 (verse)", "Verse 1", "[1] ${0}"),
+                    self.snippet_item("2 (verse)", "Verse 2", "[2] ${0}"),
+                    self.snippet_item("3 (verse)", "Verse 3", "[3] ${0}"),
                     self.snippet_item("parameters ($)", "Section Parameters", "[\\$] ${0}"),
-                ]
+                ]);
+
+                items
             }
             CompletionContext::Builtin(builtin) => builtin.completion_items(),
         }
@@ -185,66 +190,135 @@ impl Builtin {
     }
 }
 
+const DEFAULT_NOTES: &[&str] = &["s", "m", "d", "d"];
+
+const STANDARD_VOICE_COMBOS: [&[Voice]; 9] = [
+    &[Voice::S],
+    &[Voice::A],
+    &[Voice::T],
+    &[Voice::B],
+    &[Voice::S, Voice::A],
+    &[Voice::T, Voice::B],
+    &[Voice::S, Voice::A, Voice::T],
+    &[Voice::A, Voice::T, Voice::B],
+    &[Voice::S, Voice::A, Voice::T, Voice::B],
+];
+
 #[derive(Debug)]
 pub struct SectionContext {
     voices: Vec<Voice>,
+    used_voices: Vec<Voice>,
     time: TimeSignature,
     verses: u8,
 }
 
 impl SectionContext {
-    fn build_section_snippet(&self, measures: usize, label_suffix: &str) -> CompletionItem {
-        let mut snippet = String::new();
-        let mut tab_stop = 1;
+    fn build_voice_line(
+        &self,
+        voice: Voice,
+        v_idx: usize,
+        measures: usize,
+        tab_stop: &mut usize,
+    ) -> String {
+        let mut line = String::new();
+        let note = DEFAULT_NOTES.get(v_idx).copied().unwrap_or("d");
 
-        let default_notes = ["s", "m", "d", "d"];
+        line.push_str(&format!("[{voice:?}] |"));
 
-        for (v_idx, voice) in self.voices.iter().enumerate() {
-            let note = default_notes.get(v_idx).unwrap_or(&"d");
+        for m in 0..measures {
+            for pos in 0..self.time.top as usize {
+                line.push_str(&format!("${{{tab_stop}:{note}}}"));
+                *tab_stop += 1;
 
-            snippet.push_str(&format!("[{voice:?}] |"));
-
-            for m in 0..measures {
-                for pos in 0..self.time.top as usize {
-                    snippet.push_str(&format!("${{{tab_stop}:{note}}}"));
-                    tab_stop += 1;
-
-                    if pos < (self.time.top as usize - 1) {
-                        let next_accent = self.time.get_accent(pos + 1);
-                        snippet.push_str(&format!(" {next_accent}"));
-                    }
+                if pos < (self.time.top as usize - 1) {
+                    let next_accent = self.time.get_accent(pos + 1);
+                    line.push_str(&format!(" {next_accent}"));
                 }
+            }
 
-                if m < measures - 1 {
-                    snippet.push_str(" | ");
-                } else {
-                    snippet.push_str(" ||\n");
-                }
+            if m < measures - 1 {
+                line.push_str(" | ");
+            } else {
+                line.push_str(" ||");
             }
         }
 
-        snippet.push('\n');
+        line
+    }
 
-        for verse in 0..self.verses {
-            snippet.push_str(&format!("[{}] ${{{tab_stop}:~}}\n", verse + 1));
-            tab_stop += 1;
+    fn build_voice_combo_snippets(&self, measures: usize) -> Vec<CompletionItem> {
+        let mut result = STANDARD_VOICE_COMBOS
+            .iter()
+            .enumerate()
+            .filter(|(_, combo)| {
+                combo
+                    .iter()
+                    .all(|v| self.voices.contains(v) && !self.used_voices.contains(v))
+            })
+            .map(|(combo_idx, combo)| {
+                self.build_voice_combo_snippet(combo, measures, combo_idx + 1, None)
+            })
+            .collect::<Vec<_>>();
+
+        let rest_voices = self
+            .voices
+            .iter()
+            .filter(|v| !self.used_voices.contains(*v))
+            .copied()
+            .collect::<Vec<_>>();
+
+        if !rest_voices.is_empty() {
+            let snippet = self.build_voice_combo_snippet(&rest_voices, measures, 0, Some("lines"));
+
+            result.push(snippet);
         }
 
-        let voice_labels: Vec<String> = self.voices.iter().map(|v| format!("{v:?}")).collect();
+        result
+    }
+
+    fn build_voice_combo_snippet(
+        &self,
+        combo: &[Voice],
+        measures: usize,
+        combo_idx: usize,
+        label: Option<&str>,
+    ) -> CompletionItem {
+        let mut snippet = String::new();
+        let mut tab_stop = 1;
+
+        for &voice in combo {
+            let orig_idx = self.voices.iter().position(|&v| v == voice).unwrap_or(0);
+            let line = self.build_voice_line(voice, orig_idx, measures, &mut tab_stop);
+            snippet.push_str(&line);
+            snippet.push('\n');
+        }
+
+        if self.verses > 0 {
+            snippet.push('\n');
+            for verse in 0..self.verses {
+                snippet.push_str(&format!("[{}] ${{{tab_stop}:~}}\n", verse + 1));
+                tab_stop += 1;
+            }
+        }
+
+        let combo_label = combo.iter().map(|v| format!("{v:?}")).collect::<String>();
+        let popup_label = label.unwrap_or(&combo_label);
+        let is_single = combo.len() == 1;
+        let kind_label = if is_single { "voice" } else { "voices" };
 
         CompletionItem {
-            label: format!("section ({label_suffix}, {})", voice_labels.join("")),
+            label: format!("{popup_label} ({kind_label})"),
             kind: Some(CompletionItemKind::SNIPPET),
             detail: Some(format!(
-                "Insert {} pattern for {} voice(s), {} verse(s) in {}/{}",
-                label_suffix,
-                self.voices.len(),
+                "Insert line{} for {combo_label} with {} verse(s) ({measures} measure(s) in {}/{})",
+                if is_single { "" } else { "s" },
                 self.verses,
                 self.time.top,
                 self.time.bottom
             )),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             insert_text: Some(snippet),
+            sort_text: Some(format!("{combo_idx:02}_{measures:02}")),
             ..Default::default()
         }
     }
@@ -275,6 +349,7 @@ fn get_section_context(document: &Document, line: usize) -> Option<SectionContex
     let voices = header.params.voices.clone()?.value;
     let verses = header.metadata.verses.clone().map(|v| v.value);
     let mut time = header.params.time.clone()?.value;
+    let mut used_voices = Vec::new();
 
     for section in &document.data.body.sections {
         let range = document.data.symbols.get_scope_range(section.sid);
@@ -283,13 +358,20 @@ fn get_section_context(document: &Document, line: usize) -> Option<SectionContex
             time = new_time.value;
         }
 
-        if range.start_point.row >= line && line <= range.end_point.row {
+        if range.start_point.row <= line && line <= range.end_point.row {
+            for item in &section.items {
+                for solfa in &item.solfa {
+                    used_voices.push(solfa.voice);
+                }
+            }
+
             break;
         }
     }
 
     Some(SectionContext {
         time,
+        used_voices,
         verses: verses.unwrap_or_default() as u8,
         voices: voices.iter().map(|v| v.value).collect(),
     })

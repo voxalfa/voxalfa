@@ -215,7 +215,10 @@ impl Diagnostic {
 
     pub fn is_syntactic(&self) -> bool {
         matches!(self.stage, ReportStage::Parsing | ReportStage::IRBuild)
-            || matches!(self.kind, DiagnosticKind::ExpectedLyricJoin(_))
+            || matches!(
+                self.kind,
+                DiagnosticKind::ExpectedLyricJoin(_) | DiagnosticKind::TrailingLyric(_)
+            )
     }
 }
 

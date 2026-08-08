@@ -191,26 +191,10 @@ impl<'a> AstValidator<'a> {
             .unwrap_or_default();
 
         let top = time.value.top as usize;
+        let check_accent = pulses.len() >= top;
         let mut last_is_note = false;
 
         for (pulse_id, pulse) in pulses.iter().enumerate() {
-            let position = (pulse_id + top - (start_offset % top)) % top;
-            let expected = time.value.get_accent(position);
-
-            if pulse.accent.value != expected {
-                let range = self.output.symbols.get_symbol_range(pulse.accent.sid);
-                let context_range = self.output.symbols.get_symbol_range(time.sid);
-
-                self.reporter.error(
-                    range,
-                    DiagnosticKind::MismatchedPulseAccent(
-                        expected,
-                        pulse.accent.value,
-                        context_range,
-                    ),
-                );
-            }
-
             if pulse.tokens.is_empty() {
                 last_is_note = false;
             }
@@ -231,6 +215,27 @@ impl<'a> AstValidator<'a> {
                 if token.value.is_note() {
                     last_is_note = true;
                 }
+            }
+
+            if !check_accent {
+                continue;
+            }
+
+            let position = (pulse_id + top - (start_offset % top)) % top;
+            let expected = time.value.get_accent(position);
+
+            if pulse.accent.value != expected {
+                let range = self.output.symbols.get_symbol_range(pulse.accent.sid);
+                let context_range = self.output.symbols.get_symbol_range(time.sid);
+
+                self.reporter.error(
+                    range,
+                    DiagnosticKind::MismatchedPulseAccent(
+                        expected,
+                        pulse.accent.value,
+                        context_range,
+                    ),
+                );
             }
         }
     }
