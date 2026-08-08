@@ -18,20 +18,20 @@ jobs:
         platform:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            bin_name: voxalfa
             asset_name: voxalfa-linux-x86_64
+            exe_ext: ""
           - os: macos-latest
             target: x86_64-apple-darwin
-            bin_name: voxalfa
             asset_name: voxalfa-macos-x86_64
+            exe_ext: ""
           - os: macos-latest
             target: aarch64-apple-darwin
-            bin_name: voxalfa
             asset_name: voxalfa-macos-arm64
+            exe_ext: ""
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            bin_name: voxalfa.exe
-            asset_name: voxalfa-windows-x86_64.exe
+            asset_name: voxalfa-windows-x86_64
+            exe_ext: ".exe"
 
     steps:
       - name: Checkout code
@@ -42,20 +42,22 @@ jobs:
         with:
           targets: ${{ matrix.platform.target }}
 
-      - name: Build binary
-        run: cargo build --release --target ${{ matrix.platform.target }} -p voxalfa-cli
+      - name: Build binaries
+        run: cargo build --release --target ${{ matrix.platform.target }} -p voxalfa-cli -p voxalfa-ls
 
-      - name: Rename binary for release
+      - name: Package binaries into tarball
         shell: bash
         run: |
-          mkdir dist
-          cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin_name }}" "dist/${{ matrix.platform.asset_name }}"
+          mkdir -p staging dist
+          cp "target/${{ matrix.platform.target }}/release/voxalfa${{ matrix.platform.exe_ext }}" staging/
+          cp "target/${{ matrix.platform.target }}/release/voxalfa-ls${{ matrix.platform.exe_ext }}" staging/
+          tar -czvf "dist/${{ matrix.platform.asset_name }}.tar.gz" -C staging .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.platform.asset_name }}
-          path: dist/*
+          name: archive-${{ matrix.platform.asset_name }}
+          path: dist/*.tar.gz
           retention-days: 1
 
   publish-nightly:
@@ -66,7 +68,7 @@ jobs:
       - name: Download all built binaries
         uses: actions/download-artifact@v4
         with:
-          pattern: binary-*
+          pattern: archive-*
           merge-multiple: true
 
       - name: Publish Nightly Release
@@ -77,4 +79,4 @@ jobs:
           body: "Automated nightly build from commit ${{ github.sha }}."
           prerelease: true
           files: |
-            voxalfa-*
+            *.tar.gz
