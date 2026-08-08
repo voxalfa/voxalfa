@@ -1,6 +1,6 @@
 use crate::{
-    Validator,
     diagnostics::types::{Diagnostic, DiagnosticLevel},
+    validation::Validator,
 };
 
 use codespan_reporting::{
