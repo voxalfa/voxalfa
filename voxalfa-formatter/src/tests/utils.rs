@@ -1,4 +1,4 @@
-use voxalfa_validator::MultiStepValidator;
+use voxalfa_core::MultiStepValidator;
 
 use crate::Formatter;
 

@@ -1,0 +1,24 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[$] time={4,4} | voices={A}
+---
+
+[$] dynamics={cre:1}
+
+[A] |d :r !m :f ||
+
+=== DIAGNOSTICS ===
+error[E010]: expected a range for timestamp
+ --> timestamp_range_exception_error.vfa:5:1
+  |
+ 5 | [$] dynamics={cre:1}
+   | ^^^^^^^^^^^^^^^^^^^^ error
+
+error[E032]: timestamp is unmatched
+ --> timestamp_range_exception_error.vfa:5:1
+  |
+ 5 | [$] dynamics={cre:1}
+   | ^^^^^^^^^^^^^^^^^^^^ error

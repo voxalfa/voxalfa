@@ -22,8 +22,8 @@ use futures::future::BoxFuture;
 use ropey::Rope;
 use tower::ServiceBuilder;
 use tracing::Level;
+use voxalfa_core::MultiStepValidator;
 use voxalfa_formatter::Formatter;
-use voxalfa_validator::MultiStepValidator;
 
 use crate::{
     actions::resolve_action_commands,

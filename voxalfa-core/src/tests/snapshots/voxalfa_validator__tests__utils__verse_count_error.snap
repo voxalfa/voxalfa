@@ -1,0 +1,21 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[#] verses={2}
+
+[$] time={4,4} | voices={S}
+---
+
+[S] |d :r !m :f ||
+[1] do re mi fa
+
+=== DIAGNOSTICS ===
+error[E024]: expected 2 verses, got 1
+ --> verse_count_error.vfa:5:1
+  |
+ 2 | [#] verses={2}
+   | -------------- verses defined here
+ 5 | ---
+   | ^^^ error

@@ -1,5 +1,5 @@
 use async_lsp::lsp_types::Position;
-use voxalfa_validator::ast::symbols::SymbolKind;
+use voxalfa_core::ast::symbols::SymbolKind;
 
 use crate::{
     builtin::VOICE_BUILTINS,

@@ -1,7 +1,7 @@
 use async_lsp::lsp_types::{
     self, DiagnosticRelatedInformation, DiagnosticSeverity, Location, NumberOrString,
 };
-use voxalfa_validator::diagnostics::types::{Diagnostic, DiagnosticLevel, DiagnosticRelatedInfo};
+use voxalfa_core::diagnostics::types::{Diagnostic, DiagnosticLevel, DiagnosticRelatedInfo};
 
 use crate::{SERVER_NAME, state::Document, utils::ts_range_to_lsp};
 

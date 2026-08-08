@@ -6,7 +6,7 @@ use async_lsp::{
     router::Router,
 };
 use ropey::Rope;
-use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
+use voxalfa_core::{MultiStepValidator, output::FinalOutput};
 
 use crate::diagnostics::convert_diagnostic;
 

@@ -6,7 +6,7 @@ mod task;
 mod tests;
 
 use midly::{Format, Header, Smf, Timing, num::u15};
-use voxalfa_validator::{
+use voxalfa_core::{
     ast::symbols::SymbolRef,
     data_types::Voice,
     output::{

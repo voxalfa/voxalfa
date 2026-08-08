@@ -1,4 +1,4 @@
-use voxalfa_validator::data_types::{
+use voxalfa_core::data_types::{
     Dynamic, ExtendedTempo, Jump, Key, List, Mark, StaticTempo, TimeSignature, TimedValue, Touch,
     Voice,
 };

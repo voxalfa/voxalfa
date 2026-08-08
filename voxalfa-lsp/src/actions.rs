@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_lsp::lsp_types::{
     CodeAction, CodeActionKind, CodeActionOrCommand, Position, TextEdit, WorkspaceEdit,
 };
-use voxalfa_validator::{
+use voxalfa_core::{
     ast::symbols::{Scope, ScopeId, ScopeKind},
     ir::{PulseView, lyrics::LyricLineIr, solfa::SolfaLineIr},
     ts_utils::range::{Range, RangeUtil},

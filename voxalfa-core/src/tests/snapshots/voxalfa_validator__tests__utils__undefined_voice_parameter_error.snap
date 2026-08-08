@@ -1,0 +1,18 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[$] time={4,4}
+---
+
+[S] |d :r !m :f ||
+
+=== DIAGNOSTICS ===
+error[E026]: 'voices' prameter has not been defined
+ --> undefined_voice_parameter_error.vfa:3:1
+  |
+ 1 | 
+   | - consider adding 'voice' metadata
+ 3 | ---
+   | ^^^ error

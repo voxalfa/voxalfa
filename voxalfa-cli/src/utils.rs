@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use glob::glob;
-use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
+use voxalfa_core::{MultiStepValidator, output::FinalOutput};
 
 use crate::{
     error::{Error, Result},

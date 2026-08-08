@@ -1,5 +1,5 @@
 use clap::{Parser, builder::styling::Style};
-use voxalfa_validator::data_types::Voice;
+use voxalfa_core::data_types::Voice;
 
 use crate::{
     error::{Error, Result},

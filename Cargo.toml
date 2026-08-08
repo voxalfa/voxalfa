@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-  "voxalfa-validator",
+  "voxalfa-core",
   "voxalfa-formatter",
   "voxalfa-midi",
   "voxalfa-cli",
@@ -14,4 +14,4 @@ thiserror = "2.0.18"
 tree-sitter-voxalfa = { path = "./tree-sitter-voxalfa" }
 voxalfa-midi = { path = "./voxalfa-midi" }
 voxalfa-formatter = { path = "./voxalfa-formatter" }
-voxalfa-validator = { path = "./voxalfa-validator" }
+voxalfa-core = { path = "./voxalfa-core" }

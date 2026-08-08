@@ -1,6 +1,6 @@
 use async_lsp::lsp_types::{CompletionItem, CompletionItemKind, Documentation, InsertTextFormat};
 use tree_sitter::{Node, Point};
-use voxalfa_validator::{
+use voxalfa_core::{
     data_types::{TimeSignature, Voice},
     ts_utils::generated::node_types,
 };

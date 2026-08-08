@@ -1,5 +1,5 @@
 use async_lsp::lsp_types::{Position, TextEdit};
-use voxalfa_validator::data_types::Voice;
+use voxalfa_core::data_types::Voice;
 
 use crate::{
     state::Document,

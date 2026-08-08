@@ -1,7 +1,7 @@
 use async_lsp::lsp_types::{DocumentSymbol, DocumentSymbolResponse, SymbolKind as LspSymbolKind};
 
 use ropey::Rope;
-use voxalfa_validator::ast::symbols::{
+use voxalfa_core::ast::symbols::{
     Primitive, ROOT_SCOPE_ID, Scope, ScopeKind, Symbol, SymbolKind, SymbolTree, Value,
 };
 

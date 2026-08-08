@@ -8,7 +8,7 @@ use codespan_reporting::{
     },
 };
 use similar::{ChangeTag, TextDiff};
-use voxalfa_validator::diagnostics::types::{Diagnostic, DiagnosticLevel};
+use voxalfa_core::diagnostics::types::{Diagnostic, DiagnosticLevel};
 
 use crate::types::SourceFile;
 

@@ -8,7 +8,7 @@ pub enum Error {
     Io(#[from] io::Error),
 
     #[error("Validator error: {0}")]
-    Validator(#[from] voxalfa_validator::error::Error),
+    Validator(#[from] voxalfa_core::error::Error),
 
     #[error("Invalid glob pattern: {0}")]
     GlobPattern(#[from] glob::PatternError),

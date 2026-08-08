@@ -2,7 +2,7 @@ use midly::{
     MetaMessage, MidiMessage, Track, TrackEvent, TrackEventKind,
     num::{u4, u7, u24, u28},
 };
-use voxalfa_validator::{
+use voxalfa_core::{
     ast::solfa::Note,
     data_types::{Dynamic, Touch, Voice},
     ir::solfa::PulseColumnKind,

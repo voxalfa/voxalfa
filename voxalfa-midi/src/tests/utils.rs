@@ -1,5 +1,5 @@
 use midly::{MidiMessage, Track, TrackEventKind, num::u7};
-use voxalfa_validator::MultiStepValidator;
+use voxalfa_core::MultiStepValidator;
 
 use crate::Converter;
 

@@ -1,0 +1,18 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[$] time={4,4} | voices={S}
+---
+
+[$] dynamics={f:6}
+
+[S] |d :r !m :f ||
+
+=== DIAGNOSTICS ===
+error[E032]: timestamp is unmatched
+ --> unmatched_timestamp_error.vfa:5:1
+  |
+ 5 | [$] dynamics={f:6}
+   | ^^^^^^^^^^^^^^^^^^ error

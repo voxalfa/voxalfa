@@ -1,0 +1,16 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[$] time={4,4} | voices={S}
+---
+
+[S] |d.d.r :r !m :f ||
+
+=== DIAGNOSTICS ===
+error[E015]: invalid note distribution
+ --> invalid_note_distribution_error.vfa:5:1
+  |
+ 5 | [S] |d.d.r :r !m :f ||
+   | ^^^^^^^^^^^^^^^^^^^^^^ error

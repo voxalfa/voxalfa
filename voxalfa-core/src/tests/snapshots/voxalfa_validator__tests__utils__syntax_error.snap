@@ -1,0 +1,24 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[#] title="foo"
+[#] author "bar"
+
+---
+
+=== DIAGNOSTICS ===
+error[E001]: syntax error
+ --> syntax_error.vfa:2:1
+  |
+ 2 | [#] title="foo"
+   | ^^^^^^^^^^^^^^^ error
+
+error[E026]: 'voices' prameter has not been defined
+ --> syntax_error.vfa:5:1
+  |
+ 1 | 
+   | - consider adding 'voice' metadata
+ 5 | ---
+   | ^^^ error

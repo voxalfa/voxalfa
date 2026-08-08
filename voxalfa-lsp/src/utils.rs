@@ -1,6 +1,6 @@
 use async_lsp::lsp_types;
 use ropey::Rope;
-use voxalfa_validator::ts_utils::range::{Position, Range};
+use voxalfa_core::ts_utils::range::{Position, Range};
 
 pub fn ts_pos_to_lsp(rope: &Rope, pos: Position) -> lsp_types::Position {
     let line = rope.line(pos.row);

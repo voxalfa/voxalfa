@@ -4,7 +4,7 @@ version = "0.1.0-alpha"
 edition = "2024"
 
 [dependencies]
-voxalfa-validator = { workspace = true }
+voxalfa-core = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }

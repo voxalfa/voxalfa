@@ -1,0 +1,23 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output
+---
+=== INPUT ===
+[$] time={3,3,3}
+
+---
+
+=== DIAGNOSTICS ===
+error[E009]: invalid time signature, expected two non-null integers
+ --> invalid_time_singature_error.vfa:2:1
+  |
+ 2 | [$] time={3,3,3}
+   | ^^^^^^^^^^^^^^^^ error
+
+error[E026]: 'voices' prameter has not been defined
+ --> invalid_time_singature_error.vfa:4:1
+  |
+ 1 | 
+   | - consider adding 'voice' metadata
+ 4 | ---
+   | ^^^ error
