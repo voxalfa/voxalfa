@@ -113,6 +113,10 @@ pub enum ScopeKind {
 }
 
 impl ScopeKind {
+    pub fn is_assignemnt(&self) -> bool {
+        matches!(self, ScopeKind::AssignmentLine)
+    }
+
     pub fn is_hidden(&self) -> bool {
         matches!(
             self,
