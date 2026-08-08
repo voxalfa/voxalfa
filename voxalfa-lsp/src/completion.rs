@@ -61,6 +61,7 @@ impl CompletionContext {
     pub fn completion_items(&self) -> Vec<CompletionItem> {
         match self {
             CompletionContext::Header => vec![
+                self.build_document_template_snippet(),
                 self.snippet_item("parameters ($)", "Initial Parameters", "[\\$] ${0}"),
                 self.snippet_item("metadata (#)", "Header metadata", "[#] ${0}"),
             ],
@@ -95,6 +96,42 @@ impl CompletionContext {
                 ..Default::default()
             })
             .collect()
+    }
+
+    fn build_document_template_snippet(&self) -> CompletionItem {
+        let snippet = [
+            ";; @version 0.1.0-alpha",
+            "",
+            "[#] title=\"${1:Title}\"",
+            "[#] author={\"${2:Author}\"}",
+            "[#] description=\"${3:Description}\"",
+            "[#] verses={${4:1}}",
+            "[#] release={${5:2026}}",
+            "[#] language=\"${6:en}\"",
+            "[#] tags={\"${7:tag}\"}",
+            "",
+            "[\\$] key={${8:C}} | time={${9:4,4}} | tempo={${10:100}} | voices={${11:S,A,T,B}}",
+            "",
+            "---",
+            "",
+            "[S] |${12:s} :${13:s} !${14:s} :${15:s} ||",
+            "[A] |${16:m} :${17:m} !${18:m} :${19:m} ||",
+            "[T] |${20:d} :${21:d} !${22:d} :${23:d} ||",
+            "[B] |${24:d} :${25:d} !${26:d} :${27:d} ||",
+            "",
+            "[1] ${28:Lyric}",
+            "${0}",
+        ]
+        .join("\n");
+
+        CompletionItem {
+            label: "template".to_string(),
+            kind: Some(CompletionItemKind::SNIPPET),
+            detail: Some("Voxalfa score template".to_string()),
+            insert_text: Some(snippet),
+            insert_text_format: Some(InsertTextFormat::SNIPPET),
+            ..Default::default()
+        }
     }
 
     fn snippet_item(&self, label: &str, detail: &str, snippet: &str) -> CompletionItem {
