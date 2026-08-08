@@ -10,6 +10,7 @@ name = "voxalfa-ls"
 [dependencies]
 async-lsp = { version = "0.2.4", features = ["tokio"] }
 futures = "0.3.33"
+ropey = "1.6.1"
 tokio = { version = "1.53.1", features = ["macros", "rt", "io-std"] }
 tokio-util = { version = "0.7.19", features = ["compat","futures-io"] }
 tower = "0.5.3"
@@ -18,5 +19,3 @@ tracing-subscriber = "0.3.23"
 voxalfa-validator = { workspace = true }
 voxalfa-formatter = { workspace = true }
 tree-sitter = "0.26.11"
-serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"

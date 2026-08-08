@@ -5,14 +5,28 @@ use async_lsp::{
     lsp_types::{PublishDiagnosticsParams, Url},
     router::Router,
 };
+use ropey::Rope;
 use voxalfa_validator::{MultiStepValidator, output::FinalOutput};
 
 use crate::diagnostics::convert_diagnostic;
 
 #[derive(Debug)]
 pub struct Document {
+    pub uri: Url,
     pub source: String,
     pub data: FinalOutput,
+    pub rope: Rope,
+}
+
+impl Document {
+    pub fn new(uri: Url, source: String, data: FinalOutput) -> Self {
+        Self {
+            rope: Rope::from_str(&source),
+            uri,
+            source,
+            data,
+        }
+    }
 }
 
 pub struct ServerState {
@@ -36,7 +50,7 @@ impl ServerState {
                 .data
                 .diagnostics
                 .iter()
-                .flat_map(|d| convert_diagnostic(uri.clone(), d))
+                .flat_map(|d| convert_diagnostic(doc, d))
                 .collect();
 
             let params = PublishDiagnosticsParams {

@@ -9,7 +9,7 @@ use crate::{
         reporter::DiagnosticReporter,
         types::{DiagnosticKind, ReportStage},
     },
-    ir::{BodyIR, SectionIR, SubSectionIR},
+    ir::{BodyIr, SectionIr, SubSectionIr},
     output::event::{TimelineMap, ToEventKind},
     validation::event::EventBuffer,
 };
@@ -38,7 +38,7 @@ impl<'a> IrValidator<'a> {
         }
     }
 
-    pub fn validate(mut self, body: &BodyIR) -> IrValidatorOutput {
+    pub fn validate(mut self, body: &BodyIr) -> IrValidatorOutput {
         let mut buffer = EventBuffer::default();
 
         for (section_id, section) in body.sections.iter().enumerate() {
@@ -83,7 +83,7 @@ impl<'a> IrValidator<'a> {
     fn process_events<T: ToEventKind>(
         &mut self,
         events: Option<&SymbolRef<TimedList<T>>>,
-        sub_section: &SubSectionIR,
+        sub_section: &SubSectionIr,
         is_last: bool,
         buffer: &mut EventBuffer,
     ) {
@@ -98,7 +98,7 @@ impl<'a> IrValidator<'a> {
         }
     }
 
-    fn validate_sub_section_ir(&mut self, sub_section: &SubSectionIR) {
+    fn validate_sub_section_ir(&mut self, sub_section: &SubSectionIr) {
         let range = self.tree.get_scope_range(sub_section.sid);
 
         if let Some(verses) = &self.header.metadata.verses {
@@ -143,7 +143,7 @@ impl<'a> IrValidator<'a> {
         }
     }
 
-    fn validate_section_merge(&mut self, section_id: usize, sections: &[SectionIR]) {
+    fn validate_section_merge(&mut self, section_id: usize, sections: &[SectionIr]) {
         let current = &sections[section_id];
         let root = sections[..section_id].iter().rev().find(|s| !s.merge);
 
@@ -206,7 +206,7 @@ impl<'a> IrValidator<'a> {
         &self,
         section_id: usize,
         sub_id: usize,
-        sections: &'b [SectionIR],
+        sections: &'b [SectionIr],
     ) -> Option<&'b SubSectionParams> {
         sections[..=section_id]
             .iter()

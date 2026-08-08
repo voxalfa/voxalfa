@@ -8,12 +8,12 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct SolfaLineIR {
+pub struct SolfaLineIr {
     pub sid: ScopeId,
     pub voice: Voice,
-    pub pulses: Vec<PulseIR>,
+    pub pulses: Vec<PulseIr>,
 }
-impl SolfaLineIR {
+impl SolfaLineIr {
     pub fn new(sid: ScopeId, voice: Voice) -> Self {
         Self {
             sid,
@@ -33,7 +33,7 @@ impl SolfaLineIR {
 }
 
 #[derive(Debug)]
-pub struct PulseIR {
+pub struct PulseIr {
     pub expanded: bool,
     pub sid: ScopeId,
     pub accent: PulseAccent,
@@ -41,7 +41,7 @@ pub struct PulseIR {
     pub factor: usize, // factor of the duration in pulse columns
 }
 
-impl PulseIR {
+impl PulseIr {
     pub fn new(sid: ScopeId, accent: PulseAccent) -> Self {
         Self {
             sid,

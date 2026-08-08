@@ -4,6 +4,7 @@ use tree_sitter::Point;
 
 use crate::{
     ast::parser::Parser,
+    data_types::Voice,
     ts_utils::{
         range::{Range, RangeUtil},
         types::AssignmentData,
@@ -137,6 +138,7 @@ pub struct Scope {
 #[derive(Debug, Default)]
 pub struct SymbolCache {
     key_refs: HashMap<String, Vec<SymbolId>>,
+    voice_defs: Vec<Voice>,
     voice_refs: HashMap<VoiceId, Vec<SymbolId>>,
     comments: Vec<Comment>,
     lyrics: Vec<String>,
@@ -238,8 +240,19 @@ impl SymbolTree {
         self.cache.key_refs.entry(key).or_default().push(sid);
     }
 
+    pub fn define_voices(&mut self, voices: &[SymbolRef<Voice>]) {
+        for (id, voice) in voices.iter().enumerate() {
+            self.store_voice_ref(id, voice.sid);
+            self.cache.voice_defs.push(voice.value);
+        }
+    }
+
     pub fn store_voice_ref(&mut self, voice: VoiceId, sid: SymbolId) {
         self.cache.voice_refs.entry(voice).or_default().push(sid);
+    }
+
+    pub fn get_voice(&self, voice_id: usize) -> Option<Voice> {
+        self.cache.voice_defs.get(voice_id).copied()
     }
 
     pub fn get_symbol_refs(&self, position: &Point) -> Option<Vec<Range>> {

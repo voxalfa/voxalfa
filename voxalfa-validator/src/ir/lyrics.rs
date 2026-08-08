@@ -1,20 +1,20 @@
 use crate::{
     ast::{
-        lyrics::{LyricLine, LyricOperatorKind, LyricSpecialChar},
+        lyrics::{LyricLine, LyricOperator, LyricOperatorKind, LyricSpecialChar},
         symbols::{LyricStringId, ScopeId},
     },
     ir::utils::{UnderlineMarker, UnderlineRange},
 };
 
 #[derive(Debug, Default)]
-pub struct LyricLineIR {
+pub struct LyricLineIr {
     pub sid: ScopeId,
     pub columns: Vec<LyricColumnIR>,
-    pub operators: Vec<LyricOperatorKind>,
+    pub operators: Vec<LyricOperator>,
     pub anchor: bool,
 }
 
-impl LyricLineIR {
+impl LyricLineIr {
     pub fn new(line: &LyricLine) -> Self {
         Self {
             sid: line.sid,

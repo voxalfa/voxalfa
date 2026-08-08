@@ -19,6 +19,7 @@ use async_lsp::{
     tracing::TracingLayer,
 };
 use futures::future::BoxFuture;
+use ropey::Rope;
 use tower::ServiceBuilder;
 use tracing::Level;
 use voxalfa_formatter::Formatter;
@@ -87,7 +88,7 @@ impl LanguageServer for ServerState {
         let uri = params.text_document.uri;
         let source = params.text_document.text;
         let data = self.validator.analyze(&source);
-        let document = Document { source, data };
+        let document = Document::new(uri.clone(), source, data);
 
         self.documents.insert(uri.clone(), document);
         self.publish_diagnostics(uri);
@@ -108,7 +109,9 @@ impl LanguageServer for ServerState {
             && let Some(change) = params.content_changes.into_iter().last()
         {
             doc.data = self.validator.analyze(&change.text);
+            doc.rope = Rope::from_str(&change.text); // FIXME: apply incremental updates
             doc.source = change.text;
+
             self.publish_diagnostics(uri);
         }
 
@@ -139,14 +142,12 @@ impl LanguageServer for ServerState {
 
     fn hover(&mut self, params: HoverParams) -> Response<Option<Hover>, Self::Error> {
         let uri = params.text_document_position_params.text_document.uri;
-        let raw_position = params.text_document_position_params.position;
-        let position = lsp_pos_to_ts(raw_position);
+        let position = params.text_document_position_params.position;
 
         let data = self
             .documents
             .get(&uri)
-            .and_then(|d| d.data.symbols.query_symbol(&position))
-            .and_then(create_documentation)
+            .and_then(|doc| create_documentation(doc, position))
             .map(|value| Hover {
                 contents: HoverContents::Markup(MarkupContent {
                     kind: MarkupKind::Markdown,
@@ -162,12 +163,9 @@ impl LanguageServer for ServerState {
         &mut self,
         params: DocumentSymbolParams,
     ) -> Response<Option<DocumentSymbolResponse>, Self::Error> {
-        let uri = params.text_document.uri;
-
         let response = self
             .documents
-            .get(&uri)
-            .map(|d| &d.data.symbols)
+            .get(&params.text_document.uri)
             .and_then(resolve_document_symbols);
 
         Box::pin(async { Ok(response) })
@@ -178,13 +176,12 @@ impl LanguageServer for ServerState {
         params: GotoDefinitionParams,
     ) -> Response<Option<GotoDefinitionResponse>, Self::Error> {
         let uri = params.text_document_position_params.text_document.uri;
-        let raw_position = params.text_document_position_params.position;
-        let position = lsp_pos_to_ts(raw_position);
+        let position = params.text_document_position_params.position;
 
-        let result = self.documents.get(&uri).and_then(|doc| {
-            let symbol = doc.data.symbols.query_symbol(&position)?;
-            resolve_symbol_definition(uri, symbol, &doc.data)
-        });
+        let result = self
+            .documents
+            .get(&uri)
+            .and_then(|doc| resolve_symbol_definition(doc, position));
 
         Box::pin(async { Ok(result) })
     }
@@ -195,18 +192,19 @@ impl LanguageServer for ServerState {
     ) -> Response<Option<Vec<Location>>, Self::Error> {
         let uri = params.text_document_position.text_document.uri;
         let raw_position = params.text_document_position.position;
-        let position = lsp_pos_to_ts(raw_position);
 
-        let references = self
-            .documents
-            .get(&uri)
-            .and_then(|doc| doc.data.symbols.get_symbol_refs(&position))
-            .map(|ranges| {
-                ranges
-                    .iter()
-                    .map(|r| Location::new(uri.clone(), ts_range_to_lsp(r)))
-                    .collect()
-            });
+        let references = self.documents.get(&uri).and_then(|doc| {
+            let position = lsp_pos_to_ts(&doc.rope, raw_position);
+            let ranges = doc.data.symbols.get_symbol_refs(&position)?;
+
+            let result = ranges
+                .iter()
+                .map(|r| ts_range_to_lsp(&doc.rope, r))
+                .map(|r| Location::new(uri.clone(), r))
+                .collect();
+
+            Some(result)
+        });
 
         Box::pin(async { Ok(references) })
     }
@@ -224,17 +222,14 @@ impl LanguageServer for ServerState {
 
             let formatter = Formatter::new(&doc.data);
             let formatted_text = formatter.format_to_string().ok()?;
-            let line_count = doc.source.lines().count().saturating_sub(1);
-            let last_line_len = doc.source.lines().last().map_or(0, |l| l.chars().count());
-
-            let full_range = Range {
-                start: Position::new(0, 0),
-                end: Position::new(line_count as u32, last_line_len as u32),
-            };
+            let last_line_idx = doc.rope.len_lines().saturating_sub(1);
+            let last_line_utf16 = doc.rope.line(last_line_idx).len_utf16_cu();
+            let start_pos = Position::new(0, 0);
+            let end_pos = Position::new(last_line_idx as u32, last_line_utf16 as u32);
 
             Some(vec![TextEdit {
-                range: full_range,
-                new_text: formatted_text.trim_end().to_string(), // FIXME
+                range: Range::new(start_pos, end_pos),
+                new_text: formatted_text.trim_end().to_string(),
             }])
         });
 
@@ -243,13 +238,12 @@ impl LanguageServer for ServerState {
 
     fn rename(&mut self, params: RenameParams) -> Response<Option<WorkspaceEdit>, Self::Error> {
         let uri = params.text_document_position.text_document.uri;
-        let raw_position = params.text_document_position.position;
-        let position = lsp_pos_to_ts(raw_position);
+        let position = params.text_document_position.position;
 
         let result = self
             .documents
             .get(&uri)
-            .and_then(|doc| resolve_rename_edits(params.new_name, position, &doc.data))
+            .and_then(|doc| resolve_rename_edits(params.new_name, position, doc))
             .map(|edits| WorkspaceEdit {
                 changes: Some(HashMap::from([(uri, edits)])),
                 ..Default::default()
@@ -263,12 +257,12 @@ impl LanguageServer for ServerState {
         params: CodeActionParams,
     ) -> Response<Option<Vec<CodeActionOrCommand>>, Self::Error> {
         let uri = params.text_document.uri;
-        let position = lsp_pos_to_ts(params.range.start);
+        let position = params.range.start;
 
         let result = self
             .documents
             .get(&uri)
-            .and_then(|doc| resolve_action_commands(uri, doc, position));
+            .and_then(|doc| resolve_action_commands(doc, position));
 
         Box::pin(async { Ok(result) })
     }

@@ -1,6 +1,6 @@
 use crate::{
     data_types::TimedList,
-    ir::{SectionIR, SubSectionIR},
+    ir::{SectionIr, SubSectionIr},
     output::event::{Event, EventKind, SubSectonId, Timestamp, ToEventKind, get_note_ticks},
 };
 
@@ -33,7 +33,7 @@ impl EventBuffer {
         self.results.drain(..)
     }
 
-    pub fn process_section_events(&mut self, section: &SectionIR) {
+    pub fn process_section_events(&mut self, section: &SectionIr) {
         if !section.params.has_events() {
             return;
         }
@@ -55,7 +55,7 @@ impl EventBuffer {
 
     pub fn process_local_events<T: ToEventKind>(
         &mut self,
-        sub_section: &SubSectionIR,
+        sub_section: &SubSectionIr,
         events: &TimedList<T>,
     ) {
         if events.is_empty() {

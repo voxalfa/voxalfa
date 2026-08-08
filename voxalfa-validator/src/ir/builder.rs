@@ -13,9 +13,9 @@ use crate::{
         types::{DiagnosticKind, ReportStage},
     },
     ir::{
-        BodyIR, PulseView, SectionIR, SubSectionIR,
-        lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
-        solfa::{PulseColumn, PulseColumnKind, PulseIR, SolfaLineIR},
+        BodyIr, PulseView, SectionIr, SubSectionIr,
+        lyrics::{LyricColumnIR, LyricLineIr, LyricStringIR},
+        solfa::{PulseColumn, PulseColumnKind, PulseIr, SolfaLineIr},
         utils::{BeatBuffer, UnderlineBuffer, UnderlineMarker},
     },
     ts_utils::range::RangeUtil,
@@ -23,7 +23,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct IRBuilderOutput {
-    pub body: BodyIR,
+    pub body: BodyIr,
     pub reporter: DiagnosticReporter,
 }
 
@@ -42,7 +42,7 @@ impl<'a> IrBuilder<'a> {
     }
 
     pub fn build(mut self, body: Body) -> IRBuilderOutput {
-        let body = BodyIR {
+        let body = BodyIr {
             sections: body
                 .sections
                 .into_iter()
@@ -56,14 +56,14 @@ impl<'a> IrBuilder<'a> {
         }
     }
 
-    fn build_section_ir(&mut self, section: Section) -> SectionIR {
+    fn build_section_ir(&mut self, section: Section) -> SectionIr {
         let blocks = section
             .items
             .into_iter()
             .map(|s| self.build_sub_section_ir(s))
             .collect::<Vec<_>>();
 
-        SectionIR {
+        SectionIr {
             sid: section.sid,
             merge: section.merge,
             params: section.params,
@@ -71,7 +71,7 @@ impl<'a> IrBuilder<'a> {
         }
     }
 
-    fn build_sub_section_ir(&mut self, section: SubSection) -> SubSectionIR {
+    fn build_sub_section_ir(&mut self, section: SubSection) -> SubSectionIr {
         let mut solfa = section
             .solfa
             .into_iter()
@@ -88,7 +88,7 @@ impl<'a> IrBuilder<'a> {
 
         let views = self.build_pulse_view(&solfa);
 
-        SubSectionIR {
+        SubSectionIr {
             sid: section.sid,
             params: section.params,
             views,
@@ -97,13 +97,13 @@ impl<'a> IrBuilder<'a> {
         }
     }
 
-    fn build_solfa_line_ir(&mut self, line: SolfaLine) -> SolfaLineIR {
-        let mut line_ir = SolfaLineIR::new(line.sid, line.voice.value);
+    fn build_solfa_line_ir(&mut self, line: SolfaLine) -> SolfaLineIr {
+        let mut line_ir = SolfaLineIr::new(line.sid, line.voice.value);
         let mut underline_buffer = UnderlineBuffer::default();
 
         for pulse in &line.pulses {
             let mut stream = pulse.tokens.iter().peekable();
-            let mut pulse_ir = PulseIR::new(pulse.sid, pulse.accent.value);
+            let mut pulse_ir = PulseIr::new(pulse.sid, pulse.accent.value);
             let mut beat_buffer = BeatBuffer::default();
 
             if stream.peek().is_none() || stream.peek().is_some_and(|t| t.value.is_beat_divider()) {
@@ -165,8 +165,8 @@ impl<'a> IrBuilder<'a> {
         line_ir
     }
 
-    fn build_lyric_line_ir(&mut self, line: LyricLine) -> LyricLineIR {
-        let mut line_ir = LyricLineIR::new(&line);
+    fn build_lyric_line_ir(&mut self, line: LyricLine) -> LyricLineIr {
+        let mut line_ir = LyricLineIr::new(&line);
         let mut underline_buffer = UnderlineBuffer::default();
 
         for token in line.tokens {
@@ -176,7 +176,7 @@ impl<'a> IrBuilder<'a> {
                     line_ir.columns.push(column_ir);
                 }
                 LyricToken::Operator(operator) => {
-                    line_ir.operators.push(operator.value);
+                    line_ir.operators.push(operator);
                 }
             };
         }
@@ -234,7 +234,7 @@ impl<'a> IrBuilder<'a> {
         partials
     }
 
-    fn expand_empty_notes(&self, solfa: &mut [SolfaLineIR]) {
+    fn expand_empty_notes(&self, solfa: &mut [SolfaLineIr]) {
         let Some(first) = solfa.first() else { return };
 
         for pulse_id in 0..first.pulses.len() {
@@ -253,7 +253,7 @@ impl<'a> IrBuilder<'a> {
         }
     }
 
-    fn expand_pulse_at(&self, line: &mut SolfaLineIR, pulse_id: usize, col_shape: &[usize]) {
+    fn expand_pulse_at(&self, line: &mut SolfaLineIr, pulse_id: usize, col_shape: &[usize]) {
         let Some(pulse) = line.pulses.get_mut(pulse_id) else {
             return;
         };
@@ -281,7 +281,7 @@ impl<'a> IrBuilder<'a> {
         }
     }
 
-    fn build_pulse_view(&mut self, solfa: &[SolfaLineIR]) -> Vec<PulseView> {
+    fn build_pulse_view(&mut self, solfa: &[SolfaLineIr]) -> Vec<PulseView> {
         let mut views = solfa
             .first()
             .map(|first| first.pulses.iter().map(PulseView::new).collect::<Vec<_>>())

@@ -1,22 +1,26 @@
-use async_lsp::lsp_types::TextEdit;
-use voxalfa_validator::{data_types::Voice, output::FinalOutput, ts_utils::range::Position};
+use async_lsp::lsp_types::{Position, TextEdit};
+use voxalfa_validator::data_types::Voice;
 
-use crate::utils::ts_range_to_lsp;
+use crate::{
+    state::Document,
+    utils::{lsp_pos_to_ts, ts_range_to_lsp},
+};
 
 // currently only for voices
 pub fn resolve_rename_edits(
     new_name: String,
     position: Position,
-    data: &FinalOutput,
+    doc: &Document,
 ) -> Option<Vec<TextEdit>> {
     let voice = Voice::try_from(new_name).ok()?;
-    let refs = data.symbols.find_voice_refs(&position)?;
+    let position = lsp_pos_to_ts(&doc.rope, position);
+    let refs = doc.data.symbols.find_voice_refs(&position)?;
 
     let edits = refs
         .iter()
-        .map(|&sid| data.symbols.get_symbol(sid))
+        .map(|&sid| doc.data.symbols.get_symbol(sid))
         .map(|s| TextEdit {
-            range: ts_range_to_lsp(&s.range),
+            range: ts_range_to_lsp(&doc.rope, &s.range),
             new_text: voice.to_string(),
         })
         .collect();

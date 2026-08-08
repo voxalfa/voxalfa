@@ -15,8 +15,8 @@ use voxalfa_validator::{
     },
     ir::{
         PulseView,
-        lyrics::{LyricColumnIR, LyricLineIR, LyricStringIR},
-        solfa::{PulseIR, SolfaLineIR},
+        lyrics::{LyricColumnIR, LyricLineIr, LyricStringIR},
+        solfa::{PulseIr, SolfaLineIr},
     },
     output::{FinalOutput, render::RenderType},
     ts_utils::range::RangeUtil,
@@ -99,7 +99,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_body(&mut self) {
-        for (section_id, section) in self.source.ir.sections.iter().enumerate() {
+        for (section_id, section) in self.source.body.sections.iter().enumerate() {
             self.proces_section_params(&section.params);
 
             for sub_section in &section.items {
@@ -111,7 +111,7 @@ impl<'a> Formatter<'a> {
 
                 for (lyrics_id, lyrics) in sub_section.lyrics.iter().enumerate() {
                     let verse = lyrics_id + 1;
-                    let is_last_section = section_id == self.source.ir.sections.len() - 1;
+                    let is_last_section = section_id == self.source.body.sections.len() - 1;
 
                     self.process_lyrics(&sub_section.views, lyrics, verse, is_last_section);
                 }
@@ -156,7 +156,7 @@ impl<'a> Formatter<'a> {
         self.add_assignment(Assignment::Params, params.dynamics.as_ref());
     }
 
-    fn process_solfa(&mut self, solfa: &SolfaLineIR) {
+    fn process_solfa(&mut self, solfa: &SolfaLineIr) {
         let scope = self.source.symbols.get_scope(solfa.sid);
         let line_id = scope.range.start_point.row;
         let pulse_width = self.col_width * self.col_factor;
@@ -173,7 +173,7 @@ impl<'a> Formatter<'a> {
         self.push_line(LineRank::Solfa, line_id, buffer);
     }
 
-    fn format_pulse(&mut self, pulse: &PulseIR) -> String {
+    fn format_pulse(&mut self, pulse: &PulseIr) -> String {
         let mut buffer = String::new();
         let mut clock = 0;
         let accent = pulse.accent.to_string();
@@ -215,7 +215,7 @@ impl<'a> Formatter<'a> {
     fn process_lyrics(
         &mut self,
         views: &[PulseView],
-        line: &LyricLineIR,
+        line: &LyricLineIr,
         verse: usize,
         is_last_section: bool,
     ) {
@@ -251,7 +251,7 @@ impl<'a> Formatter<'a> {
                 }
             }
 
-            let filler = match operator {
+            let filler = match operator.map(|op| op.value) {
                 Some(LyricOperatorKind::Concat) => "_",
                 Some(LyricOperatorKind::Newline) => "\\",
                 _ => "",

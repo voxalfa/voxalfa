@@ -1,8 +1,11 @@
-use voxalfa_validator::ast::symbols::{Symbol, SymbolKind};
+use async_lsp::lsp_types::Position;
+use voxalfa_validator::ast::symbols::SymbolKind;
 
 use crate::{
     builtin::VOICE_BUILTINS,
     parameters::{HEADER_PARAMS, INITIAL_PARAMS, ParamSpec, SECTION_PARAMS},
+    state::Document,
+    utils::lsp_pos_to_ts,
 };
 
 pub fn find_param(key: &str) -> Option<&'static ParamSpec> {
@@ -12,7 +15,10 @@ pub fn find_param(key: &str) -> Option<&'static ParamSpec> {
         .find(|param| param.name == key)
 }
 
-pub fn create_documentation(symbol: &Symbol) -> Option<String> {
+pub fn create_documentation(doc: &Document, position: Position) -> Option<String> {
+    let position = lsp_pos_to_ts(&doc.rope, position);
+    let symbol = doc.data.symbols.query_symbol(&position)?;
+
     match &symbol.kind {
         SymbolKind::Key(key) => {
             let spec = find_param(key.as_str())?;
@@ -22,7 +28,8 @@ pub fn create_documentation(symbol: &Symbol) -> Option<String> {
             ))
         }
         SymbolKind::Value(value) => Some(format!("```text\n{}\n```", value)),
-        SymbolKind::Voice(voice) => {
+        SymbolKind::Voice(voice_id) => {
+            let voice = doc.data.symbols.get_voice(*voice_id)?;
             let voice_str = voice.to_string();
 
             VOICE_BUILTINS

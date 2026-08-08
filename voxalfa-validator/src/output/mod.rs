@@ -12,8 +12,8 @@ use crate::{
     data_types::Voice,
     diagnostics::types::Diagnostic,
     ir::{
-        BodyIR, PulseView,
-        lyrics::{LyricColumnIR, LyricLineIR, LyricPrimitive, LyricStringIR},
+        BodyIr, PulseView,
+        lyrics::{LyricColumnIR, LyricLineIr, LyricPrimitive, LyricStringIR},
         solfa::{PulseColumn, PulseColumnKind},
     },
     output::{
@@ -30,7 +30,7 @@ pub struct FinalOutput {
     pub tree: Option<Tree>,
     pub symbols: SymbolTree,
     pub header: Header,
-    pub ir: BodyIR,
+    pub body: BodyIr,
     pub diagnostics: Vec<Diagnostic>,
     pub timelines: TimelineMap,
 }
@@ -57,7 +57,7 @@ impl FinalOutput {
     }
 
     pub fn resolve_column_factor(&self) -> usize {
-        self.ir
+        self.body
             .sections
             .iter()
             .flat_map(|s| &s.items)
@@ -71,7 +71,7 @@ impl FinalOutput {
         let mut notes = Vec::new();
         let mut timeline = Vec::new();
 
-        let sub_items = self.ir.sections.iter().flat_map(|section| &section.items);
+        let sub_items = self.body.sections.iter().flat_map(|section| &section.items);
 
         for sub in sub_items {
             let Some(solfa) = sub.solfa.iter().find(|s| s.voice == voice) else {
@@ -99,8 +99,8 @@ impl FinalOutput {
     pub fn build_lyrics(&self, voice: Voice, ulhs: &str, urhs: &str) -> Vec<String> {
         let mut result = Vec::new();
 
-        let section_verses: Vec<&[LyricLineIR]> = self
-            .ir
+        let section_verses: Vec<&[LyricLineIr]> = self
+            .body
             .sections
             .iter()
             .filter_map(|s| s.get_verses(&voice))
@@ -124,7 +124,7 @@ impl FinalOutput {
 
     fn stringify_lyrics_line(
         &self,
-        line: &LyricLineIR,
+        line: &LyricLineIr,
         underline_lhs: &str,
         underline_rhs: &str,
     ) -> String {
@@ -158,7 +158,7 @@ impl FinalOutput {
                 }
             }
 
-            if let Some(ch) = line.operators.get(column_id).and_then(|op| op.char()) {
+            if let Some(ch) = line.operators.get(column_id).and_then(|op| op.value.char()) {
                 result.push(ch);
             }
         }
@@ -206,7 +206,7 @@ impl FinalOutput {
     fn resolve_max_lyrics_width(&self, render_type: RenderType) -> usize {
         let max_factor = self.resolve_column_factor();
 
-        self.ir
+        self.body
             .sections
             .iter()
             .flat_map(|s| &s.items)
@@ -218,7 +218,7 @@ impl FinalOutput {
 
     fn filter_lyric_columns<'a>(
         &self,
-        lyrics: &'a [LyricLineIR],
+        lyrics: &'a [LyricLineIr],
         views: &[PulseView],
         max_factor: usize,
     ) -> Vec<&'a LyricColumnIR> {
@@ -248,7 +248,7 @@ impl FinalOutput {
     }
 
     fn resolve_max_note_width(&self, render_type: RenderType) -> usize {
-        self.ir
+        self.body
             .sections
             .iter()
             .flat_map(|s| &s.items)

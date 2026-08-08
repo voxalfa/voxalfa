@@ -3,8 +3,8 @@ pub mod lyrics;
 pub mod solfa;
 pub mod utils;
 
-use lyrics::LyricLineIR;
-use solfa::SolfaLineIR;
+use lyrics::LyricLineIr;
+use solfa::SolfaLineIr;
 
 use crate::{
     ast::{
@@ -12,25 +12,25 @@ use crate::{
         symbols::ScopeId,
     },
     data_types::{ExtendedTempo, Mark, Voice},
-    ir::solfa::PulseIR,
+    ir::solfa::PulseIr,
     output::event::{Event, EventKind, JumpEvent, get_note_ticks},
 };
 
 #[derive(Debug, Default)]
-pub struct BodyIR {
-    pub sections: Vec<SectionIR>,
+pub struct BodyIr {
+    pub sections: Vec<SectionIr>,
 }
 
 #[derive(Debug, Default)]
-pub struct SectionIR {
+pub struct SectionIr {
     pub sid: ScopeId,
-    pub items: Vec<SubSectionIR>,
+    pub items: Vec<SubSectionIr>,
     pub params: SectionParams,
     pub merge: bool,
 }
 
-impl SectionIR {
-    pub fn get_verses(&self, voice: &Voice) -> Option<&[LyricLineIR]> {
+impl SectionIr {
+    pub fn get_verses(&self, voice: &Voice) -> Option<&[LyricLineIr]> {
         self.items.iter().find_map(|s| {
             s.solfa
                 .iter()
@@ -105,15 +105,15 @@ impl SectionIR {
 }
 
 #[derive(Debug, Default)]
-pub struct SubSectionIR {
+pub struct SubSectionIr {
     pub sid: ScopeId,
     pub params: SubSectionParams,
     pub views: Vec<PulseView>,
-    pub solfa: Vec<SolfaLineIR>,
-    pub lyrics: Vec<LyricLineIR>,
+    pub solfa: Vec<SolfaLineIr>,
+    pub lyrics: Vec<LyricLineIr>,
 }
 
-impl SubSectionIR {
+impl SubSectionIr {
     pub fn width(&self) -> usize {
         self.views.iter().map(|v| v.durations.len()).sum()
     }
@@ -131,7 +131,7 @@ pub struct PulseView {
 }
 
 impl PulseView {
-    pub fn new(pulse: &PulseIR) -> Self {
+    pub fn new(pulse: &PulseIr) -> Self {
         Self {
             durations: pulse.columns.iter().map(|c| c.duration).collect(),
             factor: pulse.factor,
@@ -139,7 +139,7 @@ impl PulseView {
         }
     }
 
-    pub fn add(&mut self, pulse: &PulseIR) {
+    pub fn add(&mut self, pulse: &PulseIr) {
         let duration_match = pulse
             .columns
             .iter()

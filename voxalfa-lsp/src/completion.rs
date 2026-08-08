@@ -8,14 +8,14 @@ use voxalfa_validator::{
 use crate::{builtin::*, parameters::*, state::Document};
 
 pub fn get_completion_context(
-    document: &Document,
+    doc: &Document,
     line: usize,
     column: usize,
 ) -> Option<CompletionContext> {
-    let root = document.data.tree.as_ref().map(|t| t.root_node())?;
+    let root = doc.data.tree.as_ref().map(|t| t.root_node())?;
     let point = Point::new(line, column);
     let target = root.named_descendant_for_point_range(point, point)?;
-    let line_str = document.source.lines().nth(line)?;
+    let line_str = doc.source.lines().nth(line)?;
 
     match target.kind_id() {
         node_types::HEADER => {
@@ -31,14 +31,14 @@ pub fn get_completion_context(
             if line_str.contains("[$]") {
                 Some(CompletionContext::SectionParams)
             } else {
-                let section = get_section_context(document, line)?;
+                let section = get_section_context(doc, line)?;
                 let context = CompletionContext::Section(section);
 
                 Some(context)
             }
         }
         node_types::BUILTIN | node_types::PARAMETER_ASSIGNMENT => {
-            let builtin = get_builtin_context(target, &document.source)?;
+            let builtin = get_builtin_context(target, &doc.source)?;
             let context = CompletionContext::Builtin(builtin);
 
             Some(context)
@@ -239,7 +239,7 @@ fn get_section_context(document: &Document, line: usize) -> Option<SectionContex
     let verses = header.metadata.verses.clone().map(|v| v.value);
     let mut time = header.params.time.clone()?.value;
 
-    for section in &document.data.ir.sections {
+    for section in &document.data.body.sections {
         let range = document.data.symbols.get_scope_range(section.sid);
 
         if let Some(new_time) = &section.params.time {
