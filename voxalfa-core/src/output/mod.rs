@@ -8,11 +8,7 @@ pub mod voice;
 use tree_sitter::Tree;
 
 use crate::{
-    ast::{
-        header::{Header, HeaderMetadata},
-        params::InitialParams,
-        symbols::{SymbolRef, SymbolTree},
-    },
+    ast::{header::Header, symbols::SymbolTree},
     data_types::Voice,
     diagnostics::types::Diagnostic,
     ir::{
@@ -50,20 +46,6 @@ impl FinalOutput {
 
     pub fn has_syntax_error(&self) -> bool {
         self.diagnostics.iter().any(|d| d.is_syntactic())
-    }
-
-    pub fn get_header_metadata<F, T>(&self, getter: F) -> Option<&T>
-    where
-        F: Fn(&HeaderMetadata) -> Option<&SymbolRef<T>>,
-    {
-        getter(&self.header.metadata).as_ref().map(|f| &f.value)
-    }
-
-    pub fn get_header_params<F, T>(&self, getter: F) -> Option<&T>
-    where
-        F: Fn(&InitialParams) -> Option<&SymbolRef<T>>,
-    {
-        getter(&self.header.params).as_ref().map(|f| &f.value)
     }
 
     pub fn resolve_column_width(&self) -> u8 {

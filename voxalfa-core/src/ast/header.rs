@@ -3,7 +3,7 @@ use crate::{
         directives::HeaderDirective,
         params::InitialParams,
         parser::Parser,
-        symbols::{Field, FieldAssign, ScopeId},
+        symbols::{Field, FieldAssign, ScopeId, SymbolRef},
     },
     data_types::List,
     diagnostics::types::DiagnosticKind,
@@ -24,6 +24,13 @@ impl Header {
             sid: scope_id,
             ..Default::default()
         }
+    }
+
+    pub fn get_params<F, T>(&self, func: F) -> Option<&T>
+    where
+        F: Fn(&InitialParams) -> &Option<SymbolRef<T>>,
+    {
+        func(&self.params).as_ref().map(|f| &f.value)
     }
 }
 

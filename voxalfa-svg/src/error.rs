@@ -5,6 +5,7 @@ use thiserror::Error;
 pub enum Error {
     #[error("{0}")]
     FontRead(#[from] ReadError),
+
     #[error("missing required header parameter field '{0}'")]
     MissingHeaderField(&'static str),
 }

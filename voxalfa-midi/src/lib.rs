@@ -7,7 +7,6 @@ mod tests;
 
 use midly::{Format, Header, Smf, Timing, num::u15};
 use voxalfa_core::{
-    ast::symbols::SymbolRef,
     data_types::Voice,
     output::{
         FinalOutput,
@@ -16,7 +15,7 @@ use voxalfa_core::{
 };
 
 use crate::{
-    error::{ConvertError, Result},
+    error::{Error, Result},
     task::{ConverterTask, TaskResult},
 };
 
@@ -40,14 +39,14 @@ impl<'a> Converter<'a> {
             Timing::Metrical(u15::from(PPQN)),
         ));
 
-        let init_params = &self.source.header.params;
+        let header = &self.source.header;
 
-        let key = *self.get_header_param("key", init_params.key.as_ref())?;
-        let voices = self.get_header_param("voices", init_params.voices.as_ref())?;
-        let time = self.get_header_param("time", init_params.time.as_ref())?;
-        let tempo = self.get_header_param("tempo", init_params.tempo.as_ref())?;
+        let key = self.extract_field("key", header.get_params(|p| &p.key))?;
+        let time = self.extract_field("time", header.get_params(|p| &p.time))?;
+        let tempo = self.extract_field("tempo", header.get_params(|p| &p.tempo))?;
+        let voices = self.extract_field("voices", header.get_params(|p| &p.voices))?;
 
-        let params = PlaybackParams::new(key, *time, *tempo);
+        let params = PlaybackParams::new(*key, *time, *tempo);
         let mut total_ticks = 0;
 
         for (id, voice) in voices.iter().enumerate() {
@@ -57,23 +56,13 @@ impl<'a> Converter<'a> {
                 smf.tracks.push(result.meta_track);
                 total_ticks = result.ticks;
             } else if total_ticks != result.ticks {
-                return Err(ConvertError::OutOfSync(id, result.ticks, total_ticks));
+                return Err(Error::OutOfSync(id, result.ticks, total_ticks));
             }
 
             smf.tracks.push(result.voice_track);
         }
 
         Ok(smf)
-    }
-
-    fn get_header_param<T>(
-        &self,
-        name: &'static str,
-        param: Option<&'a SymbolRef<T>>,
-    ) -> Result<&'a T> {
-        param
-            .ok_or(ConvertError::MissingHeaderField(name))
-            .map(|f| &f.value)
     }
 
     fn process_voice(
@@ -88,5 +77,9 @@ impl<'a> Converter<'a> {
         let track = task.process(&voice_line)?;
 
         Ok(track)
+    }
+
+    fn extract_field<T>(&self, name: &'static str, param: Option<&'a T>) -> Result<&'a T> {
+        param.ok_or(Error::MissingHeaderField(name))
     }
 }

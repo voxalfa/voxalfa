@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ConvertError {
+pub enum Error {
     #[error("missing required header parameter field '{0}'")]
     MissingHeaderField(&'static str),
 
@@ -15,4 +15,4 @@ pub enum ConvertError {
     OutOfSync(usize, u32, u32),
 }
 
-pub type Result<T> = std::result::Result<T, ConvertError>;
+pub type Result<T> = std::result::Result<T, Error>;

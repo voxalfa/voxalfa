@@ -17,7 +17,7 @@ pub enum Error {
     Glob(#[from] glob::GlobError),
 
     #[error("{0}")]
-    Converter(#[from] voxalfa_midi::error::ConvertError),
+    Converter(#[from] voxalfa_midi::error::Error),
 
     #[error("invalid voice {0}")]
     InvalidVoice(String),

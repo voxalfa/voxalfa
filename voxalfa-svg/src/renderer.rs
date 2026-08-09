@@ -20,15 +20,15 @@ pub struct Renderer<'a> {
 impl<'a> Renderer<'a> {
     pub fn new(data: FinalOutput) -> Result<Self> {
         let font = FontInterface::new()?;
+        let time = data.header.get_params(|p| &p.time);
 
-        let time = *data
-            .get_header_params(|p| p.time.as_ref())
-            .ok_or(Error::MissingHeaderField("time"))?;
-
-        Ok(Self { data, font, time })
+        match time {
+            Some(&time) => Ok(Self { data, font, time }),
+            None => Err(Error::MissingHeaderField("time")),
+        }
     }
 
-    fn todo(&self) -> () {
+    fn todo(&self) {
         //
     }
 }

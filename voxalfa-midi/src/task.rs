@@ -17,7 +17,7 @@ use voxalfa_core::{
 
 use crate::{
     BASE_MIDI_KEY, MAX_PAUSE, PPQN,
-    error::{ConvertError, Result},
+    error::{Error, Result},
 };
 
 #[derive(Debug)]
@@ -426,7 +426,7 @@ impl ConverterTask {
             BASE_MIDI_KEY + self.context.params.key.offset() + note.offset() + self.voice.offset();
 
         if !(0..=127).contains(&result) {
-            Err(ConvertError::InvalidMidiKey(result))
+            Err(Error::InvalidMidiKey(result))
         } else {
             Ok(u7::from(result as u8))
         }
