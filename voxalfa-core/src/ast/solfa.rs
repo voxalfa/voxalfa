@@ -209,7 +209,7 @@ impl std::fmt::Display for Note {
 }
 
 impl Note {
-    pub fn width(&self) -> usize {
+    pub fn width(&self) -> u8 {
         let mut result = 1;
 
         if self.variation != NoteVariation::Base {

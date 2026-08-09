@@ -18,7 +18,7 @@ use crate::{
     ir::{
         BodyIr, PulseView,
         lyrics::{LyricColumnIR, LyricLineIr, LyricPrimitive, LyricStringIR},
-        solfa::{PulseColumn, PulseColumnKind},
+        solfa::{NoteKind, PulseColumn},
     },
     output::{
         event::TimelineMap,
@@ -26,7 +26,7 @@ use crate::{
     },
 };
 
-pub const MIN_COLUMN_WIDTH: usize = 4;
+pub const MIN_COLUMN_WIDTH: u8 = 4;
 
 #[derive(Debug, Default)]
 pub struct FinalOutput {
@@ -66,14 +66,14 @@ impl FinalOutput {
         getter(&self.header.params).as_ref().map(|f| &f.value)
     }
 
-    pub fn resolve_column_width(&self) -> usize {
+    pub fn resolve_column_width(&self) -> u8 {
         let max_note_width = self.resolve_max_note_width();
         let max_lyrics_width = self.resolve_max_lyrics_width();
 
         max_lyrics_width.max(max_note_width).max(MIN_COLUMN_WIDTH)
     }
 
-    pub fn resolve_column_factor(&self) -> usize {
+    pub fn resolve_column_factor(&self) -> u8 {
         self.body
             .sections
             .iter()
@@ -106,7 +106,7 @@ impl FinalOutput {
 
                 for note in &pulse.columns {
                     notes.push(NoteContext {
-                        note,
+                        column: note,
                         lyric_id,
                         pulse_id,
                         factor: pulse.factor,
@@ -209,35 +209,35 @@ impl FinalOutput {
         result
     }
 
-    fn resolve_lyric_column_width(&self, column: &LyricColumnIR) -> usize {
+    fn resolve_lyric_column_width(&self, column: &LyricColumnIR) -> u8 {
         let extra = if column.chunks.len() > 1 { 2 } else { 0 }; // add parenthesis
 
         column
             .chunks
             .iter()
             .map(|c| self.resolve_lyric_string_width(&c.primitives))
-            .sum::<usize>()
-            + column.operators.len()
+            .sum::<u8>()
+            + column.operators.len() as u8
             + extra
     }
 
-    fn resolve_lyric_string_width(&self, strings: &[LyricPrimitive]) -> usize {
+    fn resolve_lyric_string_width(&self, strings: &[LyricPrimitive]) -> u8 {
         strings
             .iter()
             .map(|s| self.resolve_primitive_width(s))
             .sum()
     }
 
-    fn resolve_primitive_width(&self, s: &LyricPrimitive) -> usize {
+    fn resolve_primitive_width(&self, s: &LyricPrimitive) -> u8 {
         let base_width = match &s.string {
-            LyricStringIR::Reference(id) => self.symbols.get_lyric_chunk(*id).chars().count(),
+            LyricStringIR::Reference(id) => self.symbols.get_lyric_chunk(*id).chars().count() as u8,
             LyricStringIR::Special(_) => 4,
         };
 
-        base_width + (s.underline.left as usize) + (s.underline.right as usize)
+        base_width + (s.underline.left as u8) + (s.underline.right as u8)
     }
 
-    fn resolve_max_lyrics_width(&self) -> usize {
+    fn resolve_max_lyrics_width(&self) -> u8 {
         let max_factor = self.resolve_column_factor();
 
         self.body
@@ -254,7 +254,7 @@ impl FinalOutput {
         &self,
         lyrics: &'a [LyricLineIr],
         views: &[PulseView],
-        max_factor: usize,
+        max_factor: u8,
     ) -> Vec<&'a LyricColumnIR> {
         let view_columns = views
             .iter()
@@ -281,7 +281,7 @@ impl FinalOutput {
         result
     }
 
-    fn resolve_max_note_width(&self) -> usize {
+    fn resolve_max_note_width(&self) -> u8 {
         self.body
             .sections
             .iter()
@@ -294,15 +294,15 @@ impl FinalOutput {
             .unwrap_or(1)
     }
 
-    fn resolve_note_width(&self, column: &PulseColumn) -> usize {
-        let base = match column.kind {
-            PulseColumnKind::Note(note) => note.width(),
-            PulseColumnKind::ProlongedNote => 1,
-            PulseColumnKind::EmptyNote => 1,
+    fn resolve_note_width(&self, column: &PulseColumn) -> u8 {
+        let base = match column.note {
+            NoteKind::Note(note) => note.width(),
+            NoteKind::ProlongedNote => 1,
+            NoteKind::EmptyNote => 1,
         };
 
         let extra = column.underline.right ^ column.underline.left;
 
-        base + extra as usize
+        base + extra as u8
     }
 }

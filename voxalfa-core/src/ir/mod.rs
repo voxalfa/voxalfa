@@ -119,14 +119,14 @@ impl SubSectionIr {
     }
 
     pub fn get_ticks(&self) -> usize {
-        get_note_ticks(self.views.len(), 1)
+        get_note_ticks(self.views.len() as u8, 1)
     }
 }
 
 #[derive(Debug)]
 pub struct PulseView {
-    pub durations: Vec<usize>,
-    pub factor: usize,
+    pub durations: Vec<u8>,
+    pub factor: u8,
     pub aligned: bool,
 }
 
@@ -157,7 +157,7 @@ impl PulseView {
     pub fn resolve_widths(&self, col_width: usize, col_factor: usize) -> Vec<usize> {
         self.durations
             .iter()
-            .map(|d| (col_width * d * col_factor) / self.factor)
+            .map(|&d| (col_width * d as usize * col_factor) / self.factor as usize)
             .collect()
     }
 }

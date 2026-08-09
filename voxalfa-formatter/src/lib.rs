@@ -41,8 +41,8 @@ pub struct Formatter<'a> {
 impl<'a> Formatter<'a> {
     pub fn new(source: &'a FinalOutput) -> Self {
         Self {
-            col_width: source.resolve_column_width() + 1,
-            col_factor: source.resolve_column_factor(),
+            col_width: source.resolve_column_width() as usize + 1, // add extra space
+            col_factor: source.resolve_column_factor() as usize,
             partials: Vec::new(),
             mergable_lines: Vec::new(),
             scope_bounds: Vec::new(),
@@ -198,15 +198,17 @@ impl<'a> Formatter<'a> {
 
             let prefix_str = if column.underline.left { "`" } else { "" };
             let suffix_str = if column.underline.right { "`" } else { "" };
-            let column_str = column.kind.to_string();
+            let column_str = column.note.to_string();
 
             let note = format!("{lead}{prefix_str}{column_str}{suffix_str}");
-            let total_width = (self.col_width * column.duration * self.col_factor) / pulse.factor;
+            let top = self.col_width * column.duration as usize * self.col_factor;
+            let total_width = top / pulse.factor as usize;
+
             let stretched = format!("{note:<total_width$}");
 
             buffer.push_str(&stretched);
 
-            clock += column.duration;
+            clock += column.duration as usize;
         }
 
         buffer

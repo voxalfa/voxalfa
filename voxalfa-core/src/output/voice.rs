@@ -50,7 +50,7 @@ impl<'a> VoiceLine<'a> {
             }
 
             if let Some(ctx) = notes.get(index) {
-                ticks += get_note_ticks(ctx.note.duration, ctx.factor);
+                ticks += get_note_ticks(ctx.column.duration, ctx.factor);
             }
         }
 
@@ -64,8 +64,8 @@ impl<'a> VoiceLine<'a> {
 
 #[derive(Debug)]
 pub struct NoteContext<'a> {
-    pub note: &'a PulseColumn,
-    pub factor: usize,
+    pub column: &'a PulseColumn,
+    pub factor: u8,
     pub lyric_id: usize,
     pub pulse_id: usize,
 }

@@ -26,7 +26,7 @@ impl EventBuffer {
 
     pub fn add_offset(&mut self, offset: usize) {
         self.offset += offset;
-        self.elapsed += get_note_ticks(offset, 1);
+        self.elapsed += get_note_ticks(offset as u8, 1);
     }
 
     pub fn drain(&mut self) -> impl Iterator<Item = BufferedEvent> {

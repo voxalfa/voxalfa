@@ -11,8 +11,8 @@ pub type NoteId = usize;
 
 pub const TICK_PER_WHOLE_NOTE: usize = 960;
 
-pub fn get_note_ticks(numerator: usize, denominator: usize) -> Timestamp {
-    (TICK_PER_WHOLE_NOTE * numerator) / denominator
+pub fn get_note_ticks(numerator: u8, denominator: u8) -> Timestamp {
+    (TICK_PER_WHOLE_NOTE * numerator as usize) / denominator as usize
 }
 
 type PartialTimeline = Vec<(Timestamp, Event)>;

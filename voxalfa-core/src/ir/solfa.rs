@@ -38,7 +38,7 @@ pub struct PulseIr {
     pub sid: ScopeId,
     pub accent: PulseAccent,
     pub columns: Vec<PulseColumn>,
-    pub factor: usize, // factor of the duration in pulse columns
+    pub factor: u8, // factor of the duration in pulse columns
 }
 
 impl PulseIr {
@@ -52,19 +52,19 @@ impl PulseIr {
         }
     }
 
-    pub fn add_column(&mut self, kind: PulseColumnKind) {
+    pub fn add_column(&mut self, note: NoteKind) {
         self.columns.push(PulseColumn {
-            kind,
+            note,
             duration: 0,
             underline: UnderlineMarker::default(),
         });
     }
 
-    pub fn set_length(&mut self, length: usize) {
+    pub fn set_length(&mut self, length: u8) {
         self.factor = length;
     }
 
-    pub fn fit_durations(&mut self, durations: &[usize]) {
+    pub fn fit_durations(&mut self, durations: &[u8]) {
         for (i, duration) in durations.iter().enumerate() {
             if let Some(column) = self.columns.get_mut(i) {
                 column.duration = *duration;
@@ -75,30 +75,30 @@ impl PulseIr {
 
 #[derive(Debug)]
 pub struct PulseColumn {
-    pub duration: usize,
+    pub duration: u8,
     pub underline: UnderlineMarker,
-    pub kind: PulseColumnKind,
+    pub note: NoteKind,
 }
 
 impl PulseColumn {
     pub fn is_empty(&self) -> bool {
-        matches!(self.kind, PulseColumnKind::EmptyNote)
+        matches!(self.note, NoteKind::EmptyNote)
     }
 }
 
 #[derive(Debug)]
-pub enum PulseColumnKind {
+pub enum NoteKind {
     Note(Note),
     ProlongedNote,
     EmptyNote,
 }
 
-impl std::fmt::Display for PulseColumnKind {
+impl std::fmt::Display for NoteKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PulseColumnKind::Note(note) => write!(f, "{note}"),
-            PulseColumnKind::ProlongedNote => write!(f, "-"),
-            PulseColumnKind::EmptyNote => write!(f, " "),
+            NoteKind::Note(note) => write!(f, "{note}"),
+            NoteKind::ProlongedNote => write!(f, "-"),
+            NoteKind::EmptyNote => write!(f, " "),
         }
     }
 }

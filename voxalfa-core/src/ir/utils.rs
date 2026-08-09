@@ -52,13 +52,13 @@ impl UnderlineBuffer {
 
 #[derive(Debug)]
 pub struct BeatBuffer {
-    pub beats: Vec<Vec<usize>>,
+    pub beats: Vec<Vec<u8>>,
 }
 
 impl Default for BeatBuffer {
     fn default() -> Self {
         Self {
-            beats: vec![vec![]],
+            beats: vec![Vec::new()],
         }
     }
 }
@@ -80,7 +80,7 @@ impl BeatBuffer {
         }
     }
 
-    pub fn get_durations(&self) -> (Vec<usize>, usize) {
+    pub fn get_durations(&self) -> (Vec<u8>, u8) {
         let mut result = Vec::new();
 
         let denominators = self.get_denominators();
@@ -105,19 +105,19 @@ impl BeatBuffer {
         self.beats.len() <= 2
     }
 
-    fn get_denominators(&self) -> Vec<usize> {
+    fn get_denominators(&self) -> Vec<u8> {
         self.beats
             .iter()
-            .map(|sub| self.beats.len() * sub.len())
+            .map(|sub| (self.beats.len() * sub.len()) as u8)
             .collect()
     }
 }
 
-fn gcd(a: usize, b: usize) -> usize {
+fn gcd(a: u8, b: u8) -> u8 {
     if b > 0 { gcd(b, a % b) } else { a }
 }
 
-fn lcm(a: usize, b: usize) -> usize {
+fn lcm(a: u8, b: u8) -> u8 {
     (a * b) / gcd(a, b)
 }
 
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_beat_distribution() {
-        let test_cases: &[(Vec<usize>, usize, fn(&mut BeatBuffer))] = &[
+        let test_cases: &[(Vec<u8>, u8, fn(&mut BeatBuffer))] = &[
             // d
             (vec![1], 1, |b| b.append_note()),
             // d . r

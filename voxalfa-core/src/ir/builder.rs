@@ -15,7 +15,7 @@ use crate::{
     ir::{
         BodyIr, PulseView, SectionIr, SubSectionIr,
         lyrics::{LyricColumnIR, LyricLineIr, LyricStringIR},
-        solfa::{PulseColumn, PulseColumnKind, PulseIr, SolfaLineIr},
+        solfa::{NoteKind, PulseColumn, PulseIr, SolfaLineIr},
         utils::{BeatBuffer, UnderlineBuffer, UnderlineMarker},
     },
     ts_utils::range::RangeUtil,
@@ -107,7 +107,7 @@ impl<'a> IrBuilder<'a> {
             let mut beat_buffer = BeatBuffer::default();
 
             if stream.peek().is_none() || stream.peek().is_some_and(|t| t.value.is_beat_divider()) {
-                pulse_ir.add_column(PulseColumnKind::EmptyNote);
+                pulse_ir.add_column(NoteKind::EmptyNote);
                 beat_buffer.append_note();
             }
 
@@ -115,7 +115,7 @@ impl<'a> IrBuilder<'a> {
                 if token.value.is_beat_divider()
                     && (pulse_ir.columns.is_empty() || stream.peek().is_none())
                 {
-                    pulse_ir.add_column(PulseColumnKind::EmptyNote);
+                    pulse_ir.add_column(NoteKind::EmptyNote);
                     beat_buffer.append_note();
                     break;
                 } else if token.value.is_note() {
@@ -124,10 +124,10 @@ impl<'a> IrBuilder<'a> {
 
                 match &token.value {
                     PulseTokenKind::ProlongedNote => {
-                        pulse_ir.add_column(PulseColumnKind::ProlongedNote);
+                        pulse_ir.add_column(NoteKind::ProlongedNote);
                     }
                     PulseTokenKind::Note(note) => {
-                        pulse_ir.add_column(PulseColumnKind::Note(*note));
+                        pulse_ir.add_column(NoteKind::Note(*note));
                     }
                     PulseTokenKind::HalfDivision => {
                         beat_buffer.divide();
@@ -253,7 +253,7 @@ impl<'a> IrBuilder<'a> {
         }
     }
 
-    fn expand_pulse_at(&self, line: &mut SolfaLineIr, pulse_id: usize, col_shape: &[usize]) {
+    fn expand_pulse_at(&self, line: &mut SolfaLineIr, pulse_id: usize, col_shape: &[u8]) {
         let Some(pulse) = line.pulses.get_mut(pulse_id) else {
             return;
         };
@@ -261,7 +261,7 @@ impl<'a> IrBuilder<'a> {
         let is_single_empty = matches!(
             pulse.columns.as_slice(),
             [PulseColumn {
-                kind: PulseColumnKind::EmptyNote,
+                note: NoteKind::EmptyNote,
                 ..
             }]
         );
@@ -275,7 +275,7 @@ impl<'a> IrBuilder<'a> {
                 pulse.columns.push(PulseColumn {
                     duration,
                     underline: UnderlineMarker::default(),
-                    kind: PulseColumnKind::EmptyNote,
+                    note: NoteKind::EmptyNote,
                 });
             }
         }

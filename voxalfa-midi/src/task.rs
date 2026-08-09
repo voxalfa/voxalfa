@@ -5,7 +5,7 @@ use midly::{
 use voxalfa_core::{
     ast::solfa::Note,
     data_types::{Dynamic, Touch, Voice},
-    ir::solfa::PulseColumnKind,
+    ir::solfa::NoteKind,
     output::{
         dynamics::{DynamicTransition, DynamicTransitionKind},
         evaluator::{PlaybackParams, TimelineEvaluator},
@@ -82,10 +82,10 @@ impl ConverterTask {
             }
 
             if !self.context.is_waiting() {
-                match ctx.note.kind {
-                    PulseColumnKind::Note(note) => self.handle_note(note, ctx, voice_line)?,
-                    PulseColumnKind::EmptyNote => self.handle_pause(ctx),
-                    PulseColumnKind::ProlongedNote => self.prolongate(ctx),
+                match ctx.column.note {
+                    NoteKind::Note(note) => self.handle_note(note, ctx, voice_line)?,
+                    NoteKind::EmptyNote => self.handle_pause(ctx),
+                    NoteKind::ProlongedNote => self.prolongate(ctx),
                 }
 
                 self.handle_meta_events();
@@ -113,7 +113,7 @@ impl ConverterTask {
         let micro_pause = voice_line
             .notes
             .get(self.context.index() + 1)
-            .map(|ctx| !ctx.note.is_empty())
+            .map(|ctx| !ctx.column.is_empty())
             .unwrap_or(true);
 
         if self.context.dynamic.transition.is_some() {
@@ -314,11 +314,11 @@ impl ConverterTask {
     }
 
     fn apply_note_context(&mut self, ctx: &NoteContext<'_>) {
-        if ctx.note.underline.left {
+        if ctx.column.underline.left {
             self.slur = true;
         }
 
-        if ctx.note.underline.right {
+        if ctx.column.underline.right {
             self.slur = false;
         }
     }
@@ -365,7 +365,7 @@ impl ConverterTask {
 
     fn get_midi_note_ticks(&self, ctx: &NoteContext<'_>) -> u32 {
         let denominator = ctx.factor as u32;
-        let numerator = ctx.note.duration as u32;
+        let numerator = ctx.column.duration as u32;
         let quarter_unit = self.context.params.time.bottom as u32;
 
         ((PPQN as u32 * numerator) / denominator) / (4 / quarter_unit)
