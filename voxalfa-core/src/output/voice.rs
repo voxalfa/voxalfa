@@ -1,8 +1,27 @@
 use crate::{
+    ast::symbols::VoiceId,
     data_types::Voice,
     ir::solfa::PulseColumn,
     output::event::{Event, NoteTimeline, Timestamp, get_note_ticks},
 };
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VoiceSet(u8);
+
+impl VoiceSet {
+    pub fn new<T>(voices: T) -> Self
+    where
+        T: IntoIterator<Item = VoiceId>,
+    {
+        let mut flags = 0;
+
+        for voice_id in voices.into_iter() {
+            flags |= 1 << voice_id as u8;
+        }
+
+        Self(flags)
+    }
+}
 
 #[derive(Debug)]
 pub struct VoiceLine<'a> {
@@ -47,5 +66,6 @@ impl<'a> VoiceLine<'a> {
 pub struct NoteContext<'a> {
     pub note: &'a PulseColumn,
     pub factor: usize,
-    pub group_id: usize,
+    pub lyric_id: usize,
+    pub pulse_id: usize,
 }

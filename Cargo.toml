@@ -1,11 +1,13 @@
 [workspace]
 resolver = "3"
 members = [
-  "voxalfa-core",
-  "voxalfa-formatter",
-  "voxalfa-midi",
   "voxalfa-cli",
-  "tree-sitter-voxalfa", "voxalfa-lsp",
+  "voxalfa-core",
+  "voxalfa-lsp",
+  "voxalfa-midi",
+  "voxalfa-formatter",
+  "voxalfa-svg",
+  "tree-sitter-voxalfa",
 ]
 
 [workspace.dependencies]

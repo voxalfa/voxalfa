@@ -18,7 +18,7 @@ use voxalfa_core::{
         lyrics::{LyricColumnIR, LyricLineIr, LyricStringIR},
         solfa::{PulseIr, SolfaLineIr},
     },
-    output::{FinalOutput, render::RenderType},
+    output::FinalOutput,
     ts_utils::range::RangeUtil,
 };
 
@@ -41,7 +41,7 @@ pub struct Formatter<'a> {
 impl<'a> Formatter<'a> {
     pub fn new(source: &'a FinalOutput) -> Self {
         Self {
-            col_width: source.resolve_column_width(RenderType::Text) + 1,
+            col_width: source.resolve_column_width() + 1,
             col_factor: source.resolve_column_factor(),
             partials: Vec::new(),
             mergable_lines: Vec::new(),

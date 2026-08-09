@@ -1,7 +1,6 @@
 use crate::{
     ast::symbols::{ScopeId, SymbolRef},
     data_types::Voice,
-    output::render::RenderType,
 };
 
 #[derive(Debug)]
@@ -210,14 +209,14 @@ impl std::fmt::Display for Note {
 }
 
 impl Note {
-    pub fn width(&self, render_type: RenderType) -> usize {
+    pub fn width(&self) -> usize {
         let mut result = 1;
 
         if self.variation != NoteVariation::Base {
             result += 1;
         }
 
-        if render_type == RenderType::Text && self.octave != 0 {
+        if self.octave != 0 {
             result += 2;
         }
 
