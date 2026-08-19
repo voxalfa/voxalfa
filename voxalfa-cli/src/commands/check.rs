@@ -3,7 +3,7 @@ use clap::Parser;
 use crate::{
     error::Result,
     reporter::CliReporter,
-    utils::{parse_file, read_files},
+    utils::fs::{parse_file, read_files},
 };
 
 #[derive(Parser)]

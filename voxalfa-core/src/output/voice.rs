@@ -68,4 +68,6 @@ pub struct NoteContext<'a> {
     pub factor: u8,
     pub lyric_id: usize,
     pub pulse_id: usize,
+    pub section_id: usize,
+    pub sub_section_id: usize,
 }

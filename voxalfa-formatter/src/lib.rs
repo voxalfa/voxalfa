@@ -1,5 +1,7 @@
+mod metrics;
 mod primitives;
 mod types;
+mod visitor;
 
 #[cfg(test)]
 mod tests;
@@ -15,17 +17,24 @@ use voxalfa_core::{
     },
     ir::{
         PulseView,
-        lyrics::{LyricColumnIR, LyricLineIr, LyricStringIR},
+        lyrics::LyricLineIr,
         solfa::{PulseIr, SolfaLineIr},
     },
-    output::FinalOutput,
+    output::{
+        FinalOutput,
+        lyrics::{LyricsBuilder, LyricsMap},
+    },
     ts_utils::range::RangeUtil,
 };
 
 use crate::{
+    metrics::CharMeasurer,
     primitives::Formattable,
     types::{Assignment, LineRank, PartialLine},
+    visitor::FormatterVisitor,
 };
+
+const MIN_COLUMN_WIDTH: usize = 5;
 
 #[derive(Debug)]
 pub struct Formatter<'a> {
@@ -36,17 +45,24 @@ pub struct Formatter<'a> {
     mergable_lines: Vec<usize>,
     current_scope: usize,
     scope_bounds: Vec<usize>,
+    lyrics_map: LyricsMap<usize>,
 }
 
 impl<'a> Formatter<'a> {
     pub fn new(source: &'a FinalOutput) -> Self {
+        let measurer = CharMeasurer {};
+        let builder = LyricsBuilder::new(measurer);
+        let max_factor = source.resolve_maximum_factor();
+        let (max_width, lyrics_map) = builder.build_map::<FormatterVisitor>(source, max_factor);
+
         Self {
-            col_width: source.resolve_column_width() as usize + 1, // add extra space
-            col_factor: source.resolve_column_factor() as usize,
+            col_width: max_width.max(MIN_COLUMN_WIDTH),
+            col_factor: max_factor as usize,
             partials: Vec::new(),
             mergable_lines: Vec::new(),
             scope_bounds: Vec::new(),
             current_scope: 0,
+            lyrics_map,
             source,
         }
     }
@@ -231,8 +247,7 @@ impl<'a> Formatter<'a> {
         let rank = LineRank::Lyrics;
 
         for (lyric_id, lyric_col) in line.columns.iter().enumerate() {
-            let lyric_str = self.resolve_lyric_column(lyric_col);
-            let char_count = lyric_str.chars().count();
+            let lyric_entry = &self.lyrics_map[&lyric_col.sid];
             let operator = line.operators.get(lyric_id);
 
             let mut span_value = lyric_col.span;
@@ -262,10 +277,10 @@ impl<'a> Formatter<'a> {
             let padding = if is_last_section && lyric_id == last_lyric_id {
                 0
             } else {
-                width.saturating_sub(char_count)
+                width.saturating_sub(lyric_entry.width)
             };
 
-            let padded_str = format!("{lyric_str}{filler:<padding$}");
+            let padded_str = format!("{}{filler:<padding$}", lyric_entry.content);
 
             buffer.push_str(&padded_str);
 
@@ -275,57 +290,6 @@ impl<'a> Formatter<'a> {
         }
 
         self.push_line(rank, line_id, buffer);
-    }
-
-    fn resolve_lyric_column(&self, column: &LyricColumnIR) -> String {
-        let mut buffer = String::new();
-
-        if column.placeholder {
-            buffer.push('~');
-        }
-
-        if column.chunks.len() > 1 {
-            buffer.push('(');
-        }
-
-        for (id, chunk) in column.chunks.iter().enumerate() {
-            for primitve in &chunk.primitives {
-                if primitve.underline.left {
-                    buffer.push('`');
-                }
-
-                let lyric_str = match primitve.string {
-                    LyricStringIR::Reference(id) => self.source.symbols.get_lyric_chunk(id),
-                    LyricStringIR::Special(special) => special.identifer(),
-                };
-
-                buffer.push_str(lyric_str);
-
-                if primitve.underline.right {
-                    buffer.push('`');
-                }
-            }
-
-            if let Some(operator) = column.operators.get(id) {
-                let operator_char = match operator {
-                    LyricOperatorKind::Space => ' ',
-                    LyricOperatorKind::Newline => '\\',
-                    LyricOperatorKind::Concat => unreachable!("concat should not be compound"),
-                };
-
-                buffer.push(operator_char);
-            }
-        }
-
-        if column.chunks.len() > 1 {
-            buffer.push(')');
-        }
-
-        if column.span > 1 {
-            buffer.push_str(&format!("@{}", column.span));
-        }
-
-        buffer
     }
 
     fn process_comments(&mut self) {

@@ -6,7 +6,7 @@ use voxalfa_formatter::Formatter;
 use crate::{
     error::Result,
     reporter::CliReporter,
-    utils::{parse_file, read_files},
+    utils::fs::{parse_file, read_files},
 };
 
 #[derive(Parser)]

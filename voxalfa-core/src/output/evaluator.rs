@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Jump, Key, Mark, ProgressiveTempo, StaticTempo, TimeSignature, Touch},
+    data_types::{
+        BaseKey, Dynamic, Jump, Key, KeyAccidental, Mark, ProgressiveTempo, StaticTempo,
+        TimeSignature, Touch,
+    },
     output::{
         dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
         event::{Event, EventKind, JumpEvent, NoteTimeline},
@@ -206,5 +209,16 @@ pub struct PlaybackParams {
 impl PlaybackParams {
     pub fn new(key: Key, time: TimeSignature, tempo: StaticTempo) -> Self {
         Self { key, time, tempo }
+    }
+
+    pub fn dummy() -> Self {
+        Self {
+            key: Key {
+                base: BaseKey::C,
+                accidental: KeyAccidental::Neutral,
+            },
+            time: TimeSignature { top: 4, bottom: 4 },
+            tempo: StaticTempo::Moderato,
+        }
     }
 }

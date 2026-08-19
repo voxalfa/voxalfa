@@ -124,22 +124,3 @@ impl std::fmt::Display for LyricSpecialChar {
         write!(f, "{char}")
     }
 }
-
-impl LyricSpecialChar {
-    pub fn identifer(self) -> &'static str {
-        match self {
-            LyricSpecialChar::Backslash => "&bls",
-            LyricSpecialChar::Tilde => "&tld",
-            LyricSpecialChar::Backtick => "&btk",
-            LyricSpecialChar::LeftChrevron => "&lch",
-            LyricSpecialChar::RightChevron => "&rch",
-            LyricSpecialChar::Slash => "&sls",
-            LyricSpecialChar::LeftParen => "&lpr",
-            LyricSpecialChar::RightParen => "&rpr",
-            LyricSpecialChar::At => "&atr",
-            LyricSpecialChar::Ampersand => "&amp",
-            LyricSpecialChar::Semicolumn => "&scl",
-            LyricSpecialChar::Dot => "&dot",
-        }
-    }
-}
