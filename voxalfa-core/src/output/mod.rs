@@ -71,7 +71,6 @@ impl FinalOutput {
                 }
 
                 let mut lyric_id = 0;
-                let mut pulse_id = 0;
 
                 for (id, pulse) in solfa.pulses.iter().enumerate() {
                     let view = &sub_section.views[id];
@@ -81,7 +80,6 @@ impl FinalOutput {
                             column: note,
                             factor: pulse.factor,
                             lyric_id,
-                            pulse_id,
                             section_id,
                             sub_section_id,
                         });
@@ -94,8 +92,6 @@ impl FinalOutput {
                     if view.factor == 1 {
                         lyric_id += 1;
                     }
-
-                    pulse_id += 1;
                 }
             }
         }

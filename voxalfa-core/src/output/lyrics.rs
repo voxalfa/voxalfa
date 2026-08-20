@@ -236,12 +236,12 @@ impl LyricsResolver {
                 continue;
             }
 
-            if !evaluator.is_waiting() {
-                if let Some(token) = self.resolve_lyric_token(verse, context, body) {
-                    if !tokens.last().is_some_and(|l| *l == token) {
-                        tokens.push(token);
-                    }
-                }
+            if !evaluator.is_waiting()
+                && let Some(token) = self
+                    .resolve_lyric_token(verse, context, body)
+                    .filter(|t| tokens.last() != Some(t))
+            {
+                tokens.push(token);
             }
 
             evaluator.step();
