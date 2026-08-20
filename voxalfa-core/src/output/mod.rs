@@ -59,8 +59,6 @@ impl FinalOutput {
     pub fn build_voice_line(&self, voice: Voice) -> VoiceLine<'_> {
         let mut notes = Vec::new();
         let mut timeline = Vec::new();
-        let mut lyric_id = 0;
-        let mut pulse_id = 0;
 
         for (section_id, section) in self.body.sections.iter().enumerate() {
             for (sub_section_id, sub_section) in section.items.iter().enumerate() {
@@ -71,6 +69,9 @@ impl FinalOutput {
                 if let Some(partial) = self.timelines.get(sub_section.sid) {
                     timeline.extend(partial);
                 }
+
+                let mut lyric_id = 0;
+                let mut pulse_id = 0;
 
                 for (id, pulse) in solfa.pulses.iter().enumerate() {
                     let view = &sub_section.views[id];

@@ -2,7 +2,7 @@ use clap::Parser;
 use voxalfa_core::{
     data_types::Voice,
     output::{
-        lyrics::{LyricsBuilder, LyricsEvaluator},
+        lyrics::{LyricsBuilder, LyricsResolver},
         metrics::DummyMeasurer,
     },
 };
@@ -39,9 +39,8 @@ pub fn execute(params: LyricsParams) -> Result<()> {
         let measurer = DummyMeasurer {};
         let builder = LyricsBuilder::new(measurer);
         let (_, lyrics_map) = builder.build_map::<CliVisitor>(&output, 0);
-        let evaluator = LyricsEvaluator::new(lyrics_map);
-        let voice_line = &output.build_voice_line(voice);
-        let lyrics = evaluator.process(voice_line);
+        let evaluator = LyricsResolver::new(voice, lyrics_map);
+        let lyrics = evaluator.process::<CliVisitor>(&output);
 
         for (index, verse) in lyrics.iter().enumerate() {
             println!("{}. {verse}\n", index + 1);

@@ -5,12 +5,16 @@ use crate::{
         lyrics::{LyricOperatorKind, LyricSpecialChar},
         symbols::SymbolTree,
     },
-    ir::lyrics::{LyricColumnIR, LyricStringIR},
+    data_types::Voice,
+    ir::{
+        BodyIr,
+        lyrics::{LyricColumnIR, LyricStringIR},
+    },
     output::{
         FinalOutput,
         evaluator::{PlaybackParams, TimelineEvaluator},
         metrics::StringMetric,
-        voice::VoiceLine,
+        voice::{NoteContext, VoiceLine},
     },
 };
 
@@ -31,6 +35,7 @@ pub enum LyricEvent<'a> {
 }
 
 pub trait LyricVisitor: Default {
+    fn get_operator(operator: LyricOperatorKind) -> Option<char>;
     fn handle_event(&mut self, event: LyricEvent);
     fn into_string(self) -> String;
 }
@@ -148,46 +153,139 @@ impl<M: StringMetric> LyricsBuilder<M> {
     }
 }
 
-#[derive(Debug)]
-pub struct LyricsEvaluator {
-    context: TimelineEvaluator,
-    results: Vec<String>,
-    _lyrics_map: LyricsMap<()>,
+// TODO: lyrics merging support for multiple voices
+#[derive(Debug, PartialEq)]
+pub struct LyricToken {
+    pub lyric_id: LyricId,
+    pub section_id: usize,
+    pub sub_section_id: usize,
+    pub operator: Option<LyricOperatorKind>,
 }
 
-impl LyricsEvaluator {
-    pub fn new(_lyrics_map: LyricsMap<()>) -> Self {
-        Self {
-            context: TimelineEvaluator::new(PlaybackParams::dummy()),
-            results: Vec::new(),
-            _lyrics_map,
-        }
+#[derive(Debug)]
+pub struct LyricsResolver {
+    voice: Voice,
+    lyrics_map: LyricsMap<()>,
+}
+
+impl LyricsResolver {
+    pub fn new(voice: Voice, lyrics_map: LyricsMap<()>) -> Self {
+        Self { voice, lyrics_map }
     }
 
-    pub fn process(mut self, voice_line: &VoiceLine) -> Vec<String> {
-        while let Some(_ctx) = voice_line.notes.get(self.context.index()) {
-            self.context.handle_events(&voice_line.timeline);
+    pub fn process<V: LyricVisitor>(self, data: &FinalOutput) -> Vec<String> {
+        let verse_tokens = self.resolve_voice_tokens(self.voice, data);
+        let mut results = Vec::new();
 
-            if self.context.done() {
+        for tokens in verse_tokens {
+            let mut buffer = String::new();
+
+            for token in tokens {
+                buffer.push_str(&self.lyrics_map[&token.lyric_id].content);
+
+                if let Some(ch) = token.operator.and_then(V::get_operator) {
+                    buffer.push(ch);
+                }
+            }
+
+            results.push(buffer);
+        }
+
+        results
+    }
+
+    fn resolve_voice_tokens(&self, voice: Voice, data: &FinalOutput) -> Vec<Vec<LyricToken>> {
+        let mut result = Vec::new();
+        let voice_line = &data.build_voice_line(voice);
+
+        let verses = data
+            .header
+            .get_metadata(|m| &m.verses)
+            .copied()
+            .unwrap_or_default();
+
+        for verse in 0..verses {
+            let tokens = self.resolve_verse_tokens(verse, voice_line, &data.body);
+            result.push(tokens);
+        }
+
+        result
+    }
+
+    fn resolve_verse_tokens(
+        &self,
+        verse: usize,
+        voice_line: &VoiceLine,
+        body: &BodyIr,
+    ) -> Vec<LyricToken> {
+        let mut tokens: Vec<LyricToken> = Vec::new();
+        let mut evaluator = TimelineEvaluator::new(PlaybackParams::dummy());
+
+        while let Some(context) = voice_line.notes.get(evaluator.index()) {
+            evaluator.handle_events(&voice_line.timeline);
+
+            if evaluator.done() {
                 break;
             }
 
-            if self.context.jump() {
+            if evaluator.jump() {
+                if let Some(last) = tokens.last_mut() {
+                    last.operator = Some(LyricOperatorKind::Newline);
+                }
+
                 continue;
             }
 
-            if !self.context.is_waiting() {
-                // todo: get note's lyrics
+            if !evaluator.is_waiting() {
+                if let Some(token) = self.resolve_lyric_token(verse, context, body) {
+                    if !tokens.last().is_some_and(|l| *l == token) {
+                        tokens.push(token);
+                    }
+                }
             }
 
-            self.context.step();
+            evaluator.step();
 
-            if self.context.index() >= voice_line.notes.len() {
-                self.context.handle_events(&voice_line.timeline);
-                self.context.jump();
+            if evaluator.index() >= voice_line.notes.len() {
+                evaluator.handle_events(&voice_line.timeline);
+                evaluator.jump();
             }
         }
 
-        self.results
+        tokens
+    }
+
+    fn resolve_lyric_token(
+        &self,
+        verse: usize,
+        context: &NoteContext,
+        body: &BodyIr,
+    ) -> Option<LyricToken> {
+        let section = &body.sections[context.section_id];
+        let sub_section = &section.items[context.sub_section_id];
+        let line = sub_section.lyrics.get(verse)?;
+
+        let mut current_id = 0;
+
+        for (index, column) in line.columns.iter().enumerate() {
+            if current_id == context.lyric_id {
+                let operator = line.operators.get(index).map(|s| s.value);
+
+                return Some(LyricToken {
+                    lyric_id: column.sid,
+                    section_id: context.section_id,
+                    sub_section_id: context.sub_section_id,
+                    operator,
+                });
+            }
+
+            if current_id > context.lyric_id {
+                break;
+            }
+
+            current_id += column.span;
+        }
+
+        None
     }
 }

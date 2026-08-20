@@ -9,14 +9,23 @@ pub struct CliVisitor {
 }
 
 impl LyricVisitor for CliVisitor {
+    fn get_operator(operator: LyricOperatorKind) -> Option<char> {
+        match operator {
+            LyricOperatorKind::Space => Some(' '),
+            LyricOperatorKind::Concat => None,
+            LyricOperatorKind::Newline => Some('\n'),
+        }
+    }
+
     fn handle_event(&mut self, event: LyricEvent) {
         match event {
             LyricEvent::UnderlineStart => self.buffer.push_str("\x1b[4m"),
             LyricEvent::UnderlineEnd => self.buffer.push_str("\x1b[24m"),
-            LyricEvent::Operator(LyricOperatorKind::Space) => self.buffer.push(' '),
-            LyricEvent::Operator(LyricOperatorKind::Newline) => self.buffer.push('\n'),
             LyricEvent::Text(text) => self.buffer.push_str(text),
             LyricEvent::SpecialChar(ch) => self.buffer.push_str(&ch.to_string()),
+            LyricEvent::Operator(op) if let Some(ch) = Self::get_operator(op) => {
+                self.buffer.push(ch)
+            }
             _ => {}
         }
     }

@@ -84,9 +84,9 @@ impl<'a> IrBuilder<'a> {
             .map(|l| self.build_lyric_line_ir(l))
             .collect();
 
-        let views = self.build_pulse_view(&solfa);
-
         self.expand_empty_notes(&mut solfa);
+
+        let views = self.build_pulse_view(&solfa);
 
         SubSectionIr {
             sid: section.sid,

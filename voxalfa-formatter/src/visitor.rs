@@ -30,18 +30,26 @@ impl FormatterVisitor {
 }
 
 impl LyricVisitor for FormatterVisitor {
+    fn get_operator(operator: LyricOperatorKind) -> Option<char> {
+        match operator {
+            LyricOperatorKind::Space => Some(' '),
+            LyricOperatorKind::Concat => Some('_'),
+            LyricOperatorKind::Newline => Some('\\'),
+        }
+    }
+
     fn handle_event(&mut self, event: LyricEvent) {
         match event {
             LyricEvent::UnderlineStart | LyricEvent::UnderlineEnd => self.buffer.push('`'),
             LyricEvent::GroupStart => self.buffer.push('('),
             LyricEvent::GroupEnd => self.buffer.push(')'),
             LyricEvent::Placeholder => self.buffer.push('~'),
-            LyricEvent::Operator(LyricOperatorKind::Space) => self.buffer.push(' '),
-            LyricEvent::Operator(LyricOperatorKind::Concat) => self.buffer.push('_'),
-            LyricEvent::Operator(LyricOperatorKind::Newline) => self.buffer.push('\\'),
             LyricEvent::Text(text) => self.buffer.push_str(text),
             LyricEvent::SpecialChar(ch) => self.push_special_char(ch),
             LyricEvent::Span(span) if span > 1 => self.buffer.push_str(&format!("@{span}")),
+            LyricEvent::Operator(op) if let Some(ch) = Self::get_operator(op) => {
+                self.buffer.push(ch)
+            }
             _ => {}
         }
     }

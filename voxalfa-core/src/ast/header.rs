@@ -26,6 +26,13 @@ impl Header {
         }
     }
 
+    pub fn get_metadata<F, T>(&self, func: F) -> Option<&T>
+    where
+        F: Fn(&HeaderMetadata) -> &Option<SymbolRef<T>>,
+    {
+        func(&self.metadata).as_ref().map(|f| &f.value)
+    }
+
     pub fn get_params<F, T>(&self, func: F) -> Option<&T>
     where
         F: Fn(&InitialParams) -> &Option<SymbolRef<T>>,
