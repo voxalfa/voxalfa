@@ -5,7 +5,7 @@ use crate::{
     output::event::{Event, NoteTimeline, Timestamp, get_note_ticks},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct VoiceSet(u8);
 
 impl VoiceSet {
@@ -20,6 +20,14 @@ impl VoiceSet {
         }
 
         Self(flags)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.count_ones() as usize
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.0 == 0
     }
 }
 

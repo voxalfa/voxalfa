@@ -92,13 +92,3 @@ pub enum NoteKind {
     ProlongedNote,
     EmptyNote,
 }
-
-impl std::fmt::Display for NoteKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            NoteKind::Note(note) => write!(f, "{note}"),
-            NoteKind::ProlongedNote => write!(f, "-"),
-            NoteKind::EmptyNote => write!(f, " "),
-        }
-    }
-}

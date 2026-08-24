@@ -1174,6 +1174,7 @@ dependencies = [
  "voxalfa-core",
  "voxalfa-formatter",
  "voxalfa-midi",
+ "voxalfa-svg",
 ]
 
 [[package]]

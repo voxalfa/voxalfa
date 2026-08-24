@@ -8,3 +8,5 @@ pub const PRINTABLE_WIDTH: f32 = A4_WIDTH_PX - (MARGIN_X * 2.0); // 680.6px
 pub const VOICE_LINE_HEIGHT: f32 = 24.0; // Vertical distance between S, A, T, B
 pub const LYRIC_LINE_HEIGHT: f32 = 20.0; // Vertical distance per lyric verse
 pub const SYSTEM_GAP: f32 = 40.0; // Vertical distance between system blocks
+
+pub const UNDERLINE_Y_OFFSET: f32 = 3.0;

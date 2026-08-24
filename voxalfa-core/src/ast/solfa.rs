@@ -190,37 +190,15 @@ impl TryFrom<&str> for Note {
     }
 }
 
-impl std::fmt::Display for Note {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Note {
+    pub fn text(&self) -> String {
         let variation_str = match self.variation {
             NoteVariation::Base => "",
             NoteVariation::Raised => "i",
             NoteVariation::Lowered => "a",
         };
 
-        let suffix = match self.octave {
-            n if n < 0 => n.to_string(),
-            n if n > 0 => format!("+{n}"),
-            _ => "".to_string(),
-        };
-
-        write!(f, "{}{variation_str}{suffix}", self.base)
-    }
-}
-
-impl Note {
-    pub fn width(&self) -> u8 {
-        let mut result = 1;
-
-        if self.variation != NoteVariation::Base {
-            result += 1;
-        }
-
-        if self.octave != 0 {
-            result += 2;
-        }
-
-        result
+        format!("{}{variation_str}", self.base)
     }
 
     pub fn offset(&self) -> i8 {

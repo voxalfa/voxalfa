@@ -11,10 +11,11 @@ pub const LYRIC_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Lyrics.ttf");
 
 pub const SOLFA_FONT_SIZE: f32 = 16.0;
 pub const LYRIC_FONT_SIZE: f32 = 14.0;
+pub const OCTAVE_FONT_SIZE: f32 = 10.0;
 
 pub struct FontInterface<'a> {
-    solfa: FontMeasurer<'a>,
-    lyric: FontMeasurer<'a>,
+    pub solfa: FontMeasurer<'a>,
+    pub lyric: FontMeasurer<'a>,
 }
 
 impl FontInterface<'_> {
@@ -23,10 +24,6 @@ impl FontInterface<'_> {
             solfa: FontMeasurer::new(SOLFA_FONT, SOLFA_FONT_SIZE)?,
             lyric: FontMeasurer::new(LYRIC_FONT, LYRIC_FONT_SIZE)?,
         })
-    }
-
-    pub fn measure_solfa(&self, text: &str) -> f32 {
-        self.solfa.get_width(text)
     }
 }
 
@@ -38,13 +35,15 @@ impl StringMetric for &FontInterface<'_> {
     }
 }
 
-struct FontMeasurer<'a> {
-    font: FontRef<'a>,
-    size: Size,
+pub struct FontMeasurer<'a> {
+    pub size: Size,
+    pub font: FontRef<'a>,
+    pub ascent: f32,
+    pub descent: f32,
 }
 
 impl<'a> FontMeasurer<'a> {
-    fn get_width(&self, text: &str) -> f32 {
+    pub fn get_width(&self, text: &str) -> f32 {
         let glyph_metrics = self.font.glyph_metrics(self.size, LocationRef::default());
         let charmap = self.font.charmap();
 
@@ -57,7 +56,15 @@ impl<'a> FontMeasurer<'a> {
     fn new(font_bytes: &'a [u8], font_size: f32) -> Result<Self> {
         let font = FontRef::new(font_bytes)?;
         let size = Size::new(font_size);
+        let metrics = font.metrics(size, LocationRef::default());
+        let ascent = metrics.ascent;
+        let descent = metrics.descent.abs();
 
-        Ok(Self { font, size })
+        Ok(Self {
+            font,
+            size,
+            ascent,
+            descent,
+        })
     }
 }
