@@ -2,6 +2,7 @@ use skrifa::{
     FontRef, MetadataProvider,
     prelude::{LocationRef, Size},
 };
+use voxalfa_core::output::metrics::StringMetric;
 
 use crate::error::Result;
 
@@ -27,8 +28,12 @@ impl FontInterface<'_> {
     pub fn measure_solfa(&self, text: &str) -> f32 {
         self.solfa.get_width(text)
     }
+}
 
-    pub fn measure_lyric(&self, text: &str) -> f32 {
+impl StringMetric for &FontInterface<'_> {
+    type Output = f32;
+
+    fn measure_string(&self, text: &str) -> Self::Output {
         self.lyric.get_width(text)
     }
 }

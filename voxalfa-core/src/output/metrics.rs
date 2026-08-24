@@ -1,5 +1,5 @@
 pub trait StringMetric {
-    type Output: Default + Ord + Copy;
+    type Output: Default + PartialOrd + Copy;
 
     fn measure_string(&self, s: &str) -> Self::Output;
 }

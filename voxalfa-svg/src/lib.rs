@@ -1,7 +1,7 @@
 pub mod error;
 pub mod fonts;
+pub mod layout;
+pub mod renderer;
 pub mod svg;
 pub mod types;
-
-#[allow(unused)]
-pub mod renderer;
+pub mod visitor;

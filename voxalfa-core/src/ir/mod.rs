@@ -13,7 +13,10 @@ use crate::{
     },
     data_types::{ExtendedTempo, Mark, Voice},
     ir::solfa::PulseIr,
-    output::event::{Event, EventKind, JumpEvent, get_note_ticks},
+    output::{
+        event::{Event, EventKind, JumpEvent, get_note_ticks},
+        voice::VoiceSet,
+    },
 };
 
 #[derive(Debug, Default)]
@@ -98,6 +101,21 @@ impl SectionIr {
                 kind: jump.value,
                 repeat: params.repeat.as_ref().map(|r| r.value as u8).unwrap_or(1),
             })));
+        }
+
+        result
+    }
+
+    pub fn voice_sets(&self) -> Vec<VoiceSet> {
+        let mut result = Vec::new();
+        let mut offset = 0;
+
+        for sub_section in &self.items {
+            let voice_count = sub_section.solfa.len();
+            let set = VoiceSet::new(offset..offset + voice_count);
+
+            offset += voice_count;
+            result.push(set);
         }
 
         result
