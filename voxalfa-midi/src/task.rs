@@ -411,7 +411,7 @@ impl ConverterTask {
 
     fn get_target_velocity(&self, transition: DynamicTransition) -> u7 {
         let dynamic = match transition.kind {
-            _ if transition.level == self.context.dynamic.current => {
+            _ if transition.level != self.context.dynamic.current => {
                 Some(self.context.dynamic.current)
             }
             DynamicTransitionKind::Cre => transition.level.get_next(),
