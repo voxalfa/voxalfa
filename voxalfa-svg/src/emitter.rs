@@ -1,6 +1,6 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 use std::fmt::Write;
-use taffy::TaffyTree;
+use taffy::{NodeId, TaffyTree};
 
 use crate::{
     error::Result,
@@ -32,8 +32,8 @@ impl SvgEmitter {
 
         for element in elements {
             match &element.kind {
-                ElementKind::Text(text) => self.emit_text(text),
-                _ => todo!(),
+                ElementKind::Text(text) => self.emit_text(element.node_id, text)?,
+                ElementKind::Barline => self.emit_barline(element.node_id)?,
             }
         }
 
@@ -66,6 +66,7 @@ impl SvgEmitter {
       font-family: 'NotoSans-Lyrics', sans-serif;
       font-size: {LYRIC_FONT_SIZE}px;
       fill: currentColor;
+      dominant-baseline: alphabetic;
     }}
 
     .solfa {{
@@ -73,12 +74,14 @@ impl SvgEmitter {
       font-weight: bold;
       font-size: {SOLFA_FONT_SIZE}px;
       fill: #1a1a1a;
+      dominant-baseline: hanging;
     }}
 
     .octave {{
       font-size: {OCTAVE_FONT_SIZE}px;
       font-weight: bold;
-      fill: #a1a1a;
+      fill: #1a1a1a;
+      dominant-baseline: alphabetic;
     }}
   </style>
 </defs>"#
@@ -87,30 +90,47 @@ impl SvgEmitter {
         Ok(())
     }
 
-    fn emit_text(&mut self, text: &TextElement) {
-        let escaped_content = Self::xml_escape(&text.content);
-        // let _ = writeln!(
-        //     self.svg,
-        //     r#"  <text x="{:.2}" y="{:.2}" class="{}">{}</text>"#,
-        //     text.x, text.y, text.class, escaped_content
-        // );
+    fn resolve_position(&self, node_id: NodeId) -> Result<(f32, f32)> {
+        let mut x = 0.0;
+        let mut y = 0.0;
+        let mut current_node = Some(node_id);
+
+        while let Some(node) = current_node {
+            let layout = self.tree.layout(node)?;
+
+            x += layout.location.x;
+            y += layout.location.y;
+            current_node = self.tree.parent(node);
+        }
+
+        Ok((x, y))
     }
 
-    // fn emit_barline(svg: &mut String, barline: &BarlineElement) {
-    //     let _ = writeln!(
-    //         svg,
-    //         r#"  <line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" stroke='#1a1a1a' stroke-width="1.5" />"#,
-    //         barline.x, barline.y1, barline.x, barline.y2
-    //     );
-    // }
-    //
-    // fn emit_underline(svg: &mut String, underline: &UnderlineElement) {
-    //     let _ = writeln!(
-    //         svg,
-    //         r#"  <line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" stroke='#1a1a1a' stroke-width="1.0" />"#,
-    //         underline.x1, underline.y, underline.x2, underline.y
-    //     );
-    // }
+    fn emit_text(&mut self, node_id: NodeId, text: &TextElement) -> Result<()> {
+        let escaped_content = Self::xml_escape(&text.content);
+        let (abs_x, abs_y) = self.resolve_position(node_id)?;
+
+        writeln!(
+            self.svg,
+            r#"  <text x="{:.2}" y="{:.2}" class="{}">{}</text>"#,
+            abs_x, abs_y, text.class, escaped_content
+        )?;
+
+        Ok(())
+    }
+
+    fn emit_barline(&mut self, node_id: NodeId) -> Result<()> {
+        let (x, y1) = self.resolve_position(node_id)?;
+        let layout = self.tree.layout(node_id)?;
+        let y2 = y1 + layout.content_box_height();
+
+        writeln!(
+            self.svg,
+            r#"  <line x1="{x:.2}" y1="{y1:.2}" x2="{x:.2}" y2="{y2:.2}" stroke='#000000' stroke-width="2.0" />"#,
+        )?;
+
+        Ok(())
+    }
 
     fn xml_escape(input: &str) -> String {
         let mut escaped = String::with_capacity(input.len());

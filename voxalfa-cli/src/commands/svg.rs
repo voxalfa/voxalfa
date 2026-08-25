@@ -32,7 +32,7 @@ pub fn execute(params: SvgParams) -> Result<()> {
             reporter.register_diagnostics(file, output.diagnostics);
         } else {
             let converter = Renderer::new(output)?;
-            let svg = converter.render_to_svg();
+            let svg = converter.render_to_svg()?;
             let file_path = Path::new(&file.path);
             let output_path = params.output.as_ref().map(PathBuf::from);
             let default_path = file_path.with_extension("svg");

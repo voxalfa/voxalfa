@@ -1,4 +1,4 @@
-use taffy::NodeId;
+use taffy::{NodeId, TaffyTree};
 use voxalfa_core::{data_types::TimeSignature, ir::SectionIr, output::voice::VoiceSet};
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ pub struct Element {
 #[derive(Debug)]
 pub enum ElementKind {
     Text(TextElement),
-    Barline(BarlineElement),
+    Barline,
 }
 
 #[derive(Debug)]
@@ -46,4 +46,24 @@ pub struct TextElement {
 }
 
 #[derive(Debug)]
-pub struct BarlineElement;
+pub struct RenderContext<'a> {
+    pub tree: &'a mut TaffyTree,
+    pub elements: Vec<Element>,
+}
+
+impl<'a> RenderContext<'a> {
+    pub fn new(tree: &'a mut TaffyTree) -> Self {
+        Self {
+            tree,
+            elements: Vec::new(),
+        }
+    }
+
+    pub fn add_element(&mut self, node_id: NodeId, kind: ElementKind) {
+        self.elements.push(Element { node_id, kind });
+    }
+
+    pub fn into_elements(self) -> Vec<Element> {
+        self.elements
+    }
+}
