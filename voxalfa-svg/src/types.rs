@@ -1,3 +1,4 @@
+use taffy::NodeId;
 use voxalfa_core::{data_types::TimeSignature, ir::SectionIr, output::voice::VoiceSet};
 
 #[derive(Debug)]
@@ -19,30 +20,30 @@ impl LineSystem<'_> {
 }
 
 #[derive(Debug)]
-pub enum Element {
+pub enum Underline {
+    None,
+    Partial,
+    Full,
+}
+
+#[derive(Debug)]
+pub struct Element {
+    pub node_id: NodeId,
+    pub kind: ElementKind,
+}
+
+#[derive(Debug)]
+pub enum ElementKind {
     Text(TextElement),
     Barline(BarlineElement),
-    Underline(UnderlineElement),
 }
 
 #[derive(Debug)]
 pub struct TextElement {
-    pub x: f32,
-    pub y: f32,
     pub content: String,
     pub class: &'static str,
+    pub underline: Underline,
 }
 
 #[derive(Debug)]
-pub struct BarlineElement {
-    pub x: f32,
-    pub y1: f32,
-    pub y2: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct UnderlineElement {
-    pub x1: f32,
-    pub x2: f32,
-    pub y: f32,
-}
+pub struct BarlineElement;

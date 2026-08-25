@@ -6,5 +6,6 @@ edition = "2024"
 [dependencies]
 base64 = "0.23.1"
 skrifa = "0.45.1"
+taffy = "0.14.0"
 thiserror = { workspace = true }
 voxalfa-core = { workspace = true }

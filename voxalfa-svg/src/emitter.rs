@@ -1,46 +1,53 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 use std::fmt::Write;
+use taffy::TaffyTree;
 
 use crate::{
+    error::Result,
     fonts::{LYRIC_FONT, LYRIC_FONT_SIZE, OCTAVE_FONT_SIZE, SOLFA_FONT, SOLFA_FONT_SIZE},
     layout::{A4_HEIGHT_PX, A4_WIDTH_PX},
-    types::{BarlineElement, Element, TextElement, UnderlineElement},
+    types::{Element, ElementKind, TextElement},
 };
 
-pub struct SvgEmitter;
+pub struct SvgEmitter {
+    tree: TaffyTree<()>,
+    svg: String,
+}
 
 impl SvgEmitter {
-    pub fn render_to_svg(elements: &[Element]) -> String {
-        let mut svg = String::with_capacity(16 * 1024);
+    pub fn new(tree: TaffyTree<()>) -> Self {
+        Self {
+            tree,
+            svg: String::with_capacity(16 * 1024),
+        }
+    }
 
-        // 1. Root SVG Element
-        let _ = writeln!(
-            svg,
+    pub fn render_to_svg(mut self, elements: &[Element]) -> Result<String> {
+        writeln!(
+            self.svg,
             r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {A4_WIDTH_PX} {A4_HEIGHT_PX}" width="{A4_WIDTH_PX}px" height="{A4_HEIGHT_PX}px">"#
-        );
+        )?;
 
-        // 2. Embedded SVG Defs & Font Styles
-        Self::emit_defs(&mut svg);
+        self.emit_defs()?;
 
-        // 3. Render Elements
         for element in elements {
-            match element {
-                Element::Text(text) => Self::emit_text(&mut svg, text),
-                Element::Barline(barline) => Self::emit_barline(&mut svg, barline),
-                Element::Underline(underline) => Self::emit_underline(&mut svg, underline),
+            match &element.kind {
+                ElementKind::Text(text) => self.emit_text(text),
+                _ => todo!(),
             }
         }
 
-        svg.push_str("</svg>");
-        svg
+        self.svg.push_str("</svg>");
+
+        Ok(self.svg)
     }
 
-    fn emit_defs(svg: &mut String) {
+    fn emit_defs(&mut self) -> Result<()> {
         let solfa_font_b64 = STANDARD.encode(SOLFA_FONT);
         let lyrics_font_b64 = STANDARD.encode(LYRIC_FONT);
 
-        let _ = writeln!(
-            svg,
+        writeln!(
+            self.svg,
             r#"<defs>
   <style>
     @font-face {{
@@ -75,36 +82,39 @@ impl SvgEmitter {
     }}
   </style>
 </defs>"#
-        );
+        )?;
+
+        Ok(())
     }
 
-    fn emit_text(svg: &mut String, text: &TextElement) {
+    fn emit_text(&mut self, text: &TextElement) {
         let escaped_content = Self::xml_escape(&text.content);
-        let _ = writeln!(
-            svg,
-            r#"  <text x="{:.2}" y="{:.2}" class="{}">{}</text>"#,
-            text.x, text.y, text.class, escaped_content
-        );
+        // let _ = writeln!(
+        //     self.svg,
+        //     r#"  <text x="{:.2}" y="{:.2}" class="{}">{}</text>"#,
+        //     text.x, text.y, text.class, escaped_content
+        // );
     }
 
-    fn emit_barline(svg: &mut String, barline: &BarlineElement) {
-        let _ = writeln!(
-            svg,
-            r#"  <line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" stroke='#1a1a1a' stroke-width="1.5" />"#,
-            barline.x, barline.y1, barline.x, barline.y2
-        );
-    }
-
-    fn emit_underline(svg: &mut String, underline: &UnderlineElement) {
-        let _ = writeln!(
-            svg,
-            r#"  <line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" stroke='#1a1a1a' stroke-width="1.0" />"#,
-            underline.x1, underline.y, underline.x2, underline.y
-        );
-    }
+    // fn emit_barline(svg: &mut String, barline: &BarlineElement) {
+    //     let _ = writeln!(
+    //         svg,
+    //         r#"  <line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" stroke='#1a1a1a' stroke-width="1.5" />"#,
+    //         barline.x, barline.y1, barline.x, barline.y2
+    //     );
+    // }
+    //
+    // fn emit_underline(svg: &mut String, underline: &UnderlineElement) {
+    //     let _ = writeln!(
+    //         svg,
+    //         r#"  <line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" stroke='#1a1a1a' stroke-width="1.0" />"#,
+    //         underline.x1, underline.y, underline.x2, underline.y
+    //     );
+    // }
 
     fn xml_escape(input: &str) -> String {
         let mut escaped = String::with_capacity(input.len());
+
         for c in input.chars() {
             match c {
                 '<' => escaped.push_str("&lt;"),
@@ -115,6 +125,7 @@ impl SvgEmitter {
                 _ => escaped.push(c),
             }
         }
+
         escaped
     }
 }
