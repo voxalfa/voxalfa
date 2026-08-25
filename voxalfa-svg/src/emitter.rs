@@ -5,8 +5,8 @@ use taffy::{NodeId, TaffyTree};
 use crate::{
     error::Result,
     fonts::{LYRIC_FONT, LYRIC_FONT_SIZE, OCTAVE_FONT_SIZE, SOLFA_FONT, SOLFA_FONT_SIZE},
-    layout::{A4_HEIGHT_PX, A4_WIDTH_PX},
-    types::{Element, ElementKind, TextElement},
+    layout::{A4_HEIGHT_PX, A4_WIDTH_PX, UNDERLINE_Y_OFFSET},
+    types::{Element, ElementKind, TextElement, UnderlineElement},
 };
 
 pub struct SvgEmitter {
@@ -34,6 +34,7 @@ impl SvgEmitter {
             match &element.kind {
                 ElementKind::Text(text) => self.emit_text(element.node_id, text)?,
                 ElementKind::Barline => self.emit_barline(element.node_id)?,
+                ElementKind::Underline(elem) => self.emit_underline(element.node_id, elem)?,
             }
         }
 
@@ -108,12 +109,12 @@ impl SvgEmitter {
 
     fn emit_text(&mut self, node_id: NodeId, text: &TextElement) -> Result<()> {
         let escaped_content = Self::xml_escape(&text.content);
-        let (abs_x, abs_y) = self.resolve_position(node_id)?;
+        let (x, y) = self.resolve_position(node_id)?;
 
         writeln!(
             self.svg,
             r#"  <text x="{:.2}" y="{:.2}" class="{}">{}</text>"#,
-            abs_x, abs_y, text.class, escaped_content
+            x, y, text.class, escaped_content
         )?;
 
         Ok(())
@@ -127,6 +128,21 @@ impl SvgEmitter {
         writeln!(
             self.svg,
             r#"  <line x1="{x:.2}" y1="{y1:.2}" x2="{x:.2}" y2="{y2:.2}" stroke='#000000' stroke-width="2.0" />"#,
+        )?;
+
+        Ok(())
+    }
+
+    fn emit_underline(&mut self, node_id: NodeId, underline: &UnderlineElement) -> Result<()> {
+        let (x1, y) = self.resolve_position(node_id)?;
+        let layout = self.tree.layout(node_id)?;
+        let y = y + layout.content_box_height() + UNDERLINE_Y_OFFSET;
+        let (x2, _) = self.resolve_position(underline.end_node)?;
+        let x2 = x2 + underline.real_width;
+
+        writeln!(
+            self.svg,
+            r#"  <line x1="{x1:.2}" y1="{y:.2}" x2="{x2:.2}" y2="{y:.2}" stroke='#000000' stroke-width="1.0" />"#,
         )?;
 
         Ok(())

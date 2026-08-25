@@ -2,20 +2,20 @@ use crate::{
     emitter::SvgEmitter,
     error::{Error, Result},
     fonts::FontInterface,
-    layout::{A4_HEIGHT_PX, A4_PADDING, A4_WIDTH_PX, LINE_GAP, PRINTABLE_WIDTH},
-    types::{Element, ElementKind, LineSystem, RenderContext, TextElement, Underline},
+    layout::{A4_HEIGHT_PX, A4_PADDING, A4_WIDTH_PX, LINE_GAP, PRINTABLE_WIDTH, SYSTEM_GAP},
+    types::{Element, ElementKind, LineSystem, RenderContext, TextElement, UnderlineElement},
     visitor::SvgVisitor,
 };
 
 use taffy::{
     Display, FlexDirection, NodeId, Rect, Size, Style, TaffyTree,
-    prelude::{fr, minmax, span},
+    prelude::{fr, minmax, span, zero},
     style_helpers::{auto, length, percent},
 };
 use voxalfa_core::{
     ast::solfa::PulseAccent,
     data_types::TimeSignature,
-    ir::solfa::{NoteKind, PulseIr},
+    ir::solfa::{NoteKind, PulseColumn, PulseIr},
     output::{
         FinalOutput,
         lyrics::{LyricsBuilder, LyricsMap},
@@ -45,7 +45,7 @@ impl<'a> Renderer<'a> {
                 time,
                 font,
                 lyrics_map,
-                col_width,
+                col_width: col_width.max(20.),
                 col_factor: max_factor,
             })
         } else {
@@ -122,7 +122,7 @@ impl<'a> Renderer<'a> {
                     height: auto(),
                 },
                 flex_direction: FlexDirection::Column,
-                gap: length(LINE_GAP),
+                gap: length(SYSTEM_GAP),
                 ..Default::default()
             },
             &[],
@@ -139,12 +139,16 @@ impl<'a> Renderer<'a> {
             grid_columns.push(minmax(length(self.col_width), fr(1.0)));
         }
 
-        let line_style = Style {
+        let grid_style = Style {
             display: Display::Grid,
             grid_template_columns: grid_columns,
             size: Size {
                 width: length(PRINTABLE_WIDTH),
                 height: auto(),
+            },
+            gap: Size {
+                width: zero(),
+                height: length(LINE_GAP),
             },
             ..Default::default()
         };
@@ -158,7 +162,7 @@ impl<'a> Renderer<'a> {
         let mut end_sub_section_id = 0;
         let mut end_pulse_id = 0;
 
-        let mut line_node = ctx.tree.new_with_children(line_style.clone(), &[])?;
+        let grid_node = ctx.tree.new_with_children(grid_style, &[])?;
 
         loop {
             let mut pulses_collected = 0;
@@ -187,16 +191,20 @@ impl<'a> Renderer<'a> {
                         section_id += 1;
                         sub_section_id = 0;
                     }
+
                     continue;
                 };
 
                 let needed = max_line_pulses - pulses_collected;
                 let available = line.pulses.len().saturating_sub(pulse_id);
                 let count = available.min(needed);
+                let voice_count = sub_section.solfa.len();
 
                 for pulse in &line.pulses[pulse_id..pulse_id + count] {
-                    for node in self.render_pulse_columns(pulse, ctx)? {
-                        ctx.tree.add_child(line_node, node)?;
+                    let columns = self.render_pulse_columns(pulse, voice_id, voice_count, ctx)?;
+
+                    for node in columns {
+                        ctx.tree.add_child(grid_node, node)?;
                     }
                 }
 
@@ -219,8 +227,17 @@ impl<'a> Renderer<'a> {
                 break;
             }
 
-            ctx.tree.add_child(system_node, line_node)?;
-            line_node = ctx.tree.new_with_children(line_style.clone(), &[])?;
+            let remainder = max_line_pulses - pulses_collected;
+
+            if remainder > 0 {
+                let extra_node = ctx.tree.new_leaf(Style {
+                    grid_column: span(remainder as u16 * self.col_factor as u16 * 2),
+                    ..Default::default()
+                })?;
+
+                ctx.tree.add_child(grid_node, extra_node)?;
+            }
+
             voice_id += 1;
 
             let voice_exists = system
@@ -241,105 +258,137 @@ impl<'a> Renderer<'a> {
             }
         }
 
+        ctx.tree.add_child(system_node, grid_node)?;
+
         Ok(system_node)
     }
 
     fn render_pulse_columns(
         &self,
         pulse: &PulseIr,
+        voice_id: usize,
+        voice_count: usize,
         ctx: &mut RenderContext,
     ) -> Result<Vec<NodeId>> {
         let mut result = Vec::new();
-        let accent_str = self.format_pulse_accent(pulse.accent);
+        let is_strong = pulse.accent == PulseAccent::Strong;
 
-        if pulse.expanded {
-            let track_span = self.col_factor as u16 * 2; // spans across lead
-
-            let node = ctx.tree.new_leaf(Style {
-                grid_column: span(track_span),
+        if voice_id == 0 && is_strong {
+            let barline_node = ctx.tree.new_leaf(Style {
+                grid_column: span(1),
+                grid_row: span(voice_count as u16),
                 size: Size {
-                    width: percent(100),
-                    height: length(self.font.solfa.ascent),
+                    width: auto(),
+                    height: auto(),
                 },
                 ..Default::default()
             })?;
 
-            ctx.add_element(
-                node,
-                ElementKind::Text(TextElement {
-                    content: accent_str.to_string(),
-                    class: "solfa",
-                    underline: Underline::None,
-                }),
-            );
+            ctx.add_element(barline_node, ElementKind::Barline);
+            result.push(barline_node);
+        }
 
-            result.push(node);
-        } else {
-            let mut clock = 0;
+        let mut clock = 0;
 
-            for (step, column) in pulse.columns.iter().enumerate() {
-                let lead_symbol =
-                    self.resolve_column_prefix(pulse.accent, step, clock, pulse.factor);
+        if pulse.expanded {
+            let col_span = self.col_factor as u16 * 2 - (is_strong as u16);
+            let extra_node = ctx.tree.new_leaf(Style {
+                grid_column: span(col_span),
+                ..Default::default()
+            })?;
 
-                let lead_node = ctx.tree.new_leaf(Style {
-                    size: Size {
-                        width: percent(100),
-                        height: length(self.font.solfa.ascent),
-                    },
-                    ..Default::default()
-                })?;
+            result.push(extra_node);
 
-                if !lead_symbol.is_empty() {
-                    ctx.add_element(
-                        lead_node,
-                        ElementKind::Text(TextElement {
-                            content: lead_symbol.to_string(),
-                            class: "solfa",
-                            underline: Underline::None,
-                        }),
-                    );
-                }
+            return Ok(result);
+        }
+
+        for (step, column) in pulse.columns.iter().enumerate() {
+            let lead_symbol = self.resolve_column_prefix(pulse, step, clock);
+
+            if pulse.accent != PulseAccent::Strong || step != 0 {
+                let lead_node = self.render_lead_node(lead_symbol, ctx)?;
                 result.push(lead_node);
+            }
 
-                let base_span =
-                    (column.duration as u16 * self.col_factor as u16) / pulse.factor as u16;
-                let total_grid_span = base_span + (base_span - 1);
+            let (note_node, note_width) = self.render_note_node(column, pulse.factor, ctx)?;
+            result.push(note_node);
 
-                let note_node = ctx.tree.new_leaf(Style {
-                    grid_column: span(total_grid_span),
-                    size: Size {
-                        width: auto(),
-                        height: length(self.font.solfa.ascent),
-                    },
-                    ..Default::default()
-                })?;
+            if column.underline.left {
+                ctx.underline_node = Some(note_node);
+            }
 
+            if let Some(node_id) = ctx.underline_node.take_if(|_| column.underline.right) {
                 ctx.add_element(
-                    note_node,
-                    ElementKind::Text(TextElement {
-                        content: self.format_note(&column.note),
-                        class: "solfa",
-                        underline: Underline::None,
+                    node_id,
+                    ElementKind::Underline(UnderlineElement {
+                        end_node: note_node,
+                        real_width: note_width,
                     }),
                 );
-                result.push(note_node);
-
-                clock += column.duration as usize;
             }
+
+            clock += column.duration as usize;
         }
 
         Ok(result)
     }
 
-    fn resolve_column_prefix(
+    fn render_lead_node(&self, lead_symbol: &str, ctx: &mut RenderContext) -> Result<NodeId> {
+        let lead_node = ctx.tree.new_leaf(Style {
+            size: Size {
+                width: auto(),
+                height: length(self.font.solfa.ascent),
+            },
+            ..Default::default()
+        })?;
+
+        if !lead_symbol.is_empty() {
+            ctx.add_element(
+                lead_node,
+                ElementKind::Text(TextElement {
+                    content: lead_symbol.to_string(),
+                    class: "solfa",
+                }),
+            );
+        }
+
+        Ok(lead_node)
+    }
+
+    fn render_note_node(
         &self,
-        accent: PulseAccent,
-        step: usize,
-        clock: usize,
-        factor: u8,
-    ) -> &'static str {
-        match (step, clock, factor) {
-            (0, _, _) => self.format_pulse_accent(accent),
+        column: &PulseColumn,
+        pulse_factor: u8,
+        ctx: &mut RenderContext,
+    ) -> Result<(NodeId, f32)> {
+        let base_span = (column.duration as u16 * self.col_factor as u16) / pulse_factor as u16;
+        let total_grid_span = base_span + (base_span - 1);
+        let text = self.format_note(&column.note);
+        let width = self.font.solfa.get_width(&text);
+
+        let note_node = ctx.tree.new_leaf(Style {
+            grid_column: span(total_grid_span),
+            size: Size {
+                width: auto(),
+                height: length(self.font.solfa.ascent),
+            },
+            ..Default::default()
+        })?;
+
+        ctx.add_element(
+            note_node,
+            ElementKind::Text(TextElement {
+                content: text,
+                class: "solfa",
+            }),
+        );
+
+        Ok((note_node, width))
+    }
+
+    fn resolve_column_prefix(&self, pulse: &PulseIr, step: usize, clock: usize) -> &'static str {
+        match (step, clock, pulse.factor) {
+            (0, _, _) => self.format_pulse_accent(pulse.accent),
             (1, 1, 2) | (_, 2, 4) => ".",
             (1, 3, 4) => ".,",
             (_, 1, 4) | (_, 3, 4) => ",",

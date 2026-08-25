@@ -20,13 +20,6 @@ impl LineSystem<'_> {
 }
 
 #[derive(Debug)]
-pub enum Underline {
-    None,
-    Partial,
-    Full,
-}
-
-#[derive(Debug)]
 pub struct Element {
     pub node_id: NodeId,
     pub kind: ElementKind,
@@ -35,6 +28,7 @@ pub struct Element {
 #[derive(Debug)]
 pub enum ElementKind {
     Text(TextElement),
+    Underline(UnderlineElement),
     Barline,
 }
 
@@ -42,13 +36,19 @@ pub enum ElementKind {
 pub struct TextElement {
     pub content: String,
     pub class: &'static str,
-    pub underline: Underline,
+}
+
+#[derive(Debug)]
+pub struct UnderlineElement {
+    pub end_node: NodeId,
+    pub real_width: f32,
 }
 
 #[derive(Debug)]
 pub struct RenderContext<'a> {
     pub tree: &'a mut TaffyTree,
     pub elements: Vec<Element>,
+    pub underline_node: Option<NodeId>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -56,6 +56,7 @@ impl<'a> RenderContext<'a> {
         Self {
             tree,
             elements: Vec::new(),
+            underline_node: None,
         }
     }
 

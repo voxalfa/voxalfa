@@ -9,7 +9,7 @@ use crate::error::Result;
 pub const SOLFA_FONT: &[u8] = include_bytes!("../fonts/FiraSans-Solfa.ttf");
 pub const LYRIC_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Lyrics.ttf");
 
-pub const SOLFA_FONT_SIZE: f32 = 14.0;
+pub const SOLFA_FONT_SIZE: f32 = 16.0;
 pub const LYRIC_FONT_SIZE: f32 = 14.0;
 pub const OCTAVE_FONT_SIZE: f32 = 10.0;
 
