@@ -3,7 +3,10 @@ use crate::{
     error::{Error, Result},
     fonts::FontInterface,
     layout::{A4_HEIGHT_PX, A4_PADDING, A4_WIDTH_PX, LINE_GAP, PRINTABLE_WIDTH, SYSTEM_GAP},
-    types::{Element, ElementKind, LineSystem, RenderContext, TextElement, UnderlineElement},
+    types::{
+        Element, ElementKind, LineSystem, LyricChunk, RenderContext, TextElement, UnderlineElement,
+        VerseState,
+    },
     visitor::SvgVisitor,
 };
 
@@ -13,9 +16,12 @@ use taffy::{
     style_helpers::{auto, length, percent},
 };
 use voxalfa_core::{
-    ast::solfa::PulseAccent,
+    ast::{lyrics::LyricOperatorKind, solfa::PulseAccent},
     data_types::TimeSignature,
-    ir::solfa::{NoteKind, PulseColumn, PulseIr},
+    ir::{
+        SubSectionIr,
+        solfa::{NoteKind, PulseColumn, PulseIr},
+    },
     output::{
         FinalOutput,
         lyrics::{LyricsBuilder, LyricsMap},
@@ -26,6 +32,7 @@ pub struct Renderer<'a> {
     data: FinalOutput,
     time: TimeSignature,
     font: FontInterface<'a>,
+    verses: usize,
     col_width: f32,
     col_factor: u8,
     lyrics_map: LyricsMap<f32>,
@@ -36,6 +43,11 @@ impl<'a> Renderer<'a> {
         let font = FontInterface::new()?;
         let max_factor = data.resolve_maximum_factor();
         let time = data.header.get_params(|p| &p.time);
+        let verses = data
+            .header
+            .get_metadata(|p| &p.verses)
+            .copied()
+            .unwrap_or_default();
         let builder = LyricsBuilder::new(&font);
         let (col_width, lyrics_map) = builder.build_map::<SvgVisitor>(&data, max_factor);
 
@@ -44,6 +56,7 @@ impl<'a> Renderer<'a> {
                 data,
                 time,
                 font,
+                verses,
                 lyrics_map,
                 col_width: col_width.max(20.),
                 col_factor: max_factor,
@@ -162,6 +175,8 @@ impl<'a> Renderer<'a> {
         let mut end_sub_section_id = 0;
         let mut end_pulse_id = 0;
 
+        let mut verse_states = vec![VerseState::default(); self.verses];
+
         let grid_node = ctx.tree.new_with_children(grid_style, &[])?;
 
         loop {
@@ -208,12 +223,25 @@ impl<'a> Renderer<'a> {
                     }
                 }
 
+                if voice_id == 0 {
+                    self.update_verses_state(
+                        sub_section,
+                        pulse_id,
+                        max_line_pulses,
+                        &mut verse_states,
+                    );
+                }
+
                 pulses_collected += count;
                 pulse_id += count;
 
                 if pulse_id >= line.pulses.len() {
                     section_id += 1;
                     pulse_id = 0;
+
+                    for state in &mut verse_states {
+                        state.lyric_id = 0;
+                    }
                 }
 
                 if voice_id == 0 {
@@ -246,6 +274,10 @@ impl<'a> Renderer<'a> {
                 .and_then(|sec| sec.items.get(start_sub_section_id))
                 .map_or(false, |sub| voice_id < sub.solfa.len());
 
+            if !voice_exists {
+                self.render_lyrics(grid_node, ctx, &mut verse_states)?;
+            }
+
             if voice_exists {
                 section_id = start_section_id;
                 sub_section_id = start_sub_section_id;
@@ -261,6 +293,124 @@ impl<'a> Renderer<'a> {
         ctx.tree.add_child(system_node, grid_node)?;
 
         Ok(system_node)
+    }
+
+    fn update_verses_state(
+        &self,
+        sub_section: &SubSectionIr,
+        pulse_id: usize,
+        pulse_count: usize,
+        state: &mut Vec<VerseState>,
+    ) {
+        let needed = pulse_count * self.col_factor as usize;
+
+        for verse_id in 0..self.verses {
+            let verse = &sub_section.lyrics[verse_id];
+            let verse_state = &mut state[verse_id];
+
+            let mut view_id = pulse_id;
+            let mut collected = 0;
+            let mut view_offset = 0;
+
+            while collected < needed {
+                let Some(current) = verse.columns.get(verse_state.lyric_id) else {
+                    break;
+                };
+
+                let operator = verse.operators.get(verse_state.lyric_id);
+
+                let mut remainder = current.span;
+                let mut span_value = 0;
+
+                let is_strong_accent = sub_section
+                    .solfa
+                    .first()
+                    .is_some_and(|s| s.pulses[view_id].accent == PulseAccent::Strong);
+
+                if view_offset == 0 && is_strong_accent {
+                    verse_state.line.push(LyricChunk::Placeholder);
+                }
+
+                while remainder != 0 {
+                    let view = &sub_section.views[view_id];
+
+                    let view_spans = view
+                        .durations
+                        .iter()
+                        .map(|d| (d * 2 * self.col_factor) / view.factor)
+                        .collect::<Vec<_>>();
+
+                    span_value += view_spans[view_offset] as usize;
+                    view_offset += 1;
+                    remainder -= 1;
+
+                    if view_offset >= view_spans.len() {
+                        view_id += 1;
+                        view_offset = 0;
+                    }
+                }
+
+                let entry = &self.lyrics_map[&current.sid];
+
+                collected += span_value as usize;
+                verse_state.lyric_id += 1;
+
+                verse_state.line.push(LyricChunk::String {
+                    content: entry.content.clone(),
+                    span: span_value - 1,
+                });
+
+                if let Some(op) = operator
+                    && collected < needed
+                {
+                    verse_state.line.push(LyricChunk::Opertator(op.value));
+                }
+            }
+        }
+    }
+
+    fn render_lyrics(
+        &self,
+        parent_id: NodeId,
+        ctx: &mut RenderContext,
+        verse_states: &mut Vec<VerseState>,
+    ) -> Result<()> {
+        for verse in verse_states {
+            if verse.line.is_empty() {
+                continue;
+            }
+
+            for chunk in verse.line.drain(..) {
+                let (content, span_value) = match chunk {
+                    LyricChunk::String { content, span } => (content, span),
+                    LyricChunk::Opertator(LyricOperatorKind::Concat) => ("-".to_string(), 1_usize),
+                    _ => (String::new(), 1_usize),
+                };
+
+                let node_id = ctx.tree.new_leaf(Style {
+                    grid_column: span(span_value as u16),
+                    margin: Rect {
+                        left: zero(),
+                        right: zero(),
+                        top: length(LINE_GAP),
+                        bottom: length(LINE_GAP),
+                    },
+                    ..Default::default()
+                })?;
+
+                ctx.add_element(
+                    node_id,
+                    ElementKind::Text(TextElement {
+                        content,
+                        class: "lyric",
+                    }),
+                );
+
+                ctx.tree.add_child(parent_id, node_id)?;
+            }
+        }
+
+        Ok(())
     }
 
     fn render_pulse_columns(

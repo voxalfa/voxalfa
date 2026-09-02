@@ -1,5 +1,8 @@
 use taffy::{NodeId, TaffyTree};
-use voxalfa_core::{data_types::TimeSignature, ir::SectionIr, output::voice::VoiceSet};
+use voxalfa_core::{
+    ast::lyrics::LyricOperatorKind, data_types::TimeSignature, ir::SectionIr,
+    output::voice::VoiceSet,
+};
 
 #[derive(Debug)]
 pub struct LineSetup {
@@ -67,4 +70,17 @@ impl<'a> RenderContext<'a> {
     pub fn into_elements(self) -> Vec<Element> {
         self.elements
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum LyricChunk {
+    String { content: String, span: usize },
+    Opertator(LyricOperatorKind),
+    Placeholder,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct VerseState {
+    pub line: Vec<LyricChunk>,
+    pub lyric_id: usize,
 }
