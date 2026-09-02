@@ -435,6 +435,17 @@ impl<'a> Renderer<'a> {
 
             if !voice_exists {
                 self.render_lyrics(grid_node, ctx, &mut verse_states)?;
+
+                let separator_node = ctx.tree.new_leaf(Style {
+                    size: Size {
+                        width: auto(),
+                        height: length(15),
+                    },
+                    grid_column: span(max_line_pulses as u16 * self.col_factor as u16 * 2),
+                    ..Default::default()
+                })?;
+
+                ctx.tree.add_child(grid_node, separator_node)?;
             }
 
             if voice_exists {
@@ -548,12 +559,6 @@ impl<'a> Renderer<'a> {
 
                 let node_id = ctx.tree.new_leaf(Style {
                     grid_column: span(span_value as u16),
-                    margin: Rect {
-                        left: zero(),
-                        right: zero(),
-                        top: zero(),
-                        bottom: length(GROUP_BOTTOM_MARGIN),
-                    },
                     ..Default::default()
                 })?;
 
