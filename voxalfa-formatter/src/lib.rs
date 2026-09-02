@@ -18,7 +18,7 @@ use voxalfa_core::{
     ir::{
         PulseView,
         lyrics::LyricLineIr,
-        solfa::{PulseIr, SolfaLineIr},
+        solfa::{NoteKind, PulseIr, SolfaLineIr},
     },
     output::{
         FinalOutput,
@@ -214,7 +214,7 @@ impl<'a> Formatter<'a> {
 
             let prefix_str = if column.underline.left { "`" } else { "" };
             let suffix_str = if column.underline.right { "`" } else { "" };
-            let column_str = column.note.to_string();
+            let column_str = self.format_note(&column.note);
 
             let note = format!("{lead}{prefix_str}{column_str}{suffix_str}");
             let top = self.col_width * column.duration as usize * self.col_factor;
@@ -228,6 +228,22 @@ impl<'a> Formatter<'a> {
         }
 
         buffer
+    }
+
+    fn format_note(&self, note: &NoteKind) -> String {
+        match note {
+            NoteKind::Note(note) => {
+                let suffix = match note.octave {
+                    n if n < 0 => n.to_string(),
+                    n if n > 0 => format!("+{n}"),
+                    _ => "".to_string(),
+                };
+
+                format!("{}{suffix}", note.text())
+            }
+            NoteKind::ProlongedNote => "-".to_string(),
+            NoteKind::EmptyNote => String::new(),
+        }
     }
 
     fn process_lyrics(

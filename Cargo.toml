@@ -17,3 +17,4 @@ tree-sitter-voxalfa = { path = "./tree-sitter-voxalfa" }
 voxalfa-midi = { path = "./voxalfa-midi" }
 voxalfa-formatter = { path = "./voxalfa-formatter" }
 voxalfa-core = { path = "./voxalfa-core" }
+voxalfa-svg = { path = "./voxalfa-svg" }

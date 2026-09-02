@@ -52,12 +52,12 @@ impl Validator {
             .into_diagnostics_vec();
 
         FinalOutput {
-            timelines: ir_validator_out.timelines,
-            diagnostics,
             symbols: parser_out.symbols,
             header: parser_out.header,
+            timelines: ir_validator_out.timelines,
             body: ir_builder_out.body,
             tree: None,
+            diagnostics,
         }
     }
 }
