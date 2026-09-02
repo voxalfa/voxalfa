@@ -12,6 +12,9 @@ pub const LYRIC_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Lyrics.ttf");
 pub const SOLFA_FONT_SIZE: f32 = 16.0;
 pub const LYRIC_FONT_SIZE: f32 = 14.0;
 pub const OCTAVE_FONT_SIZE: f32 = 10.0;
+pub const TITLE_FONT_SIZE: f32 = 24.0;
+pub const NAME_FONT_SIZE: f32 = 18.0;
+pub const MARKER_FONT_SIZE: f32 = 16.0;
 
 pub struct FontInterface<'a> {
     pub solfa: FontMeasurer<'a>,

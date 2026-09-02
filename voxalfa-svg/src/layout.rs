@@ -8,6 +8,7 @@ pub const VOICE_LINE_HEIGHT: f32 = 24.0; // Vertical distance between S, A, T, B
 pub const LYRIC_LINE_HEIGHT: f32 = 20.0; // Vertical distance per lyric verse
 
 pub const LINE_GAP: f32 = 10.0;
+pub const GROUP_BOTTOM_MARGIN: f32 = 20.0;
 pub const SYSTEM_GAP: f32 = 25.0;
 
 pub const UNDERLINE_Y_OFFSET: f32 = 3.0;

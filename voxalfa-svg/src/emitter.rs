@@ -4,7 +4,7 @@ use taffy::{NodeId, TaffyTree};
 
 use crate::{
     error::Result,
-    fonts::{LYRIC_FONT, LYRIC_FONT_SIZE, OCTAVE_FONT_SIZE, SOLFA_FONT, SOLFA_FONT_SIZE},
+    fonts::*,
     layout::{A4_HEIGHT_PX, A4_WIDTH_PX, UNDERLINE_Y_OFFSET},
     types::{Element, ElementKind, TextElement, UnderlineElement},
 };
@@ -22,10 +22,13 @@ impl SvgEmitter {
         }
     }
 
+    // FIXME: split into multiple SVGs if height has been exceeded
     pub fn render_to_svg(mut self, elements: &[Element]) -> Result<String> {
+        let height = A4_HEIGHT_PX * 2.;
+
         writeln!(
             self.svg,
-            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {A4_WIDTH_PX} {A4_HEIGHT_PX}" width="{A4_WIDTH_PX}px" height="{A4_HEIGHT_PX}px">"#
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {A4_WIDTH_PX} {height}" width="{A4_WIDTH_PX}px" height="{height}px">"#
         )?;
 
         self.emit_defs()?;
@@ -63,26 +66,47 @@ impl SvgEmitter {
       src: url('data:font/ttf;charset=utf-8;base64,{lyrics_font_b64}') format('truetype');
     }}
 
+    svg text {{
+      font-family: sans-serif;
+      fill: #1a1a1a;
+      dominant-baseline: hanging;
+    }}
+
+    /* Typography Overrides */
     .lyric {{
       font-family: 'NotoSans-Lyrics', sans-serif;
       font-size: {LYRIC_FONT_SIZE}px;
-      fill: currentColor;
-      dominant-baseline: alphabetic;
+      fill: currentColor; /* Overrides default fill for theme support */
     }}
 
     .solfa {{
       font-family: 'FiraSans-Solfa', monospace;
       font-weight: bold;
       font-size: {SOLFA_FONT_SIZE}px;
-      fill: #1a1a1a;
-      dominant-baseline: hanging;
     }}
 
     .octave {{
-      font-size: {OCTAVE_FONT_SIZE}px;
       font-weight: bold;
-      fill: #1a1a1a;
-      dominant-baseline: alphabetic;
+      font-size: {OCTAVE_FONT_SIZE}px;
+      dominant-baseline: alphabetic; /* Overrides default hanging baseline */
+    }}
+
+    .title {{
+      font-size: {TITLE_FONT_SIZE}px;
+      font-weight: bold;
+    }}
+
+    .name {{
+      font-size: {NAME_FONT_SIZE}px;
+    }}
+
+    .key {{
+      font-size: {MARKER_FONT_SIZE}px;
+      font-weight: bold;
+    }}
+
+    .time {{
+      font-size: {MARKER_FONT_SIZE}px;
     }}
   </style>
 </defs>"#

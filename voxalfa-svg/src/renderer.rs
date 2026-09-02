@@ -2,7 +2,10 @@ use crate::{
     emitter::SvgEmitter,
     error::{Error, Result},
     fonts::FontInterface,
-    layout::{A4_HEIGHT_PX, A4_PADDING, A4_WIDTH_PX, LINE_GAP, PRINTABLE_WIDTH, SYSTEM_GAP},
+    layout::{
+        A4_HEIGHT_PX, A4_PADDING, A4_WIDTH_PX, GROUP_BOTTOM_MARGIN, LINE_GAP, PRINTABLE_WIDTH,
+        SYSTEM_GAP,
+    },
     types::{
         Element, ElementKind, LineSystem, LyricChunk, RenderContext, TextElement, UnderlineElement,
         VerseState,
@@ -11,7 +14,7 @@ use crate::{
 };
 
 use taffy::{
-    Display, FlexDirection, NodeId, Rect, Size, Style, TaffyTree,
+    AlignItems, Display, FlexDirection, JustifyContent, NodeId, Rect, Size, Style, TaffyTree,
     prelude::{fr, minmax, span, zero},
     style_helpers::{auto, length, percent},
 };
@@ -79,6 +82,7 @@ impl<'a> Renderer<'a> {
     fn render(&self, tree: &mut TaffyTree<()>) -> Result<Vec<Element>> {
         let mut context = RenderContext::new(tree);
 
+        let header_node = self.render_header(&mut context)?;
         let body_node = self.render_body(&mut context)?;
         let elements = context.into_elements();
 
@@ -90,9 +94,10 @@ impl<'a> Renderer<'a> {
                 },
                 padding: Rect::length(A4_PADDING),
                 flex_direction: FlexDirection::Column,
+                gap: length(25),
                 ..Default::default()
             },
-            &[body_node],
+            &[header_node, body_node],
         )?;
 
         tree.compute_layout(
@@ -104,6 +109,160 @@ impl<'a> Renderer<'a> {
         )?;
 
         Ok(elements)
+    }
+
+    fn render_header(&self, ctx: &mut RenderContext) -> Result<NodeId> {
+        let name_container = ctx.tree.new_with_children(
+            Style {
+                size: Size {
+                    width: length(PRINTABLE_WIDTH),
+                    height: auto(),
+                },
+                justify_content: Some(JustifyContent::SPACE_BETWEEN),
+                ..Default::default()
+            },
+            &[],
+        )?;
+
+        let params_container = ctx.tree.new_with_children(
+            Style {
+                size: Size {
+                    width: length(PRINTABLE_WIDTH),
+                    height: auto(),
+                },
+                ..Default::default()
+            },
+            &[],
+        )?;
+
+        let container_node = ctx.tree.new_with_children(
+            Style {
+                size: Size {
+                    width: length(PRINTABLE_WIDTH),
+                    height: auto(),
+                },
+                flex_direction: FlexDirection::Column,
+                align_items: Some(AlignItems::CENTER),
+                gap: length(10),
+                ..Default::default()
+            },
+            &[],
+        )?;
+
+        if let Some(title) = self.data.header.get_metadata(|m| &m.title) {
+            let node_id = ctx.tree.new_leaf(Style {
+                size: Size {
+                    width: length(400), // FIXME
+                    height: length(50),
+                },
+                ..Default::default()
+            })?;
+
+            ctx.add_element(
+                node_id,
+                ElementKind::Text(TextElement {
+                    content: title.clone(),
+                    class: "title",
+                }),
+            );
+
+            ctx.tree.add_child(container_node, node_id)?;
+        }
+
+        if let Some(author) = self.data.header.get_metadata(|m| &m.author) {
+            let node_id = ctx.tree.new_leaf(Style {
+                size: Size {
+                    width: length(200),
+                    height: length(20),
+                },
+                ..Default::default()
+            })?;
+
+            ctx.add_element(
+                node_id,
+                ElementKind::Text(TextElement {
+                    content: author
+                        .iter()
+                        .map(|n| n.value.clone())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    class: "name",
+                }),
+            );
+
+            ctx.tree.add_child(name_container, node_id)?;
+        }
+
+        if let Some(composer) = self.data.header.get_metadata(|m| &m.composer) {
+            let node_id = ctx.tree.new_leaf(Style {
+                size: Size {
+                    width: length(200),
+                    height: length(20),
+                },
+                ..Default::default()
+            })?;
+
+            ctx.add_element(
+                node_id,
+                ElementKind::Text(TextElement {
+                    content: composer
+                        .iter()
+                        .map(|n| n.value.clone())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    class: "name",
+                }),
+            );
+
+            ctx.tree.add_child(name_container, node_id)?;
+        }
+
+        if let Some(key) = self.data.header.get_params(|m| &m.key) {
+            let node_id = ctx.tree.new_leaf(Style {
+                size: Size {
+                    width: length(100),
+                    height: length(20),
+                },
+                ..Default::default()
+            })?;
+
+            ctx.add_element(
+                node_id,
+                ElementKind::Text(TextElement {
+                    // FIXME: consider locale and use superscript
+                    content: format!("Do dia {}", key.to_string()),
+                    class: "key",
+                }),
+            );
+
+            ctx.tree.add_child(params_container, node_id)?;
+        }
+
+        if let Some(time) = self.data.header.get_params(|m| &m.time) {
+            let node_id = ctx.tree.new_leaf(Style {
+                size: Size {
+                    width: length(50),
+                    height: length(20),
+                },
+                ..Default::default()
+            })?;
+
+            ctx.add_element(
+                node_id,
+                ElementKind::Text(TextElement {
+                    // FIXME: consider locale and use superscript
+                    content: format!("{}/{}", time.top, time.bottom),
+                    class: "time",
+                }),
+            );
+
+            ctx.tree.add_child(params_container, node_id)?;
+        }
+
+        ctx.tree.add_child(container_node, name_container)?;
+        ctx.tree.add_child(container_node, params_container)?;
+
+        Ok(container_node)
     }
 
     fn render_body(&self, ctx: &mut RenderContext) -> Result<NodeId> {
@@ -392,8 +551,8 @@ impl<'a> Renderer<'a> {
                     margin: Rect {
                         left: zero(),
                         right: zero(),
-                        top: length(LINE_GAP),
-                        bottom: length(LINE_GAP),
+                        top: zero(),
+                        bottom: length(GROUP_BOTTOM_MARGIN),
                     },
                     ..Default::default()
                 })?;
