@@ -84,3 +84,49 @@ pub struct VerseState {
     pub line: Vec<LyricChunk>,
     pub lyric_id: usize,
 }
+
+#[derive(Debug, Clone)]
+pub enum CellContent {
+    Text {
+        content: String,
+        class: &'static str,
+    },
+    Barline,
+    Empty,
+}
+
+#[derive(Debug, Clone)]
+pub struct GridCell {
+    pub content: CellContent,
+    pub col_span: u16,
+    pub row_span: u16,
+}
+
+impl GridCell {
+    pub fn new(content: CellContent, column_span: u16) -> Self {
+        Self {
+            content,
+            col_span: column_span,
+            row_span: 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct VirtualGrid {
+    pub rows: Vec<Vec<GridCell>>,
+    pub column_count: usize,
+}
+
+impl VirtualGrid {
+    pub fn new(column_count: usize) -> Self {
+        Self {
+            rows: Vec::new(),
+            column_count,
+        }
+    }
+
+    pub fn add_row(&mut self, row: Vec<GridCell>) {
+        self.rows.push(row);
+    }
+}
