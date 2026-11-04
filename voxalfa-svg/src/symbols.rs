@@ -1,0 +1,21 @@
+//! Inline SVG glyphs that are not part of a text font.
+
+/// Public-domain segno glyph from Wikimedia Commons (File:Signe.svg).
+pub(crate) const SEGNO_PATH: &str = "m -202,-50 c 0,17 13,30 30,30 17,0 30,-13 30,-30 0,-17 -13,-30 -30,-30 -17,0 -30,13 -30,30 z M 142,50 c 0,17 13,30 30,30 17,0 30,-13 30,-30 0,-17 -13,-30 -30,-30 -17,0 -30,13 -30,30 z M -35,-227 c 0,34 17,59 54,59 39,0 58,-31 58,-62 0,-27 -15,-55 -40,-64 8,-29 36,-51 69,-51 38,0 66,35 66,75 0,99 -83,168 -172,219 l -190,-324 -60,0 204,349 c -104,58 -204,132 -204,245 0,86 62,156 144,156 79,0 141,-68 141,-148 0,-34 -17,-59 -54,-59 -39,0 -58,31 -58,62 0,27 15,55 40,64 -8,29 -36,51 -69,51 -38,0 -66,-35 -66,-75 0,-99 83,-168 172,-219 l 190,324 60,0 L 46,26 c 104,-58 204,-132 204,-245 0,-86 -62,-156 -144,-156 -79,0 -141,68 -141,148 z";
+pub(crate) const SEGNO_PATH_TRANSFORM: &str = "matrix(0.004,0,0,-0.004,1,1.5)";
+pub(crate) const SEGNO_ASPECT_RATIO: f32 = 2.0 / 3.0;
+/// Segno height relative to the marker text line height.
+pub(crate) const SEGNO_HEIGHT_SCALE: f32 = 0.7;
+
+/// Public-domain fermata from Wikimedia Commons (File:Fermata.svg).
+pub(crate) const FERMATA_GROUP: &str = r##"<g transform="matrix(0.117858,0,0,0.117873,-1.4645,-24.78159)"><path transform="matrix(2.375,0,0,1.9,-391.25,-445.376)" d="M 290,457.36218 C 290,471.1693 281.04569,482.36218 270,482.36218 C 258.95431,482.36218 250,471.1693 250,457.36218 C 250,443.55506 258.95431,432.36218 270,432.36218 C 281.04569,432.36218 290,443.55506 290,457.36218 L 290,457.36218 z " fill="#222222"/><path d="M 15,467.36218 C 35,332.36218 130,212.36218 250,212.36218 C 370,212.36218 465,332.36218 485,467.36218 C 486,472.36218 461,472.36218 460,467.36218 C 435,372.36218 370,282.36218 250,282.36218 C 130,282.36218 65,372.36218 40,467.36218 C 39,472.36218 14,472.36218 15,467.36218 z " fill="#222222"/></g>"##;
+pub(crate) const FERMATA_WIDTH: f32 = 56.0;
+pub(crate) const FERMATA_HEIGHT: f32 = 31.0;
+
+pub(crate) const STACCATO_PATH: &str = "M2 0 a2 2 0 1 0 0.001 0 Z";
+pub(crate) const STACCATO_SIZE: f32 = 4.0;
+
+/// Public-domain marcato from Wikimedia Commons (File:Marcato.svg).
+pub(crate) const MARCATO_PATH: &str = "M 0.052,1.1 C 0.024,1.1 0,1.08 0,1.052 0,1.044 0,1.036 0.004,1.028 l 0.452,-1 C 0.464,0.012 0.48,0 0.5,0 0.52,0 0.536,0.012 0.544,0.028 l 0.452,1 C 1,1.036 1,1.044 1,1.052 1,1.08 0.976,1.1 0.948,1.1 l -0.264,0 C 0.664,1.1 0.644,1.088 0.636,1.072 l -0.272,-0.6 -0.268,0.6 C 0.088,1.088 0.072,1.1 0.052,1.1 Z";
+pub(crate) const MARCATO_WIDTH: f32 = 1.0;
+pub(crate) const MARCATO_HEIGHT: f32 = 1.1;

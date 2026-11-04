@@ -136,7 +136,7 @@ impl ConverterTask {
             let midi_note = self.get_midi_note(note)?;
             let mut velocity = self.get_velocity(self.context.dynamic.current);
 
-            if touch == Some(Touch::Accent) {
+            if touch == Some(Touch::Marcato) {
                 velocity = u8::max(velocity.as_int() + 20, 127).into();
             }
 

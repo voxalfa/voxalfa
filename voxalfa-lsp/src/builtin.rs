@@ -169,9 +169,9 @@ pub const TOUCHES_BUILTINS: &[BuiltinValueSpec] = &[
         doc: "Short, detached note articulation.",
     },
     BuiltinValueSpec {
-        label: "acc",
-        detail: "Accent",
-        doc: "Emphasis on note attack.",
+        label: "mrc",
+        detail: "Marcato",
+        doc: "Louder note articulation.",
     },
     BuiltinValueSpec {
         label: "frm",

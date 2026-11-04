@@ -26,7 +26,7 @@ Builtins are:
 - Voice: S | A | T | B
 - Jump: DS | DC | DSC | DSF | DCC | DCF
 - Mark: S | C | F | TC
-- Touch: stc | frm | acc
+- Touch: stc | frm | mrc
 - Dynamic: ppp | pp | p | mp | mf | f | ff | fff | cre | dec
 
 Some builtins like dynamics and touches can also be derived by appending a time index or range (example: `p:1`, `cre:1.5..3`). Timed values are zero-based and relative to sections and solfa notes which will be explained later. Dynamics and touches written without time indices default to 0.

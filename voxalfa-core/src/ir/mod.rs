@@ -142,7 +142,7 @@ impl SubSectionIr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PulseView {
     pub durations: Vec<u8>,
     pub factor: u8,

@@ -7,6 +7,7 @@ pub mod resolver;
 
 mod layout;
 mod locale;
+mod symbols;
 mod visitor;
 
 pub use error::{Error, Result};

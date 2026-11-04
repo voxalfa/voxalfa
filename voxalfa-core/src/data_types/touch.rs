@@ -2,7 +2,7 @@
 pub enum Touch {
     Staccato,
     Fermata,
-    Accent,
+    Marcato,
 }
 
 impl std::fmt::Display for Touch {
@@ -10,7 +10,7 @@ impl std::fmt::Display for Touch {
         match self {
             Touch::Staccato => write!(f, "stc"),
             Touch::Fermata => write!(f, "frm"),
-            Touch::Accent => write!(f, "acc"),
+            Touch::Marcato => write!(f, "mrc"),
         }
     }
 }
@@ -22,7 +22,7 @@ impl TryFrom<String> for Touch {
         match value.as_str() {
             "stc" => Ok(Self::Staccato),
             "frm" => Ok(Self::Fermata),
-            "acc" => Ok(Self::Accent),
+            "mrc" => Ok(Self::Marcato),
             _ => Err(()),
         }
     }

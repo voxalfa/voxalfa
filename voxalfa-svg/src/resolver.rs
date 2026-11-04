@@ -1,8 +1,10 @@
 use voxalfa_core::{
     ast::solfa::PulseAccent,
-    data_types::TimeSignature,
+    data_types::{
+        Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature, Touch,
+    },
     ir::{
-        PulseView,
+        PulseView, SectionIr, SubSectionIr,
         lyrics::{LyricColumnIR, LyricLineIr},
     },
     output::{
@@ -14,13 +16,18 @@ use voxalfa_core::{
 use crate::{
     error::{Error, Result},
     fonts::Fonts,
+    locale::Locale,
     model::{
-        FlatPulse, FlatSubPulse, HeaderView, LyricToken, ResolvedScore, System, SystemLyricGroup,
-        SystemLyricToken, SystemPulse, SystemSubPulse,
+        DynamicSpanKind, FlatDynamicSpan, FlatMarker, FlatPulse, FlatSubPulse, FlatVolta,
+        HeaderView, LyricToken, MarkerGlyph, MarkerKind, ResolvedScore, System, SystemDynamicSpan,
+        SystemLyricGroup, SystemLyricToken, SystemMarker, SystemPulse, SystemSubPulse, SystemVolta,
     },
     options::RenderOptions,
     visitor::SvgVisitor,
 };
+
+/// Matches the tolerance used when the core resolves timed events to notes.
+const EVENT_EPSILON: f32 = 0.05;
 
 pub(crate) fn resolve<'a>(
     data: &'a FinalOutput,
@@ -35,16 +42,22 @@ pub(crate) fn resolve<'a>(
         .copied()
         .ok_or(Error::MissingHeader("time"))?;
 
+    let language = data.header.get_metadata(|m| &m.language);
+    let locale = Locale::from_language(language.map(String::as_str));
     let max_factor = data.resolve_maximum_factor();
     let (lyric_width, lyrics_map) =
         LyricsBuilder::new(&fonts.lyric).build_map::<SvgVisitor>(data, max_factor);
 
     let mut pulses = Vec::new();
+    let mut dynamic_spans = Vec::new();
     let mut current_time = default_time;
 
     for (section_id, section) in data.body.sections.iter().enumerate() {
-        if let Some(time) = &section.params.time {
-            current_time = time.value;
+        let declared_time = section.params.time.as_ref().map(|time| time.value);
+        let time_changed = declared_time.is_some_and(|time| time != current_time);
+
+        if let Some(time) = declared_time {
+            current_time = time;
         }
 
         let section_start = pulses.len();
@@ -58,6 +71,15 @@ pub(crate) fn resolve<'a>(
         if pulse_count == 0 {
             continue;
         }
+
+        let volta = section.params.ending.as_ref().map(|ending| FlatVolta {
+            number: ending.value,
+            label: section
+                .params
+                .label
+                .as_ref()
+                .map(|label| label.value.clone()),
+        });
 
         // Resolve lyric columns once per sub-section and verse. The result is
         // stored by the pulse each token starts on, which keeps the later
@@ -138,7 +160,95 @@ pub(crate) fn resolve<'a>(
                 section_end: false,
                 grid_offset: 0,
                 subsections,
+                markers: Vec::new(),
+                volta: volta.clone(),
                 max_columns,
+            });
+        }
+
+        if time_changed && pulse_count > 0 {
+            pulses[section_start].markers.push(FlatMarker {
+                kind: MarkerKind::TimeSignature,
+                glyph: MarkerGlyph::Text(format!("{}/{}", current_time.top, current_time.bottom)),
+                unit: 0.0,
+            });
+        }
+
+        if let Some(key) = section.params.key.as_ref().map(|key| key.value)
+            && pulse_count > 0
+        {
+            pulses[section_start].markers.push(FlatMarker {
+                kind: MarkerKind::Key,
+                glyph: MarkerGlyph::Text(locale.key_label(&key_text(key))),
+                unit: 0.0,
+            });
+        }
+
+        if let Some(tempo) = section.params.tempo.as_ref().map(|tempo| tempo.value)
+            && pulse_count > 0
+        {
+            let kind = match tempo {
+                ExtendedTempo::Static(StaticTempo::Custom(_)) => MarkerKind::TempoNumber,
+                _ => MarkerKind::Tempo,
+            };
+
+            pulses[section_start].markers.push(FlatMarker {
+                kind,
+                glyph: MarkerGlyph::Text(tempo.to_string()),
+                unit: 0.0,
+            });
+        }
+
+        if !section.merge {
+            for (sub_id, sub) in section.items.iter().enumerate() {
+                let views = combined_views(&data.body.sections, section_id, sub_id);
+                add_dynamics(&mut pulses, section_start, sub, &views, &mut dynamic_spans);
+            }
+        }
+
+        add_touches(&mut pulses, section_start, section);
+
+        if let Some(jump) = &section.params.jump
+            && pulse_count > 0
+        {
+            pulses[section_start + pulse_count - 1]
+                .markers
+                .push(FlatMarker {
+                    kind: MarkerKind::Jump,
+                    glyph: MarkerGlyph::Text(jump_label(
+                        jump.value,
+                        section
+                            .params
+                            .repeat
+                            .as_ref()
+                            .map(|repeat| repeat.value as u8),
+                    )),
+                    unit: 1.0,
+                });
+        }
+
+        if let Some(mark) = &section.params.mark
+            && pulse_count > 0
+        {
+            let (glyph, pulse, unit) = match mark.value {
+                Mark::Segno => (MarkerGlyph::Segno, section_start, 0.0),
+                Mark::Coda => (MarkerGlyph::Text("Coda".to_string()), section_start, 0.0),
+                Mark::ToCoda => (
+                    MarkerGlyph::Text("To Coda".to_string()),
+                    section_start + pulse_count - 1,
+                    1.0,
+                ),
+                Mark::Fine => (
+                    MarkerGlyph::Text("Fine".to_string()),
+                    section_start + pulse_count - 1,
+                    1.0,
+                ),
+            };
+
+            pulses[pulse].markers.push(FlatMarker {
+                kind: MarkerKind::Mark,
+                glyph,
+                unit,
             });
         }
 
@@ -168,13 +278,226 @@ pub(crate) fn resolve<'a>(
         .unwrap_or(1);
 
     let grid_pulse_width = max_columns.max(1) as f32 * (col_width + lead_width);
-    let systems = build_systems(&pulses, grid_pulse_width, options.printable_width());
+    let systems = build_systems(
+        &pulses,
+        &dynamic_spans,
+        grid_pulse_width,
+        options.printable_width(),
+    );
 
     Ok(ResolvedScore {
         header,
         systems,
         lead_width,
     })
+}
+
+#[derive(Clone, Copy)]
+struct NotePosition {
+    pulse: usize,
+    start: f32,
+    end: f32,
+    unit_start: f32,
+    unit_end: f32,
+}
+
+fn note_positions(views: &[PulseView]) -> Vec<NotePosition> {
+    let mut positions = Vec::new();
+    let mut relative = 0.0f32;
+
+    for (pulse_id, view) in views.iter().enumerate() {
+        let total = view
+            .durations
+            .iter()
+            .map(|&duration| duration as u32)
+            .sum::<u32>()
+            .max(1);
+        let mut cursor = 0u32;
+
+        for &duration in &view.durations {
+            let start = relative;
+            let end = relative + duration as f32 / view.factor.max(1) as f32;
+            let unit_start = cursor as f32 / total as f32;
+
+            cursor += duration as u32;
+
+            positions.push(NotePosition {
+                pulse: pulse_id,
+                start,
+                end,
+                unit_start,
+                unit_end: cursor as f32 / total as f32,
+            });
+            relative = end;
+        }
+    }
+
+    positions
+}
+
+fn event_unit(positions: &[NotePosition], target: f32) -> Option<(usize, f32)> {
+    let position = positions
+        .iter()
+        .find(|position| (position.start - target).abs() < EVENT_EPSILON)
+        .or_else(|| {
+            positions
+                .iter()
+                .find(|position| (position.end - target).abs() < EVENT_EPSILON)
+        })?;
+
+    let unit = if (position.start - target).abs() < EVENT_EPSILON {
+        position.unit_start
+    } else {
+        position.unit_end
+    };
+
+    Some((position.pulse, unit))
+}
+
+fn combined_views(sections: &[SectionIr], section_id: usize, sub_id: usize) -> Vec<PulseView> {
+    let mut views = Vec::new();
+
+    if let Some(sub) = sections[section_id].items.get(sub_id) {
+        views.extend(sub.views.iter().cloned());
+    }
+
+    for section in &sections[section_id + 1..] {
+        if !section.merge {
+            break;
+        }
+
+        if let Some(sub) = section.items.get(sub_id) {
+            views.extend(sub.views.iter().cloned());
+        }
+    }
+
+    views
+}
+
+fn add_dynamics(
+    pulses: &mut [FlatPulse],
+    section_start: usize,
+    sub: &SubSectionIr,
+    views: &[PulseView],
+    spans: &mut Vec<FlatDynamicSpan>,
+) {
+    let Some(dynamics) = &sub.params.dynamics else {
+        return;
+    };
+
+    let positions = note_positions(views);
+
+    for timed in &dynamics.value {
+        let event = &timed.value;
+        let dynamic = event.value;
+
+        if matches!(dynamic, Dynamic::Cre | Dynamic::Dec) {
+            let Some(end) = event.end else {
+                continue;
+            };
+            let Some((start_pulse, start_unit)) = event_unit(&positions, event.start) else {
+                continue;
+            };
+            let Some((end_pulse, end_unit)) = event_unit(&positions, end) else {
+                continue;
+            };
+
+            spans.push(FlatDynamicSpan {
+                kind: match dynamic {
+                    Dynamic::Cre => DynamicSpanKind::Crescendo,
+                    Dynamic::Dec => DynamicSpanKind::Decrescendo,
+                    _ => unreachable!(),
+                },
+                start_pulse: section_start + start_pulse,
+                start_unit,
+                end_pulse: section_start + end_pulse,
+                end_unit,
+            });
+            continue;
+        }
+
+        let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
+            continue;
+        };
+
+        let text = dynamic.to_string();
+        let Some(pulse) = pulses.get_mut(section_start + pulse_id) else {
+            continue;
+        };
+
+        let duplicate = pulse.markers.iter().any(|marker| {
+            marker.kind == MarkerKind::Dynamic
+                && marker.unit == unit
+                && matches!(&marker.glyph, MarkerGlyph::Text(existing) if *existing == text)
+        });
+
+        if !duplicate {
+            pulse.markers.push(FlatMarker {
+                kind: MarkerKind::Dynamic,
+                glyph: MarkerGlyph::Text(text),
+                unit,
+            });
+        }
+    }
+}
+
+fn add_touches(pulses: &mut [FlatPulse], section_start: usize, section: &SectionIr) {
+    let Some(touches) = &section.params.touches else {
+        return;
+    };
+    let Some(sub) = section.items.first() else {
+        return;
+    };
+
+    let positions = note_positions(&sub.views);
+
+    for timed in &touches.value {
+        let event = &timed.value;
+        let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
+            continue;
+        };
+
+        let glyph = match event.value {
+            Touch::Fermata => MarkerGlyph::Fermata,
+            Touch::Staccato => MarkerGlyph::Staccato,
+            Touch::Marcato => MarkerGlyph::Marcato,
+        };
+
+        if let Some(pulse) = pulses.get_mut(section_start + pulse_id) {
+            pulse.markers.push(FlatMarker {
+                kind: MarkerKind::Touch,
+                glyph,
+                unit,
+            });
+        }
+    }
+}
+
+fn key_text(key: Key) -> String {
+    let mut text = key.to_string();
+
+    if key.accidental == KeyAccidental::Flat {
+        text.pop();
+        text.push('♭');
+    }
+
+    text
+}
+
+fn jump_label(jump: Jump, repeat: Option<u8>) -> String {
+    let label = match jump {
+        Jump::DS => "D.S.",
+        Jump::DC => "D.C.",
+        Jump::DSC => "D.S. al Coda",
+        Jump::DSF => "D.S. al Fine",
+        Jump::DCC => "D.C. al Coda",
+        Jump::DCF => "D.C. al Fine",
+    };
+
+    match repeat {
+        Some(count) => format!("{label} x {count}"),
+        None => label.to_string(),
+    }
 }
 
 fn build_header(data: &FinalOutput) -> HeaderView {
@@ -203,10 +526,7 @@ fn build_header(data: &FinalOutput) -> HeaderView {
         })
         .unwrap_or_default();
 
-    let key = data
-        .header
-        .get_params(|p| &p.key)
-        .map(|key| key.to_string());
+    let key = data.header.get_params(|p| &p.key).map(|key| key_text(*key));
     let time = data
         .header
         .get_params(|p| &p.time)
@@ -379,6 +699,7 @@ fn compute_widths(fonts: &Fonts, options: &RenderOptions, lyric_width: f32) -> (
 
 fn build_systems<'a>(
     pulses: &[FlatPulse<'a>],
+    dynamic_spans: &[FlatDynamicSpan],
     pulse_width: f32,
     max_width: f32,
 ) -> Vec<System<'a>> {
@@ -424,6 +745,7 @@ fn build_systems<'a>(
 
                 systems.push(make_system(
                     pulses,
+                    dynamic_spans,
                     std::mem::take(&mut indices),
                     pulse_width,
                     offset,
@@ -442,6 +764,7 @@ fn build_systems<'a>(
 
             systems.push(make_system(
                 pulses,
+                dynamic_spans,
                 std::mem::take(&mut indices),
                 pulse_width,
                 offset,
@@ -465,7 +788,13 @@ fn build_systems<'a>(
             pickup_offset
         };
 
-        systems.push(make_system(pulses, indices, pulse_width, offset));
+        systems.push(make_system(
+            pulses,
+            dynamic_spans,
+            indices,
+            pulse_width,
+            offset,
+        ));
     }
 
     systems
@@ -473,12 +802,43 @@ fn build_systems<'a>(
 
 fn make_system<'a>(
     pulses: &[FlatPulse<'a>],
+    spans: &[FlatDynamicSpan],
     indices: Vec<usize>,
     pulse_width: f32,
     grid_offset: usize,
 ) -> System<'a> {
     let system_start = indices[0];
     let system_end = system_start + indices.len();
+    let mut dynamic_spans = Vec::new();
+
+    for span in spans {
+        if span.end_pulse < system_start || span.start_pulse >= system_end {
+            continue;
+        }
+
+        let start = span.start_pulse.saturating_sub(system_start);
+        let start_unit = if span.start_pulse < system_start {
+            0.0
+        } else {
+            span.start_unit
+        };
+        let end = (span.end_pulse - system_start).min(indices.len() - 1);
+        let end_unit = if span.end_pulse >= system_end {
+            1.0
+        } else {
+            span.end_unit
+        };
+        let fits = span.start_pulse >= system_start && span.end_pulse < system_end;
+
+        dynamic_spans.push(SystemDynamicSpan {
+            kind: span.kind,
+            start,
+            start_unit,
+            end,
+            end_unit,
+            fits,
+        });
+    }
 
     let system_pulses = indices
         .iter()
@@ -500,6 +860,62 @@ fn make_system<'a>(
             }
         })
         .collect();
+
+    let markers = indices
+        .iter()
+        .enumerate()
+        .flat_map(|(pulse, &global)| {
+            pulses[global]
+                .markers
+                .iter()
+                .map(move |marker| SystemMarker {
+                    pulse,
+                    unit: marker.unit,
+                    kind: marker.kind,
+                    glyph: marker.glyph.clone(),
+                })
+        })
+        .collect();
+
+    let mut voltas = Vec::new();
+    let mut current_volta: Option<(usize, FlatVolta)> = None;
+
+    for (local, &global) in indices.iter().enumerate() {
+        if let Some(volta) = &pulses[global].volta {
+            let continues = current_volta
+                .as_ref()
+                .is_some_and(|(_, current)| current == volta);
+
+            if !continues {
+                if let Some((start, current)) = current_volta.take() {
+                    voltas.push(SystemVolta {
+                        start,
+                        end: local,
+                        number: current.number,
+                        label: current.label,
+                    });
+                }
+
+                current_volta = Some((local, volta.clone()));
+            }
+        } else if let Some((start, current)) = current_volta.take() {
+            voltas.push(SystemVolta {
+                start,
+                end: local,
+                number: current.number,
+                label: current.label,
+            });
+        }
+    }
+
+    if let Some((start, current)) = current_volta {
+        voltas.push(SystemVolta {
+            start,
+            end: indices.len(),
+            number: current.number,
+            label: current.label,
+        });
+    }
 
     // Voice order is the order of first appearance across all sub-sections.
     // The same voice may be declared by different sub-sections, but it still
@@ -594,6 +1010,9 @@ fn make_system<'a>(
         pulses: system_pulses,
         voices,
         lyric_groups,
+        markers,
+        dynamic_spans,
+        voltas,
         grid_offset,
     }
 }

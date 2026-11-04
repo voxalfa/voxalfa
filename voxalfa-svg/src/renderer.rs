@@ -10,15 +10,28 @@ use voxalfa_core::{
 
 use crate::{
     error::Result,
-    fonts::{FontMetrics, Fonts, LYRIC_FAMILY, LYRIC_FONT, SOLFA_FAMILY, SOLFA_FONT},
+    fonts::{
+        FontMetrics, Fonts, LYRIC_FAMILY, LYRIC_FONT, SERIF_BOLD_ITALIC_FONT, SERIF_FAMILY,
+        SERIF_FONT, SERIF_ITALIC_FONT, SOLFA_FAMILY, SOLFA_FONT, TEXT_BOLD_FONT, TEXT_FAMILY,
+        TEXT_FONT,
+    },
     layout::*,
     locale::Locale,
-    model::{HeaderView, ResolvedScore, System, SystemLyricToken, SystemPulse},
+    model::{
+        DynamicSpanKind, HeaderView, MarkerGlyph, MarkerKind, ResolvedScore, System,
+        SystemLyricToken, SystemMarker, SystemPulse,
+    },
     options::RenderOptions,
     resolver,
+    symbols::{
+        FERMATA_GROUP, FERMATA_HEIGHT, FERMATA_WIDTH, MARCATO_HEIGHT, MARCATO_PATH, MARCATO_WIDTH,
+        SEGNO_ASPECT_RATIO, SEGNO_HEIGHT_SCALE, SEGNO_PATH, SEGNO_PATH_TRANSFORM, STACCATO_PATH,
+        STACCATO_SIZE,
+    },
 };
 
 const INITIAL_SVG_CAPACITY: usize = 32 * 1024;
+const MARKER_SAME_NOTE_EPSILON: f32 = 0.001;
 
 pub struct Renderer {
     options: RenderOptions,
@@ -47,7 +60,7 @@ impl Renderer {
         let system_layouts = score
             .systems
             .iter()
-            .map(|system| self.layout_system(system))
+            .map(|system| self.layout_system(system, &fonts, score.lead_width))
             .collect::<Vec<_>>();
 
         let pages = self.paginate(&system_layouts, header.height);
@@ -147,7 +160,54 @@ impl Renderer {
         pages
     }
 
-    fn layout_system(&self, system: &System) -> SystemLayout {
+    fn layout_system(&self, system: &System, fonts: &Fonts, lead: f32) -> SystemLayout {
+        let has_voltas = !system.voltas.is_empty();
+        let (mut jumps, jump_height) = if has_voltas {
+            self.layout_jumps(system, fonts, lead)
+        } else {
+            (Vec::new(), 0.0)
+        };
+        let (mut voltas, volta_height) = self.layout_voltas(system, fonts, lead);
+        let (mut markers, marker_height) = self.layout_markers(system, fonts, lead, has_voltas);
+        let dynamic_center = markers
+            .iter()
+            .find(|marker| marker.kind == MarkerKind::Dynamic)
+            .map(|marker| marker.y - (fonts.dynamic.ascent() - fonts.dynamic.descent()) / 2.0);
+        let (mut dynamic_spans, dynamic_span_height) =
+            self.layout_dynamic_spans(system, fonts, lead, dynamic_center, marker_height);
+
+        // A jump above a volta shares the volta's text row so it sits directly
+        // on top of the bracket line instead of floating above the ending label.
+        let jump_offset = if voltas.is_empty() { jump_height } else { 0.0 };
+        let volta_top = if voltas.is_empty() {
+            0.0
+        } else {
+            VOLTA_TOP_GAP
+        };
+
+        for jump in &mut jumps {
+            jump.y += volta_top;
+        }
+
+        for volta in &mut voltas {
+            volta.text_y += volta_top + jump_offset;
+            volta.line_y += volta_top + jump_offset;
+        }
+
+        let marker_shift = volta_top + jump_offset + volta_height;
+
+        for marker in &mut markers {
+            marker.y += marker_shift;
+        }
+
+        for span in &mut dynamic_spans {
+            span.center_y += marker_shift;
+            span.baseline += marker_shift;
+        }
+
+        jumps.append(&mut markers);
+        let markers = jumps;
+
         let mut lyric_rows: Vec<Vec<(usize, usize)>> = vec![Vec::new(); system.voices.len()];
 
         for (group_index, group) in system.lyric_groups.iter().enumerate() {
@@ -196,7 +256,7 @@ impl Renderer {
             .into_iter()
             .enumerate()
             .map(|(index, kind)| SystemRow {
-                y: column.ys[index],
+                y: column.ys[index] + marker_shift + marker_height + dynamic_span_height,
                 height: specs[index].height,
                 kind,
             })
@@ -204,8 +264,349 @@ impl Renderer {
 
         SystemLayout {
             rows,
-            height: column.height,
+            markers,
+            dynamic_spans,
+            voltas,
+            height: column.height
+                + marker_height
+                + volta_height
+                + jump_offset
+                + volta_top
+                + dynamic_span_height,
         }
+    }
+
+    fn layout_jumps(&self, system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedMarker>, f32) {
+        let xs = Self::pulse_offsets(system);
+        let usable_widths = system
+            .pulses
+            .iter()
+            .map(|pulse| Self::pulse_usable_width(pulse, fonts, lead))
+            .collect::<Vec<_>>();
+        let mut jumps = Vec::new();
+
+        for marker in system
+            .markers
+            .iter()
+            .filter(|marker| marker.kind == MarkerKind::Jump)
+        {
+            let font = marker_font(marker.kind, fonts);
+            let width = match &marker.glyph {
+                MarkerGlyph::Text(text) => font.width(text),
+                MarkerGlyph::Segno => Self::segno_width(fonts),
+                MarkerGlyph::Fermata | MarkerGlyph::Staccato | MarkerGlyph::Marcato => {
+                    touch_width(&marker.glyph, fonts)
+                }
+            };
+
+            jumps.push(PlacedMarker {
+                kind: marker.kind,
+                glyph: marker.glyph.clone(),
+                x: xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead,
+                width,
+                y: font.ascent(),
+                anchor: TextAnchor::End,
+            });
+        }
+
+        if jumps.is_empty() {
+            return (Vec::new(), 0.0);
+        }
+
+        spread_markers(&mut jumps);
+        let height = fonts.marker_bold.line_height() + MARKER_BOTTOM_GAP;
+
+        (jumps, height)
+    }
+
+    fn layout_voltas(&self, system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedVolta>, f32) {
+        if system.voltas.is_empty() {
+            return (Vec::new(), 0.0);
+        }
+
+        let xs = Self::pulse_offsets(system);
+        let text_y = fonts.marker_bold.ascent();
+        let line_y = fonts.marker_bold.line_height() + VOLTA_TEXT_GAP;
+        let mut voltas = Vec::new();
+
+        for volta in &system.voltas {
+            if volta.start >= volta.end {
+                continue;
+            }
+
+            let start_x = xs[volta.start] + lead;
+            let end_x = xs[volta.end - 1] + system.pulses[volta.end - 1].pulse_width;
+            let text = match &volta.label {
+                Some(label) => format!("{}. {label}", volta.number),
+                None => format!("{}.", volta.number),
+            };
+
+            voltas.push(PlacedVolta {
+                start_x,
+                end_x,
+                text,
+                text_x: start_x + VOLTA_TEXT_INSET,
+                text_y,
+                line_y,
+            });
+        }
+
+        if voltas.is_empty() {
+            return (Vec::new(), 0.0);
+        }
+
+        let height = line_y + VOLTA_END_TICK + VOLTA_BOTTOM_GAP;
+
+        (voltas, height)
+    }
+
+    fn layout_dynamic_spans(
+        &self,
+        system: &System,
+        fonts: &Fonts,
+        lead: f32,
+        dynamic_center: Option<f32>,
+        marker_height: f32,
+    ) -> (Vec<PlacedDynamicSpan>, f32) {
+        if system.dynamic_spans.is_empty() {
+            return (Vec::new(), 0.0);
+        }
+
+        let xs = Self::pulse_offsets(system);
+        let usable_widths = system
+            .pulses
+            .iter()
+            .map(|pulse| Self::pulse_usable_width(pulse, fonts, lead))
+            .collect::<Vec<_>>();
+        let row_height = fonts.dynamic.line_height().max(DYNAMIC_HAIRPIN_HEIGHT);
+        let (center_y, height) = match dynamic_center {
+            Some(center_y) => (center_y, 0.0),
+            None => (
+                marker_height + row_height / 2.0,
+                row_height + DYNAMIC_SPAN_BOTTOM_GAP,
+            ),
+        };
+        let baseline = center_y + (fonts.dynamic.ascent() - fonts.dynamic.descent()) / 2.0;
+        let mut spans = Vec::new();
+
+        for span in &system.dynamic_spans {
+            let start_x = xs[span.start] + span.start_unit * usable_widths[span.start] + lead;
+            let end_x = xs[span.end] + span.end_unit * usable_widths[span.end] + lead;
+
+            if span.fits {
+                let start_x = start_x + DYNAMIC_SPAN_INSET;
+                let end_x = (end_x - DYNAMIC_SPAN_INSET).max(start_x + 1.0);
+
+                spans.push(PlacedDynamicSpan {
+                    kind: span.kind,
+                    start_x,
+                    end_x,
+                    center_y,
+                    baseline,
+                    label: None,
+                    label_width: 0.0,
+                });
+            } else {
+                let label = match span.kind {
+                    DynamicSpanKind::Crescendo => "cresc.",
+                    DynamicSpanKind::Decrescendo => "decresc.",
+                };
+
+                spans.push(PlacedDynamicSpan {
+                    kind: span.kind,
+                    start_x,
+                    end_x,
+                    center_y,
+                    baseline,
+                    label: Some(label.to_string()),
+                    label_width: fonts.dynamic.width(label),
+                });
+            }
+        }
+
+        (spans, height)
+    }
+
+    /// Place section markers above the note block. Time signatures get the
+    /// top lane; every other marker shares the lane below it.
+    fn layout_markers(
+        &self,
+        system: &System,
+        fonts: &Fonts,
+        lead: f32,
+        separate_jumps: bool,
+    ) -> (Vec<PlacedMarker>, f32) {
+        if system.markers.is_empty() {
+            return (Vec::new(), 0.0);
+        }
+
+        let xs = Self::pulse_offsets(system);
+        let usable_widths = system
+            .pulses
+            .iter()
+            .map(|pulse| Self::pulse_usable_width(pulse, fonts, lead))
+            .collect::<Vec<_>>();
+
+        let note_center = |pulse_id: usize, unit: f32| -> Option<f32> {
+            let pulse = system.pulses.get(pulse_id)?;
+            let usable_width = usable_widths[pulse_id];
+
+            for voice in &system.voices {
+                let Some(voice_pulse) = Renderer::find_voice(pulse, *voice) else {
+                    continue;
+                };
+
+                let total = voice_pulse
+                    .columns
+                    .iter()
+                    .map(|column| column.duration as u32)
+                    .sum::<u32>()
+                    .max(1);
+                let mut cursor = 0u32;
+
+                for (index, column) in voice_pulse.columns.iter().enumerate() {
+                    let start = cursor as f32 / total as f32;
+                    cursor += column.duration as u32;
+                    let end = cursor as f32 / total as f32;
+                    let is_last = index + 1 == voice_pulse.columns.len();
+
+                    if unit + MARKER_SAME_NOTE_EPSILON >= start
+                        && (unit < end - MARKER_SAME_NOTE_EPSILON
+                            || (is_last && unit <= end + MARKER_SAME_NOTE_EPSILON))
+                    {
+                        if matches!(column.note, NoteKind::EmptyNote) {
+                            break;
+                        }
+
+                        let (text, _) = note_text(&column.note);
+                        let glyph_width = fonts.solfa.width(&text);
+                        let leading = match column.note {
+                            NoteKind::ProlongedNote => lead + Renderer::prolonged_leading(fonts),
+                            _ => lead,
+                        };
+
+                        return Some(
+                            xs[pulse_id] + start * usable_width + leading + glyph_width / 2.0,
+                        );
+                    }
+                }
+            }
+
+            None
+        };
+
+        let mut ordered = system
+            .markers
+            .iter()
+            .filter(|marker| !separate_jumps || marker.kind != MarkerKind::Jump)
+            .collect::<Vec<_>>();
+        ordered.sort_by(|lhs, rhs| {
+            lhs.pulse
+                .cmp(&rhs.pulse)
+                .then(lhs.unit.total_cmp(&rhs.unit))
+        });
+
+        let mut groups: Vec<Vec<&SystemMarker>> = Vec::new();
+
+        for marker in ordered {
+            if let Some(group) = groups.last_mut() {
+                let first = group[0];
+
+                if first.pulse == marker.pulse
+                    && (first.unit - marker.unit).abs() < MARKER_SAME_NOTE_EPSILON
+                {
+                    group.push(marker);
+                    continue;
+                }
+            }
+
+            groups.push(vec![marker]);
+        }
+
+        let mut rows: Vec<Vec<PlacedMarker>> = Vec::new();
+
+        for mut group in groups {
+            group.sort_by_key(|marker| marker_priority(marker.kind));
+
+            for (row, marker) in group.into_iter().enumerate() {
+                let font = marker_font(marker.kind, fonts);
+                let width = match &marker.glyph {
+                    MarkerGlyph::Text(text) => font.width(text),
+                    MarkerGlyph::Segno => Self::segno_width(fonts),
+                    MarkerGlyph::Fermata | MarkerGlyph::Staccato | MarkerGlyph::Marcato => {
+                        touch_width(&marker.glyph, fonts)
+                    }
+                };
+                let fallback_x =
+                    xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead;
+                let x = match marker.kind {
+                    MarkerKind::Dynamic | MarkerKind::Touch => {
+                        note_center(marker.pulse, marker.unit).unwrap_or(fallback_x)
+                    }
+                    MarkerKind::Mark if matches!(&marker.glyph, MarkerGlyph::Segno) => {
+                        note_center(marker.pulse, marker.unit).unwrap_or(fallback_x)
+                    }
+                    _ => fallback_x,
+                };
+
+                let placed = PlacedMarker {
+                    kind: marker.kind,
+                    glyph: marker.glyph.clone(),
+                    x,
+                    width,
+                    y: 0.0,
+                    anchor: match marker.kind {
+                        MarkerKind::TimeSignature => TextAnchor::Middle,
+                        MarkerKind::Key | MarkerKind::Tempo | MarkerKind::TempoNumber => {
+                            TextAnchor::Start
+                        }
+                        MarkerKind::Dynamic | MarkerKind::Touch => TextAnchor::Middle,
+                        MarkerKind::Jump => TextAnchor::End,
+                        MarkerKind::Mark if marker.unit >= 0.5 => TextAnchor::End,
+                        MarkerKind::Mark => TextAnchor::Middle,
+                    },
+                };
+
+                if rows.len() <= row {
+                    rows.resize_with(row + 1, Vec::new);
+                }
+
+                rows[row].push(placed);
+            }
+        }
+
+        for row in &mut rows {
+            spread_markers(row);
+        }
+
+        let mut top = 0.0;
+
+        for row in &mut rows {
+            if row.is_empty() {
+                continue;
+            }
+
+            let row_height = row
+                .iter()
+                .map(|marker| marker_font(marker.kind, fonts).line_height())
+                .fold(0.0, f32::max);
+
+            for marker in row {
+                let font = marker_font(marker.kind, fonts);
+                marker.y = top + (row_height - font.line_height()) / 2.0 + font.ascent();
+            }
+
+            top += row_height;
+        }
+
+        if top == 0.0 {
+            return (Vec::new(), 0.0);
+        }
+
+        let markers = rows.into_iter().flatten().collect();
+        let height = top + MARKER_BOTTOM_GAP;
+
+        (markers, height)
     }
 
     fn emit_system(
@@ -275,6 +676,10 @@ impl Renderer {
             .map(|digit| fonts.octave.width(digit))
             .fold(0.0, f32::max)
             + GRID_RIGHT_PADDING
+    }
+
+    fn segno_width(fonts: &Fonts) -> f32 {
+        fonts.marker.line_height() * SEGNO_HEIGHT_SCALE * SEGNO_ASPECT_RATIO
     }
 
     fn pulse_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 {
@@ -397,7 +802,7 @@ impl Renderer {
 
         let time_x = key
             .as_ref()
-            .map(|text| left + fonts.meta.width(text) + HEADER_KEY_RIGHT_MARGIN)
+            .map(|text| left + fonts.key.width(text) + HEADER_KEY_RIGHT_MARGIN)
             .unwrap_or(left);
 
         if key.is_some() || header.meter.is_some() || header.time.is_some() {
@@ -406,7 +811,7 @@ impl Renderer {
             if let Some(text) = key {
                 texts.push(HeaderText {
                     text,
-                    kind: HeaderKind::Meta,
+                    kind: HeaderKind::Key,
                     x: left,
                     anchor: TextAnchor::Start,
                 });
@@ -438,7 +843,7 @@ impl Renderer {
 
             rows.push(HeaderRow {
                 texts,
-                height: fonts.meta.line_height(),
+                height: fonts.meta.line_height().max(fonts.key.line_height()),
                 gap_before,
             });
         }
@@ -481,6 +886,7 @@ impl Renderer {
             let class = match line.kind {
                 HeaderKind::Title => "title",
                 HeaderKind::Name => "name",
+                HeaderKind::Key => "key",
                 HeaderKind::Meta => "meta",
             };
 
@@ -499,6 +905,11 @@ impl Renderer {
 
     fn emit_defs(&self, svg: &mut String) -> Result<()> {
         let solfa = STANDARD.encode(SOLFA_FONT);
+        let text = STANDARD.encode(TEXT_FONT);
+        let text_bold = STANDARD.encode(TEXT_BOLD_FONT);
+        let serif = STANDARD.encode(SERIF_FONT);
+        let serif_italic = STANDARD.encode(SERIF_ITALIC_FONT);
+        let serif_bold_italic = STANDARD.encode(SERIF_BOLD_ITALIC_FONT);
         let lyric = STANDARD.encode(LYRIC_FONT);
         let options = &self.options;
 
@@ -511,6 +922,41 @@ impl Renderer {
       src: url('data:font/ttf;base64,{solfa}') format('truetype');
       font-weight: normal;
       font-style: normal;
+    }}
+
+    @font-face {{
+      font-family: '{TEXT_FAMILY}';
+      src: url('data:font/ttf;base64,{text}') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }}
+
+    @font-face {{
+      font-family: '{TEXT_FAMILY}';
+      src: url('data:font/ttf;base64,{text_bold}') format('truetype');
+      font-weight: bold;
+      font-style: normal;
+    }}
+
+    @font-face {{
+      font-family: '{SERIF_FAMILY}';
+      src: url('data:font/ttf;base64,{serif}') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }}
+
+    @font-face {{
+      font-family: '{SERIF_FAMILY}';
+      src: url('data:font/ttf;base64,{serif_italic}') format('truetype');
+      font-weight: normal;
+      font-style: italic;
+    }}
+
+    @font-face {{
+      font-family: '{SERIF_FAMILY}';
+      src: url('data:font/ttf;base64,{serif_bold_italic}') format('truetype');
+      font-weight: bold;
+      font-style: italic;
     }}
 
     @font-face {{
@@ -552,24 +998,78 @@ impl Renderer {
     }}
 
     .title {{
-      font-family: '{LYRIC_FAMILY}', sans-serif;
+      font-family: '{TEXT_FAMILY}', sans-serif;
       font-size: {title_size}px;
       font-weight: bold;
     }}
 
     .name {{
-      font-family: '{LYRIC_FAMILY}', sans-serif;
+      font-family: '{TEXT_FAMILY}', sans-serif;
       font-size: {name_size}px;
     }}
 
+    .key {{
+      font-family: '{TEXT_FAMILY}', sans-serif;
+      font-size: {marker_size}px;
+      font-weight: bold;
+    }}
+
     .meta {{
-      font-family: '{LYRIC_FAMILY}', sans-serif;
+      font-family: '{TEXT_FAMILY}', sans-serif;
       font-size: {meta_size}px;
       fill: #444444;
     }}
 
+    .marker {{
+      font-family: '{SERIF_FAMILY}', serif;
+      font-size: {marker_size}px;
+      font-weight: normal;
+      fill: #333333;
+    }}
+
+    .marker-sans {{
+      font-family: '{TEXT_FAMILY}', sans-serif;
+      font-size: {marker_size}px;
+      font-weight: normal;
+      fill: #333333;
+    }}
+
+    .marker-bold {{
+      font-family: '{TEXT_FAMILY}', sans-serif;
+      font-size: {marker_size}px;
+      font-weight: bold;
+      fill: #333333;
+    }}
+
+    .marker-italic {{
+      font-family: '{SERIF_FAMILY}', serif;
+      font-size: {marker_size}px;
+      font-style: italic;
+      fill: #333333;
+    }}
+
+    .dynamic {{
+      font-family: '{SERIF_FAMILY}', serif;
+      font-size: {dynamic_size}px;
+      font-weight: bold;
+      font-style: italic;
+    }}
+
+    .volta {{
+      stroke: #222222;
+      stroke-width: {barline_stroke};
+      stroke-linecap: square;
+    }}
+
+    .volta-text {{
+      font-family: '{TEXT_FAMILY}', sans-serif;
+      font-size: {marker_size}px;
+      font-weight: bold;
+      fill: #333333;
+    }}
+
     .page-number {{
-      font-family: '{LYRIC_FAMILY}', sans-serif;
+      font-family: '{TEXT_FAMILY}', sans-serif;
       font-size: {page_number_size}px;
       fill: #777777;
     }}
@@ -591,6 +1091,24 @@ impl Renderer {
       stroke-width: {underline_stroke};
       stroke-linecap: round;
     }}
+
+    .touch-fill {{
+      fill: #222222;
+      stroke: none;
+    }}
+
+    .dynamic-hairpin {{
+      stroke: #222222;
+      stroke-width: 1;
+      stroke-linecap: round;
+    }}
+
+    .dynamic-dash {{
+      stroke: #222222;
+      stroke-width: 1;
+      stroke-dasharray: 4 3;
+    }}
+
   </style>
 </defs>"#,
             solfa_size = options.solfa_font_size,
@@ -600,6 +1118,8 @@ impl Renderer {
             title_size = options.title_font_size,
             name_size = options.name_font_size,
             meta_size = options.meta_font_size,
+            marker_size = options.marker_font_size,
+            dynamic_size = options.marker_font_size * DYNAMIC_FONT_SCALE,
             page_number_size = options.meta_font_size * PAGE_NUMBER_FONT_SCALE,
             barline_stroke = BARLINE_STROKE_WIDTH,
             accent_stroke = ACCENT_STROKE_WIDTH,
@@ -631,6 +1151,73 @@ impl Renderer {
             svg,
             r#"<line x1="{x1:.2}" y1="{y1:.2}" x2="{x2:.2}" y2="{y2:.2}" class="{class}"/>"#,
         )?;
+
+        Ok(())
+    }
+
+    fn emit_segno(svg: &mut String, x: f32, baseline: f32, fonts: &Fonts) -> Result<()> {
+        let line_height = fonts.marker.line_height();
+        let height = line_height * SEGNO_HEIGHT_SCALE;
+        let scale = height / 3.0;
+        let left = x - Self::segno_width(fonts) / 2.0;
+        let top = baseline - fonts.marker.ascent() + (line_height - height) / 2.0;
+
+        writeln!(
+            svg,
+            r##"<g class="marker marker-segno" transform="translate({left:.2} {top:.2}) scale({scale:.4})"><path transform="{SEGNO_PATH_TRANSFORM}" d="{SEGNO_PATH}" fill="#333333"/></g>"##,
+        )?;
+
+        Ok(())
+    }
+
+    fn emit_touch(
+        svg: &mut String,
+        glyph: &MarkerGlyph,
+        x: f32,
+        baseline: f32,
+        fonts: &Fonts,
+    ) -> Result<()> {
+        let size = fonts.marker.size() * TOUCH_SYMBOL_SCALE;
+        let bottom = baseline - 1.0;
+
+        match glyph {
+            MarkerGlyph::Staccato => {
+                let width = size * 0.32;
+                let scale = width / STACCATO_SIZE;
+                let left = x - width / 2.0;
+                let top = bottom - width;
+
+                writeln!(
+                    svg,
+                    r##"<g class="touch-fill touch-staccato" transform="translate({left:.2} {top:.2}) scale({scale:.4})"><path d="{STACCATO_PATH}"/></g>"##,
+                )?;
+            }
+            MarkerGlyph::Marcato => {
+                let width = size * MARCATO_WIDTH_SCALE;
+                let height = width * MARCATO_HEIGHT / MARCATO_WIDTH;
+                let scale = width / MARCATO_WIDTH;
+                let left = x - width / 2.0;
+                let top = bottom - height;
+
+                writeln!(
+                    svg,
+                    r##"<g class="touch-fill touch-marcato" transform="translate({left:.2} {top:.2}) scale({scale:.4})"><path d="{MARCATO_PATH}"/></g>"##,
+                )?;
+            }
+            MarkerGlyph::Fermata => {
+                let width = size * 1.7;
+                let height = width * FERMATA_HEIGHT / FERMATA_WIDTH;
+                let scale = width / FERMATA_WIDTH;
+                let left = x - width / 2.0;
+                let top = bottom - height;
+
+                writeln!(
+                    svg,
+                    r##"<g class="touch-fermata" transform="translate({left:.2} {top:.2}) scale({scale:.4})">{FERMATA_GROUP}</g>"##,
+                )?;
+            }
+            _ => {}
+        }
 
         Ok(())
     }
@@ -670,6 +1257,124 @@ impl<'a> SystemRender<'a> {
         let layout = self.layout;
         let y = self.y;
         let mut block_top: Option<f32> = None;
+
+        for volta in &layout.voltas {
+            let start_x = self.origin_x + volta.start_x;
+            let end_x = self.origin_x + volta.end_x;
+            let line_y = y + volta.line_y;
+
+            Renderer::emit_line(self.svg, start_x, line_y, end_x, line_y, "volta")?;
+            Renderer::emit_line(
+                self.svg,
+                start_x,
+                line_y,
+                start_x,
+                line_y + VOLTA_END_TICK,
+                "volta",
+            )?;
+            Renderer::emit_line(
+                self.svg,
+                end_x,
+                line_y,
+                end_x,
+                line_y + VOLTA_END_TICK,
+                "volta",
+            )?;
+            Renderer::emit_text(
+                self.svg,
+                self.origin_x + volta.text_x,
+                y + volta.text_y,
+                &volta.text,
+                "volta-text",
+                "start",
+            )?;
+        }
+
+        for marker in &layout.markers {
+            let x = self.origin_x + marker.x;
+            let baseline = y + marker.y;
+
+            match &marker.glyph {
+                MarkerGlyph::Text(text) => Renderer::emit_text(
+                    self.svg,
+                    x,
+                    baseline,
+                    text,
+                    match marker.kind {
+                        MarkerKind::Dynamic => "dynamic",
+                        MarkerKind::Jump | MarkerKind::Key | MarkerKind::TempoNumber => {
+                            "marker-bold"
+                        }
+                        MarkerKind::Tempo | MarkerKind::Mark => "marker-italic",
+                        MarkerKind::TimeSignature => "marker-sans",
+                        MarkerKind::Touch => "marker",
+                    },
+                    marker.anchor.as_str(),
+                )?,
+                MarkerGlyph::Segno => Renderer::emit_segno(self.svg, x, baseline, self.fonts)?,
+                MarkerGlyph::Fermata | MarkerGlyph::Staccato | MarkerGlyph::Marcato => {
+                    Renderer::emit_touch(self.svg, &marker.glyph, x, baseline, self.fonts)?
+                }
+            }
+        }
+
+        for span in &layout.dynamic_spans {
+            let start_x = self.origin_x + span.start_x;
+            let end_x = self.origin_x + span.end_x;
+
+            if let Some(label) = &span.label {
+                Renderer::emit_text(
+                    self.svg,
+                    start_x,
+                    y + span.baseline,
+                    label,
+                    "dynamic",
+                    "start",
+                )?;
+
+                let dash_start = start_x + span.label_width + DYNAMIC_DASH_GAP;
+
+                if dash_start < end_x {
+                    Renderer::emit_line(
+                        self.svg,
+                        dash_start,
+                        y + span.center_y,
+                        end_x,
+                        y + span.center_y,
+                        "dynamic-dash",
+                    )?;
+                }
+            } else {
+                let center_y = y + span.center_y;
+                let half = DYNAMIC_HAIRPIN_HEIGHT / 2.0;
+
+                let (left_top, left_bottom, right_top, right_bottom) = match span.kind {
+                    DynamicSpanKind::Crescendo => {
+                        (center_y, center_y, center_y - half, center_y + half)
+                    }
+                    DynamicSpanKind::Decrescendo => {
+                        (center_y - half, center_y + half, center_y, center_y)
+                    }
+                };
+
+                Renderer::emit_line(
+                    self.svg,
+                    start_x,
+                    left_top,
+                    end_x,
+                    right_top,
+                    "dynamic-hairpin",
+                )?;
+                Renderer::emit_line(
+                    self.svg,
+                    start_x,
+                    left_bottom,
+                    end_x,
+                    right_bottom,
+                    "dynamic-hairpin",
+                )?;
+            }
+        }
 
         for row in &layout.rows {
             match row.kind {
@@ -1000,7 +1705,39 @@ struct PlacedSystem {
 
 struct SystemLayout {
     rows: Vec<SystemRow>,
+    markers: Vec<PlacedMarker>,
+    dynamic_spans: Vec<PlacedDynamicSpan>,
+    voltas: Vec<PlacedVolta>,
     height: f32,
+}
+
+struct PlacedDynamicSpan {
+    kind: DynamicSpanKind,
+    start_x: f32,
+    end_x: f32,
+    center_y: f32,
+    baseline: f32,
+    label: Option<String>,
+    label_width: f32,
+}
+
+struct PlacedVolta {
+    start_x: f32,
+    end_x: f32,
+    text: String,
+    text_x: f32,
+    text_y: f32,
+    line_y: f32,
+}
+
+#[derive(Clone)]
+struct PlacedMarker {
+    kind: MarkerKind,
+    glyph: MarkerGlyph,
+    x: f32,
+    width: f32,
+    y: f32,
+    anchor: TextAnchor,
 }
 
 struct SystemPlacement<'a> {
@@ -1040,6 +1777,7 @@ enum SystemRowKind {
 enum HeaderKind {
     Title,
     Name,
+    Key,
     Meta,
 }
 
@@ -1116,6 +1854,58 @@ fn wrap_text(text: &str, max_width: f32, font: &FontMetrics) -> Vec<String> {
     }
 
     lines
+}
+
+fn marker_priority(kind: MarkerKind) -> usize {
+    match kind {
+        MarkerKind::Key => 0,
+        MarkerKind::TimeSignature => 1,
+        MarkerKind::Tempo | MarkerKind::TempoNumber => 2,
+        MarkerKind::Jump => 3,
+        MarkerKind::Mark => 4,
+        MarkerKind::Dynamic => 5,
+        MarkerKind::Touch => 6,
+    }
+}
+
+fn touch_width(glyph: &MarkerGlyph, fonts: &Fonts) -> f32 {
+    let size = fonts.marker.size() * TOUCH_SYMBOL_SCALE;
+
+    match glyph {
+        MarkerGlyph::Fermata => size * 1.7,
+        MarkerGlyph::Staccato => size * 0.32,
+        MarkerGlyph::Marcato => size * MARCATO_WIDTH_SCALE,
+        _ => 0.0,
+    }
+}
+
+fn marker_font(kind: MarkerKind, fonts: &Fonts) -> &FontMetrics {
+    match kind {
+        MarkerKind::Key | MarkerKind::Jump | MarkerKind::TempoNumber => &fonts.marker_bold,
+        MarkerKind::TimeSignature => &fonts.marker_sans,
+        MarkerKind::Touch => &fonts.marker,
+        MarkerKind::Tempo | MarkerKind::Mark => &fonts.mark,
+        MarkerKind::Dynamic => &fonts.dynamic,
+    }
+}
+
+/// Push markers right until their text boxes no longer overlap.
+fn spread_markers(markers: &mut [PlacedMarker]) {
+    markers.sort_by(|lhs, rhs| lhs.x.total_cmp(&rhs.x));
+
+    let mut right_edge = f32::NEG_INFINITY;
+
+    for marker in markers {
+        let left = match marker.anchor {
+            TextAnchor::Start => marker.x,
+            TextAnchor::Middle => marker.x - marker.width / 2.0,
+            TextAnchor::End => marker.x - marker.width,
+        };
+        let shift = (right_edge + MARKER_HORIZONTAL_GAP - left).max(0.0);
+
+        marker.x += shift;
+        right_edge = left + marker.width + shift;
+    }
 }
 
 fn baseline(row_y: f32, row_height: f32, font: &FontMetrics) -> f32 {
