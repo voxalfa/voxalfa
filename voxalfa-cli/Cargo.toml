@@ -18,3 +18,4 @@ voxalfa-formatter = { workspace = true }
 voxalfa-midi = { workspace = true }
 voxalfa-core = { workspace = true }
 voxalfa-svg = { workspace = true }
+voxalfa-svg2 = { workspace = true }

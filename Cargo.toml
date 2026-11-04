@@ -7,6 +7,7 @@ members = [
   "voxalfa-midi",
   "voxalfa-formatter",
   "voxalfa-svg",
+  "voxalfa-svg2",
   "tree-sitter-voxalfa",
 ]
 
@@ -18,3 +19,4 @@ voxalfa-midi = { path = "./voxalfa-midi" }
 voxalfa-formatter = { path = "./voxalfa-formatter" }
 voxalfa-core = { path = "./voxalfa-core" }
 voxalfa-svg = { path = "./voxalfa-svg" }
+voxalfa-svg2 = { path = "./voxalfa-svg2" }

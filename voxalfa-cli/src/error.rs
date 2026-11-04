@@ -22,6 +22,9 @@ pub enum Error {
     #[error("{0}")]
     Svg(#[from] voxalfa_svg::error::Error),
 
+    #[error("{0}")]
+    Svg2(#[from] voxalfa_svg2::Error),
+
     #[error("invalid voice {0}")]
     InvalidVoice(String),
 

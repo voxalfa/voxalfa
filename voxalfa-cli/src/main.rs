@@ -23,6 +23,7 @@ fn main() {
         CliCommand::Check(params) => check::execute(params),
         CliCommand::Midi(params) => midi::execute(params),
         CliCommand::Svg(params) => svg::execute(params),
+        CliCommand::Svg2(params) => svg2::execute(params),
         CliCommand::Lyrics(params) => lyrics::execute(params),
     };
 

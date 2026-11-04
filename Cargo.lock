@@ -1208,6 +1208,7 @@ dependencies = [
  "voxalfa-formatter",
  "voxalfa-midi",
  "voxalfa-svg",
+ "voxalfa-svg2",
 ]
 
 [[package]]
@@ -1264,6 +1265,16 @@ dependencies = [
  "base64",
  "skrifa",
  "taffy",
+ "thiserror",
+ "voxalfa-core",
+]
+
+[[package]]
+name = "voxalfa-svg2"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "skrifa",
  "thiserror",
  "voxalfa-core",
 ]
