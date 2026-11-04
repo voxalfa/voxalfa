@@ -3,9 +3,9 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use voxalfa_svg::renderer::Renderer;
 
 use clap::Parser;
+use voxalfa_svg::{RenderOptions, Renderer};
 
 use crate::{
     error::Result,
@@ -31,8 +31,8 @@ pub fn execute(params: SvgParams) -> Result<()> {
         if output.has_error() {
             reporter.register_diagnostics(file, output.diagnostics);
         } else {
-            let converter = Renderer::new(output)?;
-            let svg = converter.render_to_svg()?;
+            let renderer = Renderer::new(RenderOptions::default());
+            let svg = renderer.render(&output)?;
             let file_path = Path::new(&file.path);
             let output_path = params.output.as_ref().map(PathBuf::from);
             let default_path = file_path.with_extension("svg");

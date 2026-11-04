@@ -13,7 +13,7 @@ use crate::{
     output::{
         FinalOutput,
         evaluator::{PlaybackParams, TimelineEvaluator},
-        metrics::StringMetric,
+        metrics::{SpanWidth, StringMetric},
         voice::{NoteContext, VoiceLine},
     },
 };
@@ -82,11 +82,17 @@ impl<M: StringMetric> LyricsBuilder<M> {
                 for column in &line.columns {
                     let rendered = self.build_lyric_column::<V>(column, tree);
                     let (duration, factor) = &view_columns[col_index];
-                    let is_unit_col = column.span == 1 && *duration == 1 && *factor == max_factor;
+                    let span = column.span.max(1);
+                    let is_unit_col = span == 1 && *duration == 1 && *factor == max_factor;
 
-                    // TODO: consider out of bounds edge cases?
-                    if is_unit_col && rendered.width > self.max_width {
-                        self.max_width = rendered.width;
+                    let width = if is_unit_col {
+                        rendered.width
+                    } else {
+                        M::Output::per_column(rendered.width, span)
+                    };
+
+                    if width > self.max_width {
+                        self.max_width = width;
                     }
 
                     self.map.insert(column.sid, rendered);

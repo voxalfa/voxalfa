@@ -4,70 +4,91 @@ use skrifa::{
 };
 use voxalfa_core::output::metrics::StringMetric;
 
-use crate::error::Result;
+use crate::{error::Result, options::RenderOptions};
 
 pub const SOLFA_FONT: &[u8] = include_bytes!("../fonts/FiraSans-Solfa.ttf");
 pub const LYRIC_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Lyrics.ttf");
 
-pub const SOLFA_FONT_SIZE: f32 = 16.0;
-pub const LYRIC_FONT_SIZE: f32 = 14.0;
-pub const OCTAVE_FONT_SIZE: f32 = 10.0;
-pub const TITLE_FONT_SIZE: f32 = 24.0;
-pub const NAME_FONT_SIZE: f32 = 18.0;
-pub const MARKER_FONT_SIZE: f32 = 16.0;
+pub const SOLFA_FAMILY: &str = "voxalfa-solfa";
+pub const LYRIC_FAMILY: &str = "voxalfa-lyrics";
 
-pub struct FontInterface<'a> {
-    pub solfa: FontMeasurer<'a>,
-    pub lyric: FontMeasurer<'a>,
+pub struct FontMetrics {
+    data: &'static [u8],
+    size: f32,
+    ascent: f32,
+    descent: f32,
 }
 
-impl FontInterface<'_> {
-    pub fn new() -> Result<Self> {
+impl FontMetrics {
+    pub fn new(data: &'static [u8], size: f32) -> Result<Self> {
+        let font = FontRef::new(data)?;
+        let metrics = font.metrics(Size::new(size), LocationRef::default());
+
         Ok(Self {
-            solfa: FontMeasurer::new(SOLFA_FONT, SOLFA_FONT_SIZE)?,
-            lyric: FontMeasurer::new(LYRIC_FONT, LYRIC_FONT_SIZE)?,
+            data,
+            size,
+            ascent: metrics.ascent,
+            descent: metrics.descent.abs(),
         })
     }
-}
 
-impl StringMetric for &FontInterface<'_> {
-    type Output = f32;
-
-    fn measure_string(&self, text: &str) -> Self::Output {
-        self.lyric.get_width(text)
+    pub fn size(&self) -> f32 {
+        self.size
     }
-}
 
-pub struct FontMeasurer<'a> {
-    pub size: Size,
-    pub font: FontRef<'a>,
-    pub ascent: f32,
-    pub descent: f32,
-}
+    pub fn ascent(&self) -> f32 {
+        self.ascent
+    }
 
-impl<'a> FontMeasurer<'a> {
-    pub fn get_width(&self, text: &str) -> f32 {
-        let glyph_metrics = self.font.glyph_metrics(self.size, LocationRef::default());
-        let charmap = self.font.charmap();
+    pub fn descent(&self) -> f32 {
+        self.descent
+    }
+
+    pub fn line_height(&self) -> f32 {
+        self.ascent + self.descent
+    }
+
+    pub fn width(&self, text: &str) -> f32 {
+        let Ok(font) = FontRef::new(self.data) else {
+            return 0.0;
+        };
+
+        let glyph_metrics = font.glyph_metrics(Size::new(self.size), LocationRef::default());
+        let charmap = font.charmap();
 
         text.chars()
             .filter_map(|ch| charmap.map(ch))
             .filter_map(|id| glyph_metrics.advance_width(id))
             .sum()
     }
+}
 
-    fn new(font_bytes: &'a [u8], font_size: f32) -> Result<Self> {
-        let font = FontRef::new(font_bytes)?;
-        let size = Size::new(font_size);
-        let metrics = font.metrics(size, LocationRef::default());
-        let ascent = metrics.ascent;
-        let descent = metrics.descent.abs();
+impl StringMetric for &FontMetrics {
+    type Output = f32;
 
+    fn measure_string(&self, text: &str) -> Self::Output {
+        self.width(text)
+    }
+}
+
+pub struct Fonts {
+    pub solfa: FontMetrics,
+    pub lyric: FontMetrics,
+    pub octave: FontMetrics,
+    pub title: FontMetrics,
+    pub name: FontMetrics,
+    pub meta: FontMetrics,
+}
+
+impl Fonts {
+    pub fn new(options: &RenderOptions) -> Result<Self> {
         Ok(Self {
-            font,
-            size,
-            ascent,
-            descent,
+            solfa: FontMetrics::new(SOLFA_FONT, options.solfa_font_size)?,
+            lyric: FontMetrics::new(LYRIC_FONT, options.lyric_font_size)?,
+            octave: FontMetrics::new(SOLFA_FONT, options.octave_font_size)?,
+            title: FontMetrics::new(LYRIC_FONT, options.title_font_size)?,
+            name: FontMetrics::new(LYRIC_FONT, options.name_font_size)?,
+            meta: FontMetrics::new(LYRIC_FONT, options.meta_font_size)?,
         })
     }
 }

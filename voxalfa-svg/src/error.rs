@@ -1,17 +1,13 @@
 use skrifa::raw::ReadError;
-use taffy::TaffyError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("{0}")]
-    Taffy(#[from] TaffyError),
+    #[error("missing required header parameter '{0}'")]
+    MissingHeader(&'static str),
 
-    #[error("{0}")]
-    FontRead(#[from] ReadError),
-
-    #[error("missing required header parameter field '{0}'")]
-    MissingHeaderField(&'static str),
+    #[error("could not read font data: {0}")]
+    Font(#[from] ReadError),
 
     #[error("{0}")]
     Format(#[from] std::fmt::Error),

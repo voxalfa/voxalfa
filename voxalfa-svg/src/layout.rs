@@ -1,18 +1,49 @@
-pub const A4_WIDTH_PX: f32 = 794.0; // 210mm at 96 DPI
-pub const A4_HEIGHT_PX: f32 = 1123.0; // 297mm at 96 DPI
-pub const A4_PADDING: f32 = 56.7; // 15mm padding
+pub const OCTAVE_GAP: f32 = 2.0;
+pub const BARLINE_BLOCK_INSET: f32 = 6.0;
+pub const DOUBLE_BARLINE_GAP: f32 = 3.0;
+pub const SOLFA_UNDERLINE_OFFSET: f32 = 2.5;
+pub const BOTTOM_OCTAVE_UNDERLINE_GAP: f32 = 1.0;
+pub const LYRIC_UNDERLINE_OFFSET: f32 = 1.0;
+pub const MIN_UNDERLINE_WIDTH: f32 = 1.0;
+pub const TOP_OCTAVE_OFFSET_FACTOR: f32 = 0.45;
+pub const PROLONGED_LEADING_MIN: f32 = 2.5;
+pub const NOTE_BARLINE_CLEARANCE: f32 = 3.0;
+pub const GRID_RIGHT_PADDING: f32 = 2.0;
+pub const TITLE_LINE_HEIGHT_FACTOR: f32 = 1.08;
+pub const HEADER_GROUP_GAP: f32 = 6.0;
+pub const HEADER_BOTTOM_PADDING: f32 = 8.0;
+/// Extra space below the title before the author/composer line.
+pub const HEADER_TITLE_BOTTOM_GAP: f32 = 12.0;
+/// Right margin after the key label before the time signature. This is kept
+/// deliberately generous so changing the header font does not crowd them.
+pub const HEADER_KEY_RIGHT_MARGIN: f32 = 28.0;
+/// Right inset for right-aligned header text such as the composer.
+pub const HEADER_RIGHT_INSET: f32 = 12.0;
+pub const SYMBOL_FONT_SCALE: f32 = 0.85;
+pub const PAGE_NUMBER_FONT_SCALE: f32 = 0.9;
+pub const BARLINE_STROKE_WIDTH: f32 = 1.2;
+pub const ACCENT_STROKE_WIDTH: f32 = 1.0;
+pub const UNDERLINE_STROKE_WIDTH: f32 = 1.0;
 
-pub const PRINTABLE_WIDTH: f32 = A4_WIDTH_PX - (A4_PADDING * 2.0); // 680.6px
+pub(crate) struct RowSpec {
+    pub height: f32,
+    pub gap_before: f32,
+}
 
-pub const VOICE_LINE_HEIGHT: f32 = 24.0; // Vertical distance between S, A, T, B
-pub const LYRIC_LINE_HEIGHT: f32 = 20.0; // Vertical distance per lyric verse
+pub(crate) struct ColumnLayout {
+    pub ys: Vec<f32>,
+    pub height: f32,
+}
 
-pub const LINE_GAP: f32 = 10.0;
-pub const GROUP_BOTTOM_MARGIN: f32 = 20.0;
-pub const SYSTEM_GAP: f32 = 25.0;
+pub(crate) fn layout_column(rows: &[RowSpec]) -> ColumnLayout {
+    let mut ys = Vec::with_capacity(rows.len());
+    let mut y = 0.0;
 
-pub const UNDERLINE_Y_OFFSET: f32 = 3.0;
+    for row in rows {
+        y += row.gap_before;
+        ys.push(y);
+        y += row.height;
+    }
 
-// FIXME: should be dynamic
-pub const OCTAVE_TOP_OFFSET: f32 = 10.0;
-pub const OCTAVE_BOTTOM_OFFSET: f32 = 2.0;
+    ColumnLayout { ys, height: y }
+}

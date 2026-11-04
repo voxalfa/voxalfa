@@ -4,7 +4,7 @@ use voxalfa_core::{
 };
 
 #[derive(Default)]
-pub struct SvgVisitor {
+pub(crate) struct SvgVisitor {
     buffer: String,
 }
 
@@ -20,8 +20,10 @@ impl LyricVisitor for SvgVisitor {
         match event {
             LyricEvent::Text(text) => self.buffer.push_str(text),
             LyricEvent::SpecialChar(ch) => self.buffer.push_str(&ch.to_string()),
-            LyricEvent::Operator(op) if let Some(ch) = Self::get_operator(op) => {
-                self.buffer.push(ch)
+            LyricEvent::Operator(op) => {
+                if let Some(ch) = Self::get_operator(op) {
+                    self.buffer.push(ch);
+                }
             }
             _ => {}
         }
