@@ -30,6 +30,7 @@ pub struct SectionIr {
     pub items: Vec<SubSectionIr>,
     pub params: SectionParams,
     pub merge: bool,
+    pub major_start: bool,
 }
 
 impl SectionIr {

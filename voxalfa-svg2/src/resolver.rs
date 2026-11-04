@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use voxalfa_core::{
     ast::{lyrics::LyricOperatorKind, solfa::PulseAccent},
     data_types::TimeSignature,
@@ -38,7 +36,7 @@ pub(crate) fn resolve<'a>(
     let mut pulses = Vec::new();
     let mut current_time = default_time;
 
-    for section in &data.body.sections {
+    for (section_id, section) in data.body.sections.iter().enumerate() {
         if let Some(time) = &section.params.time {
             current_time = time.value;
         }
@@ -112,8 +110,17 @@ pub(crate) fn resolve<'a>(
                     pulse_lyrics.push(tokens);
                 }
 
+                let mut lyric_voices = Vec::new();
+
+                for line in &sub.solfa {
+                    if !lyric_voices.contains(&line.voice) {
+                        lyric_voices.push(line.voice);
+                    }
+                }
+
                 subsections.push(FlatSubPulse {
                     voices,
+                    lyric_voices,
                     lyrics: pulse_lyrics,
                 });
             }
@@ -122,10 +129,23 @@ pub(crate) fn resolve<'a>(
                 time: current_time,
                 accent,
                 measure_start: false,
+                section_end: false,
                 grid_offset: 0,
                 subsections,
                 max_columns,
             });
+        }
+
+        let next_is_major = data
+            .body
+            .sections
+            .get(section_id + 1)
+            .is_some_and(|s| s.major_start);
+
+        if (next_is_major || section_id == data.body.sections.len() - 1)
+            && let Some(last) = pulses.get_mut(section_start + pulse_count - 1)
+        {
+            last.section_end = true;
         }
     }
 
@@ -515,6 +535,7 @@ fn make_system<'a>(
             SystemPulse {
                 accent: pulse.accent,
                 measure_start: pulse.measure_start,
+                section_end: pulse.section_end,
                 pulse_width,
                 subsections: pulse
                     .subsections
@@ -527,15 +548,38 @@ fn make_system<'a>(
         })
         .collect();
 
-    let mut groups: BTreeMap<(usize, usize), Vec<SystemLyricToken>> = BTreeMap::new();
+    // Voice order is the order of first appearance across all sub-sections.
+    // The same voice may be declared by different sub-sections, but it still
+    // owns exactly one row in the system.
+    let mut voices = Vec::new();
+    let mut max_verses = 0usize;
+
+    for &global in &indices {
+        for sub in &pulses[global].subsections {
+            max_verses = max_verses.max(sub.lyrics.len());
+
+            for &voice in &sub.lyric_voices {
+                if !voices.contains(&voice) {
+                    voices.push(voice);
+                }
+            }
+        }
+    }
+
+    // Collect the lyrics of every voice separately. A lyric line declared by
+    // a sub-section belongs to every voice of that sub-section, so a shared
+    // line is copied onto each voice. Voices that end up with identical lines
+    // are merged again when the rows are emitted.
+    let mut voice_lyrics: Vec<Vec<Vec<SystemLyricToken>>> =
+        vec![vec![Vec::new(); max_verses]; voices.len()];
 
     for (local, &global) in indices.iter().enumerate() {
         let pulse = &pulses[global];
 
-        for (sub_id, sub) in pulse.subsections.iter().enumerate() {
+        for sub in &pulse.subsections {
             for (verse, tokens) in sub.lyrics.iter().enumerate() {
                 for token in tokens {
-                    if token.start_pulse != global {
+                    if token.start_pulse != global || token.text.is_empty() {
                         continue;
                     }
 
@@ -549,34 +593,54 @@ fn make_system<'a>(
                         token.end_unit
                     };
 
-                    groups
-                        .entry((sub_id, verse))
-                        .or_default()
-                        .push(SystemLyricToken {
-                            start: local,
-                            start_unit: token.start_unit,
-                            end,
-                            end_unit,
-                            text: token.text.clone(),
-                            placeholder: token.placeholder,
-                            underline: token.underline,
-                        });
+                    let system_token = SystemLyricToken {
+                        start: local,
+                        start_unit: token.start_unit,
+                        end,
+                        end_unit,
+                        text: token.text.clone(),
+                        placeholder: token.placeholder,
+                        underline: token.underline,
+                    };
+
+                    for &voice in &sub.lyric_voices {
+                        let Some(voice_index) = voices.iter().position(|item| *item == voice)
+                        else {
+                            continue;
+                        };
+
+                        voice_lyrics[voice_index][verse].push(system_token.clone());
+                    }
                 }
             }
         }
     }
 
-    let lyric_groups = groups
-        .into_iter()
-        .map(|((subsection, verse), tokens)| SystemLyricGroup {
-            subsection,
-            verse,
-            tokens,
-        })
-        .collect();
+    // Merge consecutive voices whose collected lyrics are identical. The
+    // resulting group is emitted once, after the last voice it contains.
+    let mut lyric_groups = Vec::new();
+    let mut start = 0usize;
+
+    while start < voices.len() {
+        let mut end = start + 1;
+
+        while end < voices.len() && voice_lyrics[start] == voice_lyrics[end] {
+            end += 1;
+        }
+
+        if voice_lyrics[start].iter().any(|tokens| !tokens.is_empty()) {
+            lyric_groups.push(SystemLyricGroup {
+                voices: voices[start..end].to_vec(),
+                verses: voice_lyrics[start].clone(),
+            });
+        }
+
+        start = end;
+    }
 
     System {
         pulses: system_pulses,
+        voices,
         lyric_groups,
         grid_offset,
     }

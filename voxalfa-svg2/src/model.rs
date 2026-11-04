@@ -21,6 +21,9 @@ pub(crate) struct FlatPulse<'a> {
     pub time: TimeSignature,
     pub accent: PulseAccent,
     pub measure_start: bool,
+    /// True for the last pulse of a source solfa line. The renderer turns it
+    /// into a double barline.
+    pub section_end: bool,
     /// Number of pulses before the first strong pulse of this time-signature
     /// group. It is used to indent subsequent systems so measures stay
     /// vertically aligned when the partition starts with an anacrusis.
@@ -32,6 +35,9 @@ pub(crate) struct FlatPulse<'a> {
 /// The pulse data for one sub-section (one voice group).
 pub(crate) struct FlatSubPulse<'a> {
     pub voices: Vec<(voxalfa_core::data_types::Voice, &'a PulseIr)>,
+    /// Every voice declared by this sub-section, even when a voice line has
+    /// fewer pulses than the others.
+    pub lyric_voices: Vec<voxalfa_core::data_types::Voice>,
     /// Tokens grouped by verse. Only tokens that *start* on this pulse are
     /// stored here; a token may span into later pulses.
     pub lyrics: Vec<Vec<LyricToken>>,
@@ -58,6 +64,8 @@ pub(crate) struct LyricToken {
 /// complete measures.
 pub(crate) struct System<'a> {
     pub pulses: Vec<SystemPulse<'a>>,
+    /// All voices in the system, in the order they first appear.
+    pub voices: Vec<voxalfa_core::data_types::Voice>,
     pub lyric_groups: Vec<SystemLyricGroup>,
     /// Number of empty grid pulses added to the left of this system.
     pub grid_offset: usize,
@@ -66,6 +74,7 @@ pub(crate) struct System<'a> {
 pub(crate) struct SystemPulse<'a> {
     pub accent: PulseAccent,
     pub measure_start: bool,
+    pub section_end: bool,
     pub pulse_width: f32,
     pub subsections: Vec<SystemSubPulse<'a>>,
 }
@@ -74,15 +83,18 @@ pub(crate) struct SystemSubPulse<'a> {
     pub voices: Vec<(voxalfa_core::data_types::Voice, &'a PulseIr)>,
 }
 
-/// All lyric tokens of one `(sub-section, verse)` pair inside a system.
+/// One lyric line shared by a consecutive run of voices.
+///
+/// A voice can collect lyrics from several sub-sections. Voices with the same
+/// collected lyrics are merged into one line, which is what makes a split
+/// (`++`) system collapse back onto the same voice rows.
 pub(crate) struct SystemLyricGroup {
-    pub subsection: usize,
-    #[allow(dead_code)]
-    pub verse: usize,
-    pub tokens: Vec<SystemLyricToken>,
+    pub voices: Vec<voxalfa_core::data_types::Voice>,
+    /// One token list per verse. The renderer prints one row per verse.
+    pub verses: Vec<Vec<SystemLyricToken>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SystemLyricToken {
     pub start: usize,
     pub start_unit: f32,

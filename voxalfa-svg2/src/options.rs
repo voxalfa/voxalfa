@@ -62,8 +62,8 @@ impl Default for RenderOptions {
             col_padding: 2.0,
             min_col_width: 12.0,
             max_lyric_width: 18.0,
-            voice_row_height: 38.0,
-            lyric_row_height: 22.0,
+            voice_row_height: 28.0, //
+            lyric_row_height: 22.0, // FIXME: should be relative to font size
             system_gap: 18.0,
             header_gap: 20.0,
         }

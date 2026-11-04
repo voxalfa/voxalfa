@@ -11,7 +11,7 @@ use voxalfa_core::{
 use crate::{
     error::Result,
     fonts::{FontMetrics, Fonts, LYRIC_FAMILY, LYRIC_FONT, SOLFA_FAMILY, SOLFA_FONT},
-    model::{HeaderView, ResolvedScore, System, SystemLyricGroup, SystemLyricToken, SystemPulse},
+    model::{HeaderView, ResolvedScore, System, SystemLyricToken, SystemPulse},
     options::RenderOptions,
     resolver,
 };
@@ -116,8 +116,7 @@ impl Renderer {
         }
 
         for (index, system) in score.systems.iter().enumerate() {
-            let rows = Self::system_rows(system);
-            let height = Self::rows_height(&rows, &self.options);
+            let height = Self::rows_height(system, &self.options);
 
             if y + height > bottom && !pages.last().unwrap().systems.is_empty() {
                 pages.push(Page::default());
@@ -136,62 +135,18 @@ impl Renderer {
         pages
     }
 
-    /// Build one row group per sub-section. A sub-section owns its voices and
-    /// the lyric lines that belong to those voices, so multi-lyric (`++`)
-    /// systems keep each lyric line directly below the corresponding voice
-    /// group instead of collecting every lyric at the bottom of the system.
-    fn system_rows<'s, 'a>(system: &'s System<'a>) -> Vec<VoiceGroupLayout<'s>> {
-        let subsection_count = system
-            .pulses
-            .iter()
-            .map(|pulse| pulse.subsections.len())
-            .max()
-            .unwrap_or(0);
+    fn rows_height(system: &System, options: &RenderOptions) -> f32 {
+        let mut height = system.voices.len() as f32 * options.voice_row_height;
 
-        let mut groups = Vec::new();
-
-        for subsection in 0..subsection_count {
-            let mut voices = Vec::new();
-
-            for pulse in &system.pulses {
-                let Some(sub) = pulse.subsections.get(subsection) else {
-                    continue;
-                };
-
-                for (voice, _) in &sub.voices {
-                    if !voices.contains(voice) {
-                        voices.push(*voice);
-                    }
+        for group in &system.lyric_groups {
+            for verse in &group.verses {
+                if !verse.is_empty() {
+                    height += options.lyric_row_height;
                 }
             }
-
-            let lyrics = system
-                .lyric_groups
-                .iter()
-                .filter(|group| group.subsection == subsection && !group.tokens.is_empty())
-                .collect::<Vec<_>>();
-
-            if voices.is_empty() && lyrics.is_empty() {
-                continue;
-            }
-
-            groups.push(VoiceGroupLayout {
-                subsection,
-                voices,
-                lyrics,
-            });
         }
 
-        groups
-    }
-
-    fn rows_height(rows: &[VoiceGroupLayout], options: &RenderOptions) -> f32 {
-        rows.iter()
-            .map(|group| {
-                group.voices.len() as f32 * options.voice_row_height
-                    + group.lyrics.len() as f32 * options.lyric_row_height
-            })
-            .sum()
+        height
     }
 
     fn emit_system(
@@ -202,7 +157,6 @@ impl Renderer {
         system: &System,
         y: f32,
     ) -> Result<()> {
-        let groups = Self::system_rows(system);
         let xs = Self::pulse_offsets(system);
         let usable_widths = system
             .pulses
@@ -215,45 +169,68 @@ impl Renderer {
             .map(|pulse| pulse.pulse_width)
             .unwrap_or(0.0);
         let origin_x = self.options.margin + system.grid_offset as f32 * pulse_width;
+
+        // Each lyric group is printed after the last voice it covers. Voices
+        // that share the same copied lyrics therefore share one lyric row.
+        let mut lyric_rows: Vec<Vec<(usize, usize)>> =
+            vec![Vec::new(); system.voices.len()];
+
+        for (group_index, group) in system.lyric_groups.iter().enumerate() {
+            let Some(last_voice) = group
+                .voices
+                .iter()
+                .filter_map(|voice| system.voices.iter().position(|item| item == voice))
+                .max()
+            else {
+                continue;
+            };
+
+            for (verse_index, verse) in group.verses.iter().enumerate() {
+                if !verse.is_empty() {
+                    lyric_rows[last_voice].push((group_index, verse_index));
+                }
+            }
+        }
+
         let mut row_y = y;
+        let mut block_top: Option<f32> = None;
 
-        for group in &groups {
-            let voice_top = row_y + 6.0;
+        for (voice_index, voice) in system.voices.iter().enumerate() {
+            if block_top.is_none() {
+                block_top = Some(row_y + 6.0);
+            }
 
-            for voice in &group.voices {
-                let baseline = baseline(row_y, self.options.voice_row_height, &fonts.solfa);
+            let voice_baseline = baseline(row_y, self.options.voice_row_height, &fonts.solfa);
 
-                self.emit_voice_row(
-                    svg,
-                    fonts,
-                    system,
-                    &xs,
-                    &usable_widths,
-                    origin_x,
-                    score.lead_width,
-                    group.subsection,
-                    *voice,
-                    baseline,
-                )?;
+            self.emit_voice_row(
+                svg,
+                fonts,
+                system,
+                &xs,
+                &usable_widths,
+                origin_x,
+                score.lead_width,
+                *voice,
+                voice_baseline,
+            )?;
 
-                row_y += self.options.voice_row_height;
+            row_y += self.options.voice_row_height;
+
+            if lyric_rows[voice_index].is_empty() {
+                continue;
             }
 
             let voice_bottom = row_y - 6.0;
 
-            // Barlines are drawn per voice group, so they never cross the
-            // lyric lines belonging to a different sub-section.
-            if !group.voices.is_empty() {
-                for (pulse_id, pulse) in system.pulses.iter().enumerate() {
-                    if pulse.measure_start {
-                        let x = origin_x + xs[pulse_id];
-                        Self::emit_line(svg, x, voice_top, x, voice_bottom, "barline")?;
-                    }
-                }
+            if let Some(top) = block_top.take() {
+                Self::emit_barlines(svg, system, origin_x, &xs, top, voice_bottom)?;
             }
 
-            for lyric in &group.lyrics {
-                let baseline = baseline(row_y, self.options.lyric_row_height, &fonts.lyric);
+            for &(group_index, verse_index) in &lyric_rows[voice_index] {
+                let group = &system.lyric_groups[group_index];
+                let tokens = &group.verses[verse_index];
+                let lyric_baseline =
+                    baseline(row_y, self.options.lyric_row_height, &fonts.lyric);
 
                 self.emit_lyric_row(
                     svg,
@@ -264,11 +241,52 @@ impl Renderer {
                     origin_x,
                     score.lead_width,
                     &group.voices,
-                    lyric,
-                    baseline,
+                    tokens,
+                    lyric_baseline,
                 )?;
 
                 row_y += self.options.lyric_row_height;
+            }
+        }
+
+        if let Some(top) = block_top {
+            let voice_bottom = row_y - 6.0;
+            Self::emit_barlines(svg, system, origin_x, &xs, top, voice_bottom)?;
+        }
+
+        // The end of a source solfa line gets a joined double barline. Unlike
+        // the measure barlines it crosses lyric rows, so it visually closes
+        // the whole voice set.
+        if !system.voices.is_empty() {
+            let system_top = y + 6.0;
+            let system_bottom = row_y - 6.0;
+
+            for (pulse_id, pulse) in system.pulses.iter().enumerate() {
+                if !pulse.section_end {
+                    continue;
+                }
+
+                let x = origin_x + xs[pulse_id] + pulse.pulse_width;
+                Self::emit_line(svg, x - 3.0, system_top, x - 3.0, system_bottom, "barline")?;
+                Self::emit_line(svg, x, system_top, x, system_bottom, "barline")?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn emit_barlines(
+        svg: &mut String,
+        system: &System,
+        origin_x: f32,
+        xs: &[f32],
+        top: f32,
+        bottom: f32,
+    ) -> Result<()> {
+        for (pulse_id, pulse) in system.pulses.iter().enumerate() {
+            if pulse.measure_start {
+                let x = origin_x + xs[pulse_id];
+                Self::emit_line(svg, x, top, x, bottom, "barline")?;
             }
         }
 
@@ -285,22 +303,9 @@ impl Renderer {
         usable_widths: &[f32],
         origin_x: f32,
         lead: f32,
-        subsection: usize,
         voice: Voice,
         baseline: f32,
     ) -> Result<()> {
-        let all_empty = system.pulses.iter().all(|pulse| {
-            Self::find_voice_in_subsection(pulse, subsection, voice).is_none_or(|voice_pulse| {
-                voice_pulse
-                    .columns
-                    .iter()
-                    .all(|column| matches!(column.note, NoteKind::EmptyNote))
-            })
-        });
-        if all_empty {
-            eprintln!("EMIT all-empty voice {voice:?} subsection {subsection}");
-        }
-
         let mut underline: Option<UnderlineState> = None;
         let mut last_note_end = origin_x;
         let normal_underline_y = baseline + fonts.solfa.descent() + 2.5;
@@ -309,7 +314,11 @@ impl Renderer {
         let bottom_octave_y = normal_underline_y - fonts.octave.descent() - 1.0;
 
         for (pulse_id, pulse) in system.pulses.iter().enumerate() {
-            let Some(voice_pulse) = Self::find_voice_in_subsection(pulse, subsection, voice) else {
+            let Some(voice_pulse) = Self::find_voice(pulse, voice) else {
+                // The voice may not be declared in this sub-section at all.
+                // Keep the row visually continuous by printing the accent.
+                let cell_x = origin_x + xs[pulse_id];
+                Self::emit_pulse_accent(svg, pulse, cell_x, baseline, lead, fonts)?;
                 continue;
             };
 
@@ -335,28 +344,7 @@ impl Renderer {
                 let mut symbol = "";
 
                 if column_id == 0 {
-                    match pulse.accent {
-                        PulseAccent::Strong => {}
-                        PulseAccent::Medium => {
-                            // A medium accent is printed as a short barline
-                            // instead of an exclamation mark. Centre it on the
-                            // visual middle of the note glyph, not on the text
-                            // baseline (which would make it look too low).
-                            let x = cell_x + lead / 2.0;
-                            let note_center =
-                                baseline - (fonts.solfa.ascent() - fonts.solfa.descent()) / 2.0;
-                            let half = fonts.solfa.size() / 2.0;
-                            Self::emit_line(
-                                svg,
-                                x,
-                                note_center - half,
-                                x,
-                                note_center + half,
-                                "medium-accent",
-                            )?;
-                        }
-                        PulseAccent::Weak => symbol = ":",
-                    }
+                    Self::emit_pulse_accent(svg, pulse, cell_x, baseline, lead, fonts)?;
                 } else {
                     symbol = division_symbol(cursor, total);
                 }
@@ -443,6 +431,52 @@ impl Renderer {
         Ok(())
     }
 
+    /// Draw the accent that starts a pulse. Strong accents are represented by
+    /// the barline, medium accents by a short vertical line, and weak accents
+    /// by a colon.
+    fn emit_pulse_accent(
+        svg: &mut String,
+        pulse: &SystemPulse,
+        cell_x: f32,
+        baseline: f32,
+        lead: f32,
+        fonts: &Fonts,
+    ) -> Result<()> {
+        match pulse.accent {
+            PulseAccent::Strong => {}
+            PulseAccent::Medium => {
+                // A medium accent is printed as a short barline instead of an
+                // exclamation mark. Centre it on the visual middle of the note
+                // glyph, not on the text baseline (which would make it look
+                // too low).
+                let x = cell_x + lead / 2.0;
+                let note_center =
+                    baseline - (fonts.solfa.ascent() - fonts.solfa.descent()) / 2.0;
+                let half = fonts.solfa.size() / 2.0;
+                Self::emit_line(
+                    svg,
+                    x,
+                    note_center - half,
+                    x,
+                    note_center + half,
+                    "medium-accent",
+                )?;
+            }
+            PulseAccent::Weak => {
+                Self::emit_text(
+                    svg,
+                    cell_x + lead / 2.0,
+                    baseline,
+                    ":",
+                    "divider",
+                    "middle",
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn emit_lyric_row(
         &self,
@@ -454,10 +488,10 @@ impl Renderer {
         origin_x: f32,
         lead: f32,
         voices: &[Voice],
-        group: &SystemLyricGroup,
+        tokens: &[SystemLyricToken],
         baseline: f32,
     ) -> Result<()> {
-        for token in &group.tokens {
+        for token in tokens {
             if token.text.is_empty() {
                 continue;
             }
@@ -474,7 +508,6 @@ impl Renderer {
                 origin_x,
                 lead,
                 voices,
-                group.subsection,
                 token,
             )
             .unwrap_or_else(|| {
@@ -522,7 +555,6 @@ impl Renderer {
         origin_x: f32,
         lead: f32,
         voices: &[Voice],
-        subsection: usize,
         token: &SystemLyricToken,
     ) -> Option<f32> {
         let pulse = system.pulses.get(token.start)?;
@@ -532,8 +564,7 @@ impl Renderer {
             .unwrap_or(pulse.pulse_width);
 
         for voice in voices {
-            let Some(voice_pulse) = Self::find_voice_in_subsection(pulse, subsection, *voice)
-            else {
+            let Some(voice_pulse) = Self::find_voice(pulse, *voice) else {
                 continue;
             };
             let total = voice_pulse
@@ -563,18 +594,13 @@ impl Renderer {
         None
     }
 
-    fn find_voice_in_subsection<'a, 'b>(
-        pulse: &'a SystemPulse<'b>,
-        subsection: usize,
-        voice: Voice,
-    ) -> Option<&'b PulseIr> {
-        pulse
-            .subsections
-            .get(subsection)?
-            .voices
-            .iter()
-            .find(|(current, _)| *current == voice)
-            .map(|(_, voice_pulse)| *voice_pulse)
+    fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
+        pulse.subsections.iter().find_map(|sub| {
+            sub.voices
+                .iter()
+                .find(|(current, _)| *current == voice)
+                .map(|(_, voice_pulse)| *voice_pulse)
+        })
     }
 
     fn pulse_offsets(system: &System) -> Vec<f32> {
@@ -888,12 +914,6 @@ impl Renderer {
 
 struct UnderlineState {
     start: f32,
-}
-
-struct VoiceGroupLayout<'a> {
-    subsection: usize,
-    voices: Vec<Voice>,
-    lyrics: Vec<&'a SystemLyricGroup>,
 }
 
 #[derive(Debug)]

@@ -66,8 +66,9 @@ impl<'a> IrBuilder<'a> {
         SectionIr {
             sid: section.sid,
             merge: section.merge,
-            params: section.params,
             items: blocks,
+            params: section.params,
+            major_start: section.major_start,
         }
     }
 
