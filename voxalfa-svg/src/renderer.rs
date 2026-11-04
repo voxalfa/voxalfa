@@ -162,23 +162,28 @@ impl Renderer {
 
     fn layout_system(&self, system: &System, fonts: &Fonts, lead: f32) -> SystemLayout {
         let has_voltas = !system.voltas.is_empty();
+
         let (mut jumps, jump_height) = if has_voltas {
             self.layout_jumps(system, fonts, lead)
         } else {
             (Vec::new(), 0.0)
         };
+
         let (mut voltas, volta_height) = self.layout_voltas(system, fonts, lead);
         let (mut markers, marker_height) = self.layout_markers(system, fonts, lead, has_voltas);
+
         let dynamic_center = markers
             .iter()
             .find(|marker| marker.kind == MarkerKind::Dynamic)
             .map(|marker| marker.y - (fonts.dynamic.ascent() - fonts.dynamic.descent()) / 2.0);
+
         let (mut dynamic_spans, dynamic_span_height) =
             self.layout_dynamic_spans(system, fonts, lead, dynamic_center, marker_height);
 
         // A jump above a volta shares the volta's text row so it sits directly
         // on top of the bracket line instead of floating above the ending label.
         let jump_offset = if voltas.is_empty() { jump_height } else { 0.0 };
+
         let volta_top = if voltas.is_empty() {
             0.0
         } else {
@@ -206,6 +211,7 @@ impl Renderer {
         }
 
         jumps.append(&mut markers);
+
         let markers = jumps;
 
         let mut lyric_rows: Vec<Vec<(usize, usize)>> = vec![Vec::new(); system.voices.len()];
@@ -302,10 +308,10 @@ impl Renderer {
             jumps.push(PlacedMarker {
                 kind: marker.kind,
                 glyph: marker.glyph.clone(),
-                x: xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead,
                 width,
-                y: font.ascent(),
                 anchor: TextAnchor::End,
+                x: xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead,
+                y: font.ascent(),
             });
         }
 
@@ -500,6 +506,7 @@ impl Renderer {
             .iter()
             .filter(|marker| !separate_jumps || marker.kind != MarkerKind::Jump)
             .collect::<Vec<_>>();
+
         ordered.sort_by(|lhs, rhs| {
             lhs.pulse
                 .cmp(&rhs.pulse)
@@ -552,8 +559,8 @@ impl Renderer {
                 let placed = PlacedMarker {
                     kind: marker.kind,
                     glyph: marker.glyph.clone(),
-                    x,
                     width,
+                    x,
                     y: 0.0,
                     anchor: match marker.kind {
                         MarkerKind::TimeSignature => TextAnchor::Middle,
@@ -1232,6 +1239,7 @@ impl<'a> SystemRender<'a> {
         origin_x: f32,
     ) -> Self {
         let xs = Renderer::pulse_offsets(placement.system);
+
         let usable_widths = placement
             .system
             .pulses
@@ -1256,6 +1264,7 @@ impl<'a> SystemRender<'a> {
         let system = self.system;
         let layout = self.layout;
         let y = self.y;
+
         let mut block_top: Option<f32> = None;
 
         for volta in &layout.voltas {
@@ -1734,10 +1743,10 @@ struct PlacedVolta {
 struct PlacedMarker {
     kind: MarkerKind,
     glyph: MarkerGlyph,
-    x: f32,
     width: f32,
-    y: f32,
     anchor: TextAnchor,
+    x: f32,
+    y: f32,
 }
 
 struct SystemPlacement<'a> {
@@ -1889,7 +1898,6 @@ fn marker_font(kind: MarkerKind, fonts: &Fonts) -> &FontMetrics {
     }
 }
 
-/// Push markers right until their text boxes no longer overlap.
 fn spread_markers(markers: &mut [PlacedMarker]) {
     markers.sort_by(|lhs, rhs| lhs.x.total_cmp(&rhs.x));
 
@@ -1901,6 +1909,7 @@ fn spread_markers(markers: &mut [PlacedMarker]) {
             TextAnchor::Middle => marker.x - marker.width / 2.0,
             TextAnchor::End => marker.x - marker.width,
         };
+
         let shift = (right_edge + MARKER_HORIZONTAL_GAP - left).max(0.0);
 
         marker.x += shift;

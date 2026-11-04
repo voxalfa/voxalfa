@@ -11,6 +11,7 @@ use voxalfa_core::{
         FinalOutput,
         lyrics::{LyricsBuilder, LyricsMap},
     },
+    validation::event::FLOAT_ERROR,
 };
 
 use crate::{
@@ -25,9 +26,6 @@ use crate::{
     options::RenderOptions,
     visitor::SvgVisitor,
 };
-
-/// Matches the tolerance used when the core resolves timed events to notes.
-const EVENT_EPSILON: f32 = 0.05;
 
 pub(crate) fn resolve<'a>(
     data: &'a FinalOutput,
@@ -278,6 +276,7 @@ pub(crate) fn resolve<'a>(
         .unwrap_or(1);
 
     let grid_pulse_width = max_columns.max(1) as f32 * (col_width + lead_width);
+
     let systems = build_systems(
         &pulses,
         &dynamic_spans,
@@ -303,7 +302,7 @@ struct NotePosition {
 
 fn note_positions(views: &[PulseView]) -> Vec<NotePosition> {
     let mut positions = Vec::new();
-    let mut relative = 0.0f32;
+    let mut relative = 0.0;
 
     for (pulse_id, view) in views.iter().enumerate() {
         let total = view
@@ -312,7 +311,8 @@ fn note_positions(views: &[PulseView]) -> Vec<NotePosition> {
             .map(|&duration| duration as u32)
             .sum::<u32>()
             .max(1);
-        let mut cursor = 0u32;
+
+        let mut cursor = 0;
 
         for &duration in &view.durations {
             let start = relative;
@@ -338,14 +338,14 @@ fn note_positions(views: &[PulseView]) -> Vec<NotePosition> {
 fn event_unit(positions: &[NotePosition], target: f32) -> Option<(usize, f32)> {
     let position = positions
         .iter()
-        .find(|position| (position.start - target).abs() < EVENT_EPSILON)
+        .find(|position| (position.start - target).abs() < FLOAT_ERROR)
         .or_else(|| {
             positions
                 .iter()
-                .find(|position| (position.end - target).abs() < EVENT_EPSILON)
+                .find(|position| (position.end - target).abs() < FLOAT_ERROR)
         })?;
 
-    let unit = if (position.start - target).abs() < EVENT_EPSILON {
+    let unit = if (position.start - target).abs() < FLOAT_ERROR {
         position.unit_start
     } else {
         position.unit_end
@@ -395,9 +395,11 @@ fn add_dynamics(
             let Some(end) = event.end else {
                 continue;
             };
+
             let Some((start_pulse, start_unit)) = event_unit(&positions, event.start) else {
                 continue;
             };
+
             let Some((end_pulse, end_unit)) = event_unit(&positions, end) else {
                 continue;
             };
@@ -413,6 +415,7 @@ fn add_dynamics(
                 end_pulse: section_start + end_pulse,
                 end_unit,
             });
+
             continue;
         }
 
@@ -421,6 +424,7 @@ fn add_dynamics(
         };
 
         let text = dynamic.to_string();
+
         let Some(pulse) = pulses.get_mut(section_start + pulse_id) else {
             continue;
         };
@@ -515,6 +519,7 @@ fn build_header(data: &FinalOutput) -> HeaderView {
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
+
     let composers = data
         .header
         .get_metadata(|m| &m.composer)
@@ -527,14 +532,17 @@ fn build_header(data: &FinalOutput) -> HeaderView {
         .unwrap_or_default();
 
     let key = data.header.get_params(|p| &p.key).map(|key| key_text(*key));
+
     let time = data
         .header
         .get_params(|p| &p.time)
         .map(|time| format!("{}/{}", time.top, time.bottom));
+
     let tempo = data
         .header
         .get_params(|p| &p.tempo)
         .map(|tempo| tempo.to_string());
+
     let meter = data.header.get_metadata(|m| &m.meter).map(|meter| {
         meter
             .iter()
@@ -608,6 +616,7 @@ fn build_lyric_tokens(
         };
 
         let rendered = lyrics_map.get(&column.sid);
+
         let text = rendered
             .map(|rendered| rendered.content.clone())
             .unwrap_or_default();
@@ -641,6 +650,7 @@ fn slot_unit(view: &PulseView, slot: usize) -> f32 {
     }
 
     let clamped = slot.min(view.durations.len());
+
     let elapsed: u32 = view
         .durations
         .iter()
@@ -666,6 +676,7 @@ fn compute_measures(pulses: &mut [FlatPulse]) {
         }
 
         let top = (time.top as usize).max(1);
+
         let offset = (start..end)
             .find(|&index| pulses[index].accent == PulseAccent::Strong)
             .map(|index| index - start)
@@ -724,10 +735,10 @@ fn build_systems<'a>(
     // width, so its width is simply `pulse_count * pulse_width`.
     let mut systems = Vec::new();
     let mut indices = Vec::new();
-    let mut width = 0.0f32;
+    let mut width = 0.0;
     let mut time: Option<TimeSignature> = None;
     let mut first_system_in_group = true;
-    let mut pickup_offset = 0usize;
+    let mut pickup_offset = 0;
 
     for measure in measures {
         let measure_time = pulses[measure[0]].time;
@@ -817,17 +828,21 @@ fn make_system<'a>(
         }
 
         let start = span.start_pulse.saturating_sub(system_start);
+
         let start_unit = if span.start_pulse < system_start {
             0.0
         } else {
             span.start_unit
         };
+
         let end = (span.end_pulse - system_start).min(indices.len() - 1);
+
         let end_unit = if span.end_pulse >= system_end {
             1.0
         } else {
             span.end_unit
         };
+
         let fits = span.start_pulse >= system_start && span.end_pulse < system_end;
 
         dynamic_spans.push(SystemDynamicSpan {
@@ -972,12 +987,9 @@ fn make_system<'a>(
                     };
 
                     for &voice in &sub.lyric_voices {
-                        let Some(voice_index) = voices.iter().position(|item| *item == voice)
-                        else {
-                            continue;
-                        };
-
-                        voice_lyrics[voice_index][verse].push(system_token.clone());
+                        if let Some(voice_index) = voices.iter().position(|item| *item == voice) {
+                            voice_lyrics[voice_index][verse].push(system_token.clone());
+                        }
                     }
                 }
             }

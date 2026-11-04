@@ -21,6 +21,12 @@ use crate::{
 pub type LyricId = usize;
 pub type LyricsMap<W> = HashMap<LyricId, RenderedLyric<W>>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WidthBasis {
+    Span,
+    Units,
+}
+
 #[derive(Debug)]
 pub enum LyricEvent<'a> {
     UnderlineStart,
@@ -62,9 +68,18 @@ impl<M: StringMetric> LyricsBuilder<M> {
     }
 
     pub fn build_map<V: LyricVisitor>(
+        self,
+        output: &FinalOutput,
+        max_factor: u8,
+    ) -> (M::Output, LyricsMap<M::Output>) {
+        self.build_map_with_basis::<V>(output, max_factor, WidthBasis::Span)
+    }
+
+    pub fn build_map_with_basis<V: LyricVisitor>(
         mut self,
         output: &FinalOutput,
         max_factor: u8,
+        basis: WidthBasis,
     ) -> (M::Output, LyricsMap<M::Output>) {
         let tree = &output.symbols;
         let sub_sections = output.body.sections.iter().flat_map(|s| &s.items);
@@ -81,15 +96,19 @@ impl<M: StringMetric> LyricsBuilder<M> {
 
                 for column in &line.columns {
                     let rendered = self.build_lyric_column::<V>(column, tree);
-                    let (duration, factor) = &view_columns[col_index];
                     let span = column.span.max(1);
-                    let is_unit_col = span == 1 && *duration == 1 && *factor == max_factor;
 
-                    let width = if is_unit_col {
-                        rendered.width
-                    } else {
-                        M::Output::per_column(rendered.width, span)
+                    let units = match basis {
+                        WidthBasis::Span => span as f32,
+                        WidthBasis::Units => view_columns[col_index..col_index + span]
+                            .iter()
+                            .map(|(duration, factor)| {
+                                *duration as f32 * max_factor as f32 / *factor as f32
+                            })
+                            .sum::<f32>(),
                     };
+
+                    let width = M::Output::per_column(rendered.width, units);
 
                     if width > self.max_width {
                         self.max_width = width;

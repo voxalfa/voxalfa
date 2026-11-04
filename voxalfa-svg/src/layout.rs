@@ -18,7 +18,7 @@ pub const TOUCH_SYMBOL_SCALE: f32 = 0.75;
 pub const MARCATO_WIDTH_SCALE: f32 = 0.85;
 pub const ACCENT_STROKE_WIDTH: f32 = 1.0;
 
-pub const DYNAMIC_SPAN_INSET: f32 = 4.0;
+pub const DYNAMIC_SPAN_INSET: f32 = 10.0;
 pub const DYNAMIC_FONT_SCALE: f32 = 0.9;
 pub const DYNAMIC_HAIRPIN_HEIGHT: f32 = 5.0;
 pub const DYNAMIC_DASH_GAP: f32 = 3.0;

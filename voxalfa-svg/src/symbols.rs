@@ -1,10 +1,7 @@
-//! Inline SVG glyphs that are not part of a text font.
-
 /// Public-domain segno glyph from Wikimedia Commons (File:Signe.svg).
 pub(crate) const SEGNO_PATH: &str = "m -202,-50 c 0,17 13,30 30,30 17,0 30,-13 30,-30 0,-17 -13,-30 -30,-30 -17,0 -30,13 -30,30 z M 142,50 c 0,17 13,30 30,30 17,0 30,-13 30,-30 0,-17 -13,-30 -30,-30 -17,0 -30,13 -30,30 z M -35,-227 c 0,34 17,59 54,59 39,0 58,-31 58,-62 0,-27 -15,-55 -40,-64 8,-29 36,-51 69,-51 38,0 66,35 66,75 0,99 -83,168 -172,219 l -190,-324 -60,0 204,349 c -104,58 -204,132 -204,245 0,86 62,156 144,156 79,0 141,-68 141,-148 0,-34 -17,-59 -54,-59 -39,0 -58,31 -58,62 0,27 15,55 40,64 -8,29 -36,51 -69,51 -38,0 -66,-35 -66,-75 0,-99 83,-168 172,-219 l 190,324 60,0 L 46,26 c 104,-58 204,-132 204,-245 0,-86 -62,-156 -144,-156 -79,0 -141,68 -141,148 z";
 pub(crate) const SEGNO_PATH_TRANSFORM: &str = "matrix(0.004,0,0,-0.004,1,1.5)";
 pub(crate) const SEGNO_ASPECT_RATIO: f32 = 2.0 / 3.0;
-/// Segno height relative to the marker text line height.
 pub(crate) const SEGNO_HEIGHT_SCALE: f32 = 0.7;
 
 /// Public-domain fermata from Wikimedia Commons (File:Fermata.svg).

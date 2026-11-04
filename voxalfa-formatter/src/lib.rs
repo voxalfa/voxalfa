@@ -22,7 +22,7 @@ use voxalfa_core::{
     },
     output::{
         FinalOutput,
-        lyrics::{LyricsBuilder, LyricsMap},
+        lyrics::{LyricsBuilder, LyricsMap, WidthBasis},
     },
     ts_utils::range::RangeUtil,
 };
@@ -53,8 +53,8 @@ impl<'a> Formatter<'a> {
         let measurer = CharMeasurer {};
         let builder = LyricsBuilder::new(measurer);
         let max_factor = source.resolve_maximum_factor();
-        let (max_width, lyrics_map) = builder.build_map::<FormatterVisitor>(source, max_factor);
-
+        let (max_width, lyrics_map) =
+            builder.build_map_with_basis::<FormatterVisitor>(source, max_factor, WidthBasis::Units);
         Self {
             col_width: max_width.max(MIN_COLUMN_WIDTH),
             col_factor: max_factor as usize,

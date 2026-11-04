@@ -1,21 +1,21 @@
 pub trait SpanWidth: Copy {
-    fn per_column(width: Self, span: usize) -> Self;
+    fn per_column(width: Self, units: f32) -> Self;
 }
 
 impl SpanWidth for f32 {
-    fn per_column(width: Self, span: usize) -> Self {
-        width / span as f32
+    fn per_column(width: Self, units: f32) -> Self {
+        width / units.max(1.0)
     }
 }
 
 impl SpanWidth for usize {
-    fn per_column(width: Self, span: usize) -> Self {
-        width.div_ceil(span)
+    fn per_column(width: Self, units: f32) -> Self {
+        (width as f32 / units.max(1.0)).ceil() as usize
     }
 }
 
 impl SpanWidth for () {
-    fn per_column(_width: Self, _span: usize) -> Self {}
+    fn per_column(_width: Self, _units: f32) -> Self {}
 }
 
 pub trait StringMetric {

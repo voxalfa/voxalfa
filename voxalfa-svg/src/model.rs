@@ -41,8 +41,7 @@ pub(crate) struct FlatVolta {
 pub(crate) struct FlatMarker {
     pub kind: MarkerKind,
     pub glyph: MarkerGlyph,
-    /// Position within the pulse, from 0 (start) to 1 (end).
-    pub unit: f32,
+    pub unit: f32, // pulse relative index (0-1)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -119,10 +118,8 @@ pub(crate) struct SystemDynamicSpan {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SystemVolta {
-    /// First pulse of the bracket.
-    pub start: usize,
-    /// One past the last pulse of the bracket.
-    pub end: usize,
+    pub start: usize, // fist pulse
+    pub end: usize,   // last pulse + 1
     pub number: usize,
     pub label: Option<String>,
 }

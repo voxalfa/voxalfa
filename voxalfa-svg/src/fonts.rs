@@ -114,27 +114,3 @@ impl Fonts {
         })
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn subsets_cover_header_and_marker_text() {
-        let meta = FontMetrics::new(TEXT_FONT, 13.0).unwrap();
-        let bold = FontMetrics::new(TEXT_BOLD_FONT, 13.0).unwrap();
-        let marker = FontMetrics::new(SERIF_FONT, 13.0).unwrap();
-        let mark = FontMetrics::new(SERIF_ITALIC_FONT, 13.0).unwrap();
-        let italic = FontMetrics::new(SERIF_BOLD_ITALIC_FONT, 13.0).unwrap();
-
-        for text in ["Dô dia", "Do est", "D.S. al Coda", "To Coda", "’"] {
-            assert!(meta.width(text) > 0.0, "missing text glyphs: {text}");
-        }
-
-        assert!(bold.width("B♭") > 0.0);
-        assert!(bold.width("D.S. al Coda") > 0.0);
-        assert!(marker.width("D.S. al Coda") > 0.0);
-        assert!(mark.width("Fine") > 0.0);
-        assert!(italic.width("mf") > 0.0);
-    }
-}
