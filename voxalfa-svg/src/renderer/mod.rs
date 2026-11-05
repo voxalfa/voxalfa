@@ -1,0 +1,140 @@
+mod defs;
+mod geometry;
+mod header;
+mod layout;
+mod markers;
+mod primitives;
+mod system;
+
+use std::fmt::Write;
+
+use voxalfa_core::output::FinalOutput;
+
+use crate::{error::Result, fonts::Fonts, options::RenderOptions, resolver};
+
+use defs::emit_defs;
+use geometry::system_width;
+use header::{emit_header, layout_header};
+use layout::{SystemLayout, layout_system};
+use system::{SystemPlacement, emit_system};
+
+const INITIAL_SVG_CAPACITY: usize = 32 * 1024;
+
+pub fn render(data: &FinalOutput, options: &RenderOptions) -> Result<String> {
+    let fonts = Fonts::new(options)?;
+    let score = resolver::resolve(data, &fonts, options)?;
+    let header = layout_header(&score.header, &fonts, options);
+
+    let system_layouts = score
+        .systems
+        .iter()
+        .map(|system| layout_system(system, &fonts, score.lead_width, options))
+        .collect::<Vec<_>>();
+
+    let pages = paginate(&system_layouts, header.height, options);
+    let page_count = pages.len().max(1);
+    let total_height = options.page.height * page_count as f32;
+
+    let mut svg = String::with_capacity(INITIAL_SVG_CAPACITY);
+
+    writeln!(
+        svg,
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {:.2} {:.2}" width="{:.2}px" height="{:.2}px">"#,
+        options.page.width, total_height, options.page.width, total_height,
+    )?;
+
+    emit_defs(&mut svg, options)?;
+
+    for (page_id, page) in pages.iter().enumerate() {
+        let offset_y = page_id as f32 * options.page.height;
+
+        let body_width = page
+            .systems
+            .iter()
+            .map(|placed| system_width(&score.systems[placed.index]))
+            .fold(0.0, f32::max);
+
+        let body_offset = ((options.printable_width() - body_width) / 2.0).max(0.0);
+
+        writeln!(svg, r#"<g transform="translate(0 {offset_y:.2})">"#)?;
+
+        writeln!(
+            svg,
+            r##"<rect x="0" y="0" width="{:.2}" height="{:.2}" fill="#ffffff"/>"##,
+            options.page.width, options.page.height,
+        )?;
+
+        if page_id == 0 {
+            emit_header(&mut svg, &header, options)?;
+        }
+
+        for placed in &page.systems {
+            let placement = SystemPlacement {
+                system: &score.systems[placed.index],
+                layout: &system_layouts[placed.index],
+                y: placed.y,
+                body_offset,
+            };
+
+            emit_system(&mut svg, &fonts, &score, placement, options)?;
+        }
+
+        if page_count > 1 {
+            writeln!(
+                svg,
+                r#"<text x="{:.2}" y="{:.2}" text-anchor="middle" class="page-number">{} / {}</text>"#,
+                options.page.width / 2.0,
+                options.page.height - options.min_margin / 2.0,
+                page_id + 1,
+                page_count,
+            )?;
+        }
+
+        writeln!(svg, "</g>")?;
+    }
+
+    writeln!(svg, "</svg>")?;
+
+    Ok(svg)
+}
+
+fn paginate(layouts: &[SystemLayout], header_height: f32, options: &RenderOptions) -> Vec<Page> {
+    let bottom = options.page.height - options.min_margin;
+
+    let mut pages = vec![Page::default()];
+    let mut y = options.min_margin;
+
+    y += header_height;
+
+    if header_height > 0.0 {
+        y += options.header_gap;
+    }
+
+    for (index, layout) in layouts.iter().enumerate() {
+        if y + layout.height > bottom && !pages.last().unwrap().systems.is_empty() {
+            pages.push(Page::default());
+            y = options.min_margin;
+        }
+
+        pages
+            .last_mut()
+            .unwrap()
+            .systems
+            .push(PlacedSystem { index, y });
+
+        y += layout.height + options.system_gap;
+    }
+
+    pages
+}
+
+#[derive(Debug, Default)]
+struct Page {
+    systems: Vec<PlacedSystem>,
+}
+
+#[derive(Debug)]
+struct PlacedSystem {
+    index: usize,
+    y: f32,
+}

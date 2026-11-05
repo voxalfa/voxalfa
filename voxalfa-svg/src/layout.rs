@@ -41,17 +41,17 @@ pub const GRID_RIGHT_PADDING: f32 = 2.0;
 
 pub const PAGE_NUMBER_FONT_SCALE: f32 = 0.9;
 
-pub(crate) struct RowSpec {
+pub struct RowSpec {
     pub height: f32,
     pub gap_before: f32,
 }
 
-pub(crate) struct ColumnLayout {
+pub struct ColumnLayout {
     pub ys: Vec<f32>,
     pub height: f32,
 }
 
-pub(crate) fn layout_column(rows: &[RowSpec]) -> ColumnLayout {
+pub fn layout_column(rows: &[RowSpec]) -> ColumnLayout {
     let mut ys = Vec::with_capacity(rows.len());
     let mut y = 0.0;
 

@@ -4,7 +4,7 @@ use voxalfa_core::{
 };
 
 #[derive(Default)]
-pub(crate) struct SvgVisitor {
+pub struct SvgVisitor {
     buffer: String,
 }
 

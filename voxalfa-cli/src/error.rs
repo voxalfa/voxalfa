@@ -20,7 +20,7 @@ pub enum Error {
     Midi(#[from] voxalfa_midi::error::Error),
 
     #[error("{0}")]
-    Svg(#[from] voxalfa_svg::error::Error),
+    Svg(#[from] voxalfa_svg::Error),
 
     #[error("invalid voice {0}")]
     InvalidVoice(String),

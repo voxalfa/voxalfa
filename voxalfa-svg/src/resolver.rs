@@ -30,7 +30,7 @@ use crate::{
 
 type PulseId = usize;
 
-pub(crate) fn resolve<'a>(
+pub fn resolve<'a>(
     data: &'a FinalOutput,
     fonts: &Fonts,
     options: &RenderOptions,

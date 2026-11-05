@@ -19,7 +19,7 @@ pub struct HeaderView {
     pub meter: Option<String>,
 }
 
-pub(crate) struct FlatPulse<'a> {
+pub struct FlatPulse<'a> {
     pub time: TimeSignature,
     pub accent: PulseAccent,
     pub measure_start: bool,
@@ -32,20 +32,20 @@ pub(crate) struct FlatPulse<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FlatVolta {
+pub struct FlatVolta {
     pub number: usize,
     pub label: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct FlatMarker {
+pub struct FlatMarker {
     pub kind: MarkerKind,
     pub glyph: MarkerGlyph,
     pub unit: f32, // pulse relative index (0-1)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum MarkerKind {
+pub enum MarkerKind {
     TimeSignature,
     Key,
     Tempo,
@@ -57,7 +57,7 @@ pub(crate) enum MarkerKind {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum MarkerGlyph {
+pub enum MarkerGlyph {
     Text(String),
     Segno,
     Fermata,
@@ -65,14 +65,14 @@ pub(crate) enum MarkerGlyph {
     Marcato,
 }
 
-pub(crate) struct FlatSubPulse<'a> {
+pub struct FlatSubPulse<'a> {
     pub voices: Vec<(Voice, &'a PulseIr)>,
     pub lyric_voices: Vec<Voice>,
     pub lyrics: Vec<Vec<LyricToken>>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct LyricToken {
+pub struct LyricToken {
     pub start_pulse: usize,
     pub start_unit: f32,
     pub end_pulse: usize,
@@ -81,7 +81,7 @@ pub(crate) struct LyricToken {
     pub underline: bool,
 }
 
-pub(crate) struct System<'a> {
+pub struct System<'a> {
     pub pulses: Vec<SystemPulse<'a>>,
     pub voices: Vec<Voice>,
     pub lyric_groups: Vec<SystemLyricGroup>,
@@ -92,13 +92,13 @@ pub(crate) struct System<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DynamicSpanKind {
+pub enum DynamicSpanKind {
     Crescendo,
     Decrescendo,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct FlatDynamicSpan {
+pub struct FlatDynamicSpan {
     pub kind: DynamicSpanKind,
     pub start_pulse: usize,
     pub start_unit: f32,
@@ -107,7 +107,7 @@ pub(crate) struct FlatDynamicSpan {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct SystemDynamicSpan {
+pub struct SystemDynamicSpan {
     pub kind: DynamicSpanKind,
     pub start: usize,
     pub start_unit: f32,
@@ -117,7 +117,7 @@ pub(crate) struct SystemDynamicSpan {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SystemVolta {
+pub struct SystemVolta {
     pub start: usize, // fist pulse
     pub end: usize,   // last pulse + 1
     pub number: usize,
@@ -125,14 +125,14 @@ pub(crate) struct SystemVolta {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct SystemMarker {
+pub struct SystemMarker {
     pub pulse: usize,
     pub unit: f32,
     pub kind: MarkerKind,
     pub glyph: MarkerGlyph,
 }
 
-pub(crate) struct SystemPulse<'a> {
+pub struct SystemPulse<'a> {
     pub accent: PulseAccent,
     pub measure_start: bool,
     pub section_end: bool,
@@ -140,17 +140,17 @@ pub(crate) struct SystemPulse<'a> {
     pub subsections: Vec<SystemSubPulse<'a>>,
 }
 
-pub(crate) struct SystemSubPulse<'a> {
+pub struct SystemSubPulse<'a> {
     pub voices: Vec<(Voice, &'a PulseIr)>,
 }
 
-pub(crate) struct SystemLyricGroup {
+pub struct SystemLyricGroup {
     pub voices: Vec<Voice>,
     pub verses: Vec<Vec<SystemLyricToken>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct SystemLyricToken {
+pub struct SystemLyricToken {
     pub start: usize,
     pub start_unit: f32,
     pub end: usize,
@@ -159,7 +159,7 @@ pub(crate) struct SystemLyricToken {
     pub underline: bool,
 }
 
-pub(crate) struct ResolvedScore<'a> {
+pub struct ResolvedScore<'a> {
     pub header: HeaderView,
     pub systems: Vec<System<'a>>,
     pub lead_width: f32,
