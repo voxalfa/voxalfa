@@ -1493,7 +1493,7 @@ impl<'a> SystemRender<'a> {
 
                 if column_id == 0 {
                     self.emit_pulse_accent(pulse, cell_x, baseline)?;
-                } else {
+                } else if !voice_pulse.expanded {
                     symbol = division_symbol(cursor, total);
                 }
 

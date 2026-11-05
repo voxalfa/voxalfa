@@ -370,3 +370,30 @@ fn resolves_multi_voice_lyrics_per_subsection() {
     assert!(svg.contains(">do<"));
     assert!(svg.contains(">la<"));
 }
+
+#[test]
+fn skips_dividers_for_expanded_virtual_columns() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+[#] title="Expanded pulses"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S,A}
+
+---
+
+[S] |d.r :m ||
+[A] | :m ||
+
+[1] do re
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    // The second voice's first pulse is expanded from the first voice's
+    // subdivision. Its virtual columns must not render dividers.
+    assert_eq!(svg.matches(r#"class="divider">.</text>"#).count(), 1);
+}
