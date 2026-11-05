@@ -150,26 +150,26 @@ impl<'a> Formatter<'a> {
     }
 
     fn proces_section_params(&mut self, params: &SectionParams) {
-        self.add_assignment(Assignment::Params, params.ending.as_ref());
-        self.add_assignment(Assignment::Params, params.label.as_ref());
-        self.add_assignment(Assignment::Params, params.mark.as_ref());
-        self.add_assignment(Assignment::Params, params.key.as_ref());
-        self.add_assignment(Assignment::Params, params.time.as_ref());
-        self.add_assignment(Assignment::Params, params.tempo.as_ref());
-        self.add_assignment(Assignment::Params, params.touches.as_ref());
-        self.add_assignment(Assignment::Params, params.jump.as_ref());
-        self.add_assignment(Assignment::Params, params.repeat.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.ending.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.label.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.mark.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.key.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.time.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.tempo.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.touches.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.jump.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.repeat.as_ref());
     }
 
     fn proces_initial_params(&mut self, params: &InitialParams) {
-        self.add_assignment(Assignment::Params, params.key.as_ref());
-        self.add_assignment(Assignment::Params, params.time.as_ref());
-        self.add_assignment(Assignment::Params, params.tempo.as_ref());
-        self.add_assignment(Assignment::Params, params.voices.as_ref());
+        self.add_assignment(Assignment::InitialParams, params.key.as_ref());
+        self.add_assignment(Assignment::InitialParams, params.time.as_ref());
+        self.add_assignment(Assignment::InitialParams, params.tempo.as_ref());
+        self.add_assignment(Assignment::InitialParams, params.voices.as_ref());
     }
 
     fn process_local_params(&mut self, params: &SubSectionParams) {
-        self.add_assignment(Assignment::Params, params.dynamics.as_ref());
+        self.add_assignment(Assignment::SectionParams, params.dynamics.as_ref());
     }
 
     fn process_solfa(&mut self, solfa: &SolfaLineIr) {
@@ -309,23 +309,46 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_comments(&mut self) {
-        for comment in self.source.symbols.get_comments() {
-            let (line_id, scope, rank) = self.resolve_comment_position(comment);
-            let trimmed = comment.value.trim_end();
+        let directives = self
+            .source
+            .symbols
+            .get_comments()
+            .iter()
+            .filter(|comment| comment.value.starts_with(";;"));
 
-            let content = match self.mergable_lines.contains(&line_id) {
-                true => format!(" {trimmed}"),
-                false => trimmed.to_string(),
-            };
-
-            self.partials.push(PartialLine {
-                index: self.partials.len(),
-                scope,
-                rank,
-                line_id,
-                content,
-            });
+        for directive in directives {
+            self.push_comment(directive);
         }
+
+        let comments = self
+            .source
+            .symbols
+            .get_comments()
+            .iter()
+            .filter(|comment| !comment.value.starts_with(";;"));
+
+        for comment in comments {
+            self.push_comment(comment);
+        }
+    }
+
+    fn push_comment(&mut self, comment: &Comment) {
+        let (line_id, scope, rank) = self.resolve_comment_position(comment);
+        let trimmed = comment.value.trim_end();
+
+        let content = if self.mergable_lines.contains(&line_id) {
+            format!(" {trimmed}")
+        } else {
+            trimmed.to_string()
+        };
+
+        self.partials.push(PartialLine {
+            index: self.partials.len(),
+            scope,
+            rank,
+            line_id,
+            content,
+        });
     }
 
     fn resolve_comment_position(&self, comment: &Comment) -> (usize, usize, LineRank) {
@@ -334,7 +357,13 @@ impl<'a> Formatter<'a> {
         if comment.value.starts_with(";;") {
             let scope = self.scope_bounds.partition_point(|&line| line <= line_id);
 
-            return (line_id, scope, LineRank::Directive);
+            let rank = if comment.value.contains("=") {
+                LineRank::StyleDirective
+            } else {
+                LineRank::LangDirective
+            };
+
+            return (line_id, scope, rank);
         }
 
         let nearest = self.partials.iter().min_by_key(|p| {

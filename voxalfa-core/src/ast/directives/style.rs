@@ -46,7 +46,7 @@ struct StyleAssignment<'a> {
     value_node: Node<'a>,
 }
 
-pub(super) fn parse_page_style(
+pub fn parse_page_style(
     context: &mut Parser,
     node: Node<'_>,
     scope_id: ScopeId,
@@ -69,7 +69,7 @@ pub(super) fn parse_page_style(
 
         match assignment.key.as_str() {
             "width" => {
-                let width = number_value(context, assignment.value_node, scope_id, name)?;
+                let width = context.parse_node::<f32>(assignment.value_node, scope_id)?;
 
                 if !width.is_finite() || width <= 0.0 {
                     invalid_directive(
@@ -84,7 +84,7 @@ pub(super) fn parse_page_style(
                 style.width = Some(width);
             }
             "height" => {
-                let height = number_value(context, assignment.value_node, scope_id, name)?;
+                let height = context.parse_node::<f32>(assignment.value_node, scope_id)?;
 
                 if !height.is_finite() || height <= 0.0 {
                     invalid_directive(
@@ -105,7 +105,7 @@ pub(super) fn parse_page_style(
     Some(style)
 }
 
-pub(super) fn parse_element_style(
+pub fn parse_element_style(
     context: &mut Parser,
     node: Node<'_>,
     scope_id: ScopeId,
@@ -127,23 +127,13 @@ pub(super) fn parse_element_style(
         let assignment = assignment_parts(context, assignment)?;
 
         match assignment.key.as_str() {
-            "font-family" | "font-familly" => {
-                let family = string_value(context, assignment.value_node, scope_id)?;
-
-                if family.is_empty() {
-                    invalid_directive(
-                        context,
-                        assignment.key_node.range(),
-                        name,
-                        "font-family must not be empty",
-                    );
-                    return None;
-                }
+            "font-family" => {
+                let family = context.parse_node::<String>(assignment.value_node, scope_id)?;
 
                 style.font_family = Some(family);
             }
             "font-size" => {
-                let size = number_value(context, assignment.value_node, scope_id, name)?;
+                let size = context.parse_node::<f32>(assignment.value_node, scope_id)?;
 
                 if !size.is_finite() || size <= 0.0 {
                     invalid_directive(
@@ -191,7 +181,7 @@ fn apply_box_modifier(
     margin: &mut EdgeValues,
     padding: &mut EdgeValues,
 ) -> Option<()> {
-    let value = number_value(context, assignment.value_node, scope_id, name)?;
+    let value = context.parse_node::<f32>(assignment.value_node, scope_id)?;
     let (kind, side) = split_key(&assignment.key);
 
     let edges = match kind {
@@ -213,7 +203,7 @@ fn apply_margin_modifier(
     scope_id: ScopeId,
     margin: &mut EdgeValues,
 ) -> Option<()> {
-    let value = number_value(context, assignment.value_node, scope_id, name)?.max(0.0);
+    let value = context.parse_node::<f32>(assignment.value_node, scope_id)?;
     let (kind, side) = split_key(&assignment.key);
 
     if kind != "margin" {
@@ -253,29 +243,6 @@ fn apply_edges(
     }
 
     Some(())
-}
-
-fn number_value(
-    context: &mut Parser,
-    node: Node<'_>,
-    scope_id: ScopeId,
-    name: &str,
-) -> Option<f32> {
-    if matches!(node.kind_id(), node_types::INTEGER | node_types::FLOAT) {
-        context.parse_node::<f32>(node, scope_id)
-    } else {
-        invalid_directive(context, node.range(), name, "expected a number");
-        None
-    }
-}
-
-fn string_value(context: &mut Parser, node: Node<'_>, scope_id: ScopeId) -> Option<String> {
-    match node.kind_id() {
-        node_types::STRING | node_types::INLINE_STRING => {
-            context.parse_node::<String>(node, scope_id)
-        }
-        _ => context.resolve_node_string(node),
-    }
 }
 
 fn invalid_directive(

@@ -1,6 +1,7 @@
 use crate::{
     fonts::{FontMetrics, Fonts},
     model::{MarkerGlyph, MarkerKind},
+    renderer::constants::{FERMATA_WIDTH_SCALE, STACCATO_WIDTH_SCALE},
 };
 
 use super::{
@@ -25,8 +26,8 @@ pub fn touch_width(glyph: &MarkerGlyph, fonts: &Fonts) -> f32 {
     let size = fonts.touch.size() * TOUCH_SYMBOL_SCALE;
 
     match glyph {
-        MarkerGlyph::Fermata => size * 1.7,
-        MarkerGlyph::Staccato => size * 0.32,
+        MarkerGlyph::Fermata => size * FERMATA_WIDTH_SCALE,
+        MarkerGlyph::Staccato => size * STACCATO_WIDTH_SCALE,
         MarkerGlyph::Marcato => size * MARCATO_WIDTH_SCALE,
         _ => 0.0,
     }

@@ -1,0 +1,169 @@
+;; @version 0.1.0-alpha
+
+;; @page width={200} | height={1000}
+;; @note-text font-size={12}
+;; @lyrics-text font-size={10}
+
+[#] title="MASINA, MASINA, MASINA"
+[#] verses={1}
+[#] description="Antema 1"
+[#] author="Sanctus"
+[#] composer="J. Camidge (1790-1859)"
+[#] tags={"antema","evangelic"}
+[#] language="mg"
+
+[$] key={Eb} | time={3,4} | tempo={70} | voices={S,A,T,B}
+
+---
+
+[$] dynamics={p}
+
+[S] |d                  :-        .d        :d                  ||
+[A] |s-1                :-        .s        :s-1                ||
+[T] |m                  :-        .m        :m                  ||
+[B] |d                  :-        .d        :d                  ||
+
+[1] Ma@2_                         si_       na,                 @@
+
+--
+
+[$] dynamics={cre:0..6}
+
+[S] |r                  :-        .r        :r                  ||
+[A] |t-1                :-        .t-1      :t-1                ||
+[T] |s                  :-        .s        :s                  ||
+[B] |s-1                :-        .s-1      :s-1                ||
+
+[1] ma@2_                         si_       na,                 @@
+
+<<
+
+[S] |m                  :-        .m        :m                  ||
+[A] |d                  :-        .d        :d                  ||
+[T] |s                  :-        .s        :s                  ||
+[B] |d                  :-        .d        :d                  ||
+
+[1] ma@2_                         si_       na,                 @@
+
+--
+
+[$] dynamics={f}
+
+[S] |l                  :t                  :d+1                ||
+[A] |d                  :f                  :m                  ||
+[T] |l                  :s                  :s                  ||
+[B] |`f           .,m`  :r                  :d                  ||
+
+[1] Je_                 ho_                 vah                 @@
+
+--
+
+[S] |d+1                :t                  :                   ||
+[A] |m                  :r                  :                   ||
+[T] |s                  :s                  :                   ||
+[B] |s-1                :s-1                :                   ||
+
+[1] To_                 mpo!\               ~                   @@
+
+--
+
+[S] |d+1                :-                  :s            .,f   ||
+[A] |m                  :-                  :r            .,r   ||
+[T] |s                  :-                  :s            .,s   ||
+[B] |d                  :-                  :t-1          .,t-1 ||
+
+[1] Fe@2_                                   no             ny   @@
+
+--
+
+[S] |m                  :-                  :s                  ||
+[A] |d                  :-                  :r                  ||
+[T] |s                  :-                  :t                  ||
+[B] |d                  :-                  :t-1                ||
+
+[1] vo@2_                                   ni_                 @@
+
+--
+
+[S] |`d+1               :t`                 :l                  ||
+[A] |`m                 :r`                 :`r       .d`       ||
+[T] |`d+1               :s`                 :fi                 ||
+[B] |`l-1               :r`                 :r                  ||
+
+[1] na@2_                                   hi_                 @@
+
+--
+
+[S] |s                  :-                  :                   ||
+[A] |t-1                :-                  :                   ||
+[T] |s                  :-                  :                   ||
+[B] |s-1                :-                  :                   ||
+
+[1] trao@2                                  ~                   @@
+
+--
+
+[$] dynamics={p}
+
+[S] |s                  :l                  :s                  ||
+[A] |m                  :f                  :m                  ||
+[T] |                   :                   :                   ||
+[B] |                   :                   :                   ||
+
+[1] i_                  zao                 re_                 @@
+
+--
+
+[S] |`f           .,l   :s`                 :f                  ||
+[A] |`r           .,f   :m`                 :r                  ||
+[T] |                   :                   :                   ||
+[B] |                   :                   :                   ||
+
+[1] he@3_                                   (tra i)_            @@
+
+--
+
+[S] |m                  :-                  :s                  ||
+[A] |d                  :-                  :d                  ||
+[T] |                   :                   :d+1                ||
+[B] |                   :                   :m                  ||
+
+[1] zao,@2                                  ry                  @@
+
+--
+
+[$] dynamics={f}
+
+[S] |`l       .r+1      :d+1`               :t                  ||
+[A] |`d       .f        :m`                 :r                  ||
+[T] |`l                 :s`                 :s                  ||
+[B] |`f                 :s`                 :s-1                ||
+
+[1] To@2_                                   mpo                 @@
+
+--
+
+[S] |d+1                :-                  :-                  ||
+[A] |m                  :-                  :-                  ||
+[T] |s                  :-                  :-                  ||
+[B] |d                  :-                  :-                  ||
+
+[1] ô!@3\                                                       @@
+
+==
+
+[S] |l                  :-                  :-                  ||
+[A] |d                  :-                  :-                  ||
+[T] |f                  :-                  :-                  ||
+[B] |f-1                :-                  :-                  ||
+
+[1] A@3_                                                        @@
+
+--
+
+[S] |s                  :-                  :-                  ||
+[A] |d                  :-                  :-                  ||
+[T] |m                  :-                  :-                  ||
+[B] |d                  :-                  :-                  ||
+
+[1] mena.

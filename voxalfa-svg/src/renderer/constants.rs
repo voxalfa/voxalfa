@@ -14,6 +14,8 @@ pub const VOLTA_END_TICK: f32 = 0.45;
 pub const VOLTA_TEXT_INSET: f32 = 0.18;
 
 pub const TOUCH_SYMBOL_SCALE: f32 = 0.75;
+pub const FERMATA_WIDTH_SCALE: f32 = 1.7;
+pub const STACCATO_WIDTH_SCALE: f32 = 0.32;
 pub const MARCATO_WIDTH_SCALE: f32 = 0.85;
 pub const ACCENT_STROKE_WIDTH: f32 = 0.08;
 

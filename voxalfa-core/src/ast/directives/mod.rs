@@ -61,29 +61,27 @@ impl FieldAssign for HeaderDirective {
 
 impl HeaderDirective {
     fn assign_page(&mut self, data: AssignmentData, context: &mut Parser) {
-        let Some(style) = parse_page_style(context, data.value_node, data.scope_id, "page") else {
-            return;
-        };
+        let parsed = parse_page_style(context, data.value_node, data.scope_id, "page");
 
-        let sid = context
-            .tree
-            .add_symbol(SymbolKind::Token, data.value_range, data.scope_id);
+        if let Some(style) = parsed {
+            let sid = context
+                .tree
+                .add_symbol(SymbolKind::Token, data.value_range, data.scope_id);
 
-        self.page = Some(SymbolRef { sid, value: style });
+            self.page = Some(SymbolRef { sid, value: style });
+        }
     }
 
     fn assign_element(&mut self, data: AssignmentData, context: &mut Parser) {
-        let Some(style) =
-            parse_element_style(context, data.value_node, data.scope_id, &data.key_name)
-        else {
-            return;
-        };
+        let parsed = parse_element_style(context, data.value_node, data.scope_id, &data.key_name);
 
-        let sid = context
-            .tree
-            .add_symbol(SymbolKind::Token, data.value_range, data.scope_id);
+        if let Some(style) = parsed {
+            let sid = context
+                .tree
+                .add_symbol(SymbolKind::Token, data.value_range, data.scope_id);
 
-        self.elements
-            .insert(data.key_name, SymbolRef { sid, value: style });
+            self.elements
+                .insert(data.key_name, SymbolRef { sid, value: style });
+        }
     }
 }

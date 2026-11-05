@@ -1,21 +1,23 @@
 #[derive(Debug, Clone, Copy)]
 pub enum Assignment {
     Metadata,
-    Params,
+    InitialParams,
+    SectionParams,
 }
 
 impl Assignment {
     pub fn prefix(self) -> &'static str {
         match self {
             Assignment::Metadata => "#",
-            Assignment::Params => "$",
+            Assignment::InitialParams | Assignment::SectionParams => "$",
         }
     }
 
     pub fn rank(self) -> LineRank {
         match self {
             Assignment::Metadata => LineRank::Metadata,
-            Assignment::Params => LineRank::Params,
+            Assignment::InitialParams => LineRank::InitialParams,
+            Assignment::SectionParams => LineRank::SectionParams,
         }
     }
 }
@@ -24,9 +26,11 @@ impl Assignment {
 pub enum LineRank {
     #[default]
     Fallback,
-    Directive,
+    LangDirective,
     Metadata,
-    Params,
+    InitialParams,
+    StyleDirective,
+    SectionParams,
     Solfa,
     Lyrics,
     Delimiter,

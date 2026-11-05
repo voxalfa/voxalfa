@@ -2,8 +2,12 @@
   name: (identifier) @property)
 
 (language_directive
+  ";;" @comment
   "@" @keyword
   name: (identifier) @keyword)
+
+(language_directive
+  value: (inline_string) @comment)
 
 (solfa_line
   voice: (identifier) @identifier)
@@ -60,6 +64,5 @@
 
 [
  (inline_comment)
- (language_directive)
 ] @comment @spell
 

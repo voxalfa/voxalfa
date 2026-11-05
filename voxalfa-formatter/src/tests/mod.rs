@@ -1,4 +1,5 @@
 use crate::tests::utils::assert_formatted_snapshot;
+use voxalfa_core::validation::Validator;
 
 mod utils;
 
@@ -91,4 +92,28 @@ fn test_expr_reordering() {
 "#;
 
     assert_formatted_snapshot("test_expr_reordering", input);
+}
+
+#[test]
+fn test_comment_ranking() {
+    let input = r#"
+;; @version 0.1.0-alpha
+
+[$] time={4,4} | voices={S}
+
+; style
+;; @page width={800} | height={1000}
+;; @note-text font-size={12}
+
+---
+"#;
+
+    let mut validator = Validator::init().unwrap();
+    let output = validator.analyze(input);
+
+    assert!(!output.has_error(), "{:?}", output.diagnostics);
+
+    let formatted = crate::Formatter::new(&output).format_to_string().unwrap();
+
+    assert!(formatted.contains("; style\n;; @page"));
 }
