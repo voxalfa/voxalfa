@@ -53,5 +53,6 @@ pub mod node_types {
     pub const LYRIC_SPAN: u16 = 96;
     pub const LYRIC_SPECIAL: u16 = 97;
     pub const LANGUAGE_DIRECTIVE: u16 = 98;
-    pub const INLINE_COMMENT: u16 = 99;
+    pub const STYLE_ASSIGNMENTS: u16 = 99;
+    pub const INLINE_COMMENT: u16 = 100;
 }

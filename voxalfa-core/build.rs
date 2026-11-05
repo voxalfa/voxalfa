@@ -43,7 +43,7 @@ fn main() -> Result<(), io::Error> {
         }
 
         if line.contains("}") {
-            buffer.push('}');
+            buffer.push_str("}\n");
             break;
         }
     }

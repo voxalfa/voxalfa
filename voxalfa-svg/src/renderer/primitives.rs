@@ -3,7 +3,6 @@ use std::fmt::Write;
 use crate::{
     error::Result,
     fonts::Fonts,
-    layout::*,
     model::MarkerGlyph,
     symbols::{
         FERMATA_GROUP, FERMATA_HEIGHT, FERMATA_WIDTH, MARCATO_HEIGHT, MARCATO_PATH, MARCATO_WIDTH,
@@ -11,7 +10,7 @@ use crate::{
     },
 };
 
-use super::geometry::segno_width;
+use super::{constants::*, geometry::segno_width};
 
 pub fn emit_text(
     svg: &mut String,
@@ -40,11 +39,11 @@ pub fn emit_line(svg: &mut String, x1: f32, y1: f32, x2: f32, y2: f32, class: &s
 }
 
 pub fn emit_segno(svg: &mut String, x: f32, baseline: f32, fonts: &Fonts) -> Result<()> {
-    let line_height = fonts.marker.line_height();
+    let line_height = fonts.label.mark.line_height();
     let height = line_height * SEGNO_HEIGHT_SCALE;
     let scale = height / 3.0;
     let left = x - segno_width(fonts) / 2.0;
-    let top = baseline - fonts.marker.ascent() + (line_height - height) / 2.0;
+    let top = baseline - fonts.label.mark.ascent() + (line_height - height) / 2.0;
 
     writeln!(
         svg,
@@ -61,7 +60,7 @@ pub fn emit_touch(
     baseline: f32,
     fonts: &Fonts,
 ) -> Result<()> {
-    let size = fonts.marker.size() * TOUCH_SYMBOL_SCALE;
+    let size = fonts.touch.size() * TOUCH_SYMBOL_SCALE;
     let bottom = baseline - 1.0;
 
     match glyph {

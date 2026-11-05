@@ -47,7 +47,7 @@ pub fn resolve<'a>(
     let locale = Locale::from_language(language.map(String::as_str));
     let max_factor = data.resolve_maximum_factor();
 
-    let lyrics_builder = LyricsBuilder::new(&fonts.lyric);
+    let lyrics_builder = LyricsBuilder::new(&fonts.text.lyric);
     let (lyric_width, lyrics_map) = lyrics_builder.build_map::<SvgVisitor>(data, max_factor);
     let (col_width, lead_width) = compute_widths(fonts, options, lyric_width);
 
@@ -762,10 +762,11 @@ fn slot_unit(view: &PulseView, slot: usize) -> f32 {
 
 fn compute_widths(fonts: &Fonts, options: &RenderOptions, lyric_width: f32) -> (f32, f32) {
     let lead_width = fonts
-        .solfa
+        .text
+        .note
         .width(".,")
-        .max(fonts.solfa.width("!"))
-        .max(fonts.solfa.width(":"))
+        .max(fonts.text.note.width("!"))
+        .max(fonts.text.note.width(":"))
         .max(4.0);
 
     let col_width = lyric_width

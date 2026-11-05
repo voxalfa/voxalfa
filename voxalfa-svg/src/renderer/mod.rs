@@ -1,3 +1,4 @@
+mod constants;
 mod defs;
 mod geometry;
 mod header;
@@ -10,7 +11,12 @@ use std::fmt::Write;
 
 use voxalfa_core::output::FinalOutput;
 
-use crate::{error::Result, fonts::Fonts, options::RenderOptions, resolver};
+use crate::{
+    error::Result,
+    fonts::{FontFaces, Fonts},
+    options::RenderOptions,
+    resolver,
+};
 
 use defs::emit_defs;
 use geometry::system_width;
@@ -20,8 +26,12 @@ use system::{SystemPlacement, emit_system};
 
 const INITIAL_SVG_CAPACITY: usize = 32 * 1024;
 
-pub fn render(data: &FinalOutput, options: &RenderOptions) -> Result<String> {
-    let fonts = Fonts::new(options)?;
+pub fn render(data: &FinalOutput, options: &RenderOptions, faces: &FontFaces) -> Result<String> {
+    let mut options = options.clone();
+    options.apply_directives(&data.header.directives);
+    let options = &options;
+
+    let fonts = Fonts::with_faces(options, faces)?;
     let score = resolver::resolve(data, &fonts, options)?;
     let header = layout_header(&score.header, &fonts, options);
 
@@ -43,7 +53,7 @@ pub fn render(data: &FinalOutput, options: &RenderOptions) -> Result<String> {
         options.page.width, total_height, options.page.width, total_height,
     )?;
 
-    emit_defs(&mut svg, options)?;
+    emit_defs(&mut svg, &fonts)?;
 
     for (page_id, page) in pages.iter().enumerate() {
         let offset_y = page_id as f32 * options.page.height;
@@ -80,11 +90,14 @@ pub fn render(data: &FinalOutput, options: &RenderOptions) -> Result<String> {
         }
 
         if page_count > 1 {
+            let style = &options.elements.text.page_number;
+            let x = options.page.width / 2.0 + (style.left() - style.right()) / 2.0;
+            let y = options.page.height - options.page_margin.bottom / 2.0 - style.bottom()
+                + style.top();
+
             writeln!(
                 svg,
-                r#"<text x="{:.2}" y="{:.2}" text-anchor="middle" class="page-number">{} / {}</text>"#,
-                options.page.width / 2.0,
-                options.page.height - options.min_margin / 2.0,
+                r#"<text x="{x:.2}" y="{y:.2}" text-anchor="middle" class="page-number-text">{} / {}</text>"#,
                 page_id + 1,
                 page_count,
             )?;
@@ -99,10 +112,10 @@ pub fn render(data: &FinalOutput, options: &RenderOptions) -> Result<String> {
 }
 
 fn paginate(layouts: &[SystemLayout], header_height: f32, options: &RenderOptions) -> Vec<Page> {
-    let bottom = options.page.height - options.min_margin;
+    let bottom = options.page.height - options.page_margin.bottom;
 
     let mut pages = vec![Page::default()];
-    let mut y = options.min_margin;
+    let mut y = options.page_margin.top;
 
     y += header_height;
 
@@ -113,7 +126,7 @@ fn paginate(layouts: &[SystemLayout], header_height: f32, options: &RenderOption
     for (index, layout) in layouts.iter().enumerate() {
         if y + layout.height > bottom && !pages.last().unwrap().systems.is_empty() {
             pages.push(Page::default());
-            y = options.min_margin;
+            y = options.page_margin.top;
         }
 
         pages

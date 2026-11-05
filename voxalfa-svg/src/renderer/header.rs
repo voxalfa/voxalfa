@@ -1,32 +1,41 @@
 use crate::{
     error::Result,
     fonts::{FontMetrics, Fonts},
-    layout::*,
     locale::Locale,
     model::HeaderView,
-    options::RenderOptions,
+    options::{ElementStyle, RenderOptions},
 };
 
-use super::primitives::{TextAnchor, emit_text};
+use super::{
+    constants::*,
+    primitives::{TextAnchor, emit_text},
+};
 
 pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions) -> HeaderLayout {
-    let left = options.min_margin;
-    let right = left + options.printable_width() - HEADER_RIGHT_INSET;
-    let center = options.page.width / 2.0;
+    let left = options.page_margin.left;
+    let right = options.page.width
+        - options.page_margin.right
+        - fonts.text.meter.size() * HEADER_RIGHT_INSET;
+    let center = left + options.printable_width() / 2.0;
+    let styles = &options.elements;
     let mut rows = Vec::new();
 
     if let Some(title) = &header.title {
-        for line in wrap_text(title, options.printable_width(), &fonts.title) {
-            rows.push(HeaderRow {
-                texts: vec![HeaderText {
-                    text: line,
-                    kind: HeaderKind::Title,
-                    x: center,
-                    anchor: TextAnchor::Middle,
-                }],
-                height: fonts.title.line_height() * TITLE_LINE_HEIGHT_FACTOR,
-                gap_before: 0.0,
-            });
+        let style = &styles.text.title;
+        let width = (options.printable_width() - style.left() - style.right()).max(1.0);
+
+        for line in wrap_text(title, width, &fonts.text.title) {
+            let text = header_text(
+                line,
+                HeaderKind::Title,
+                center,
+                TextAnchor::Middle,
+                &fonts.text.title,
+                style,
+                TITLE_LINE_HEIGHT_FACTOR,
+            );
+
+            push_row(&mut rows, vec![text], 0.0);
         }
     }
 
@@ -37,34 +46,36 @@ pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions
         let mut texts = Vec::new();
 
         if !authors.is_empty() {
-            texts.push(HeaderText {
-                text: authors,
-                kind: HeaderKind::Name,
-                x: left,
-                anchor: TextAnchor::Start,
-            });
+            texts.push(header_text(
+                authors,
+                HeaderKind::Author,
+                left,
+                TextAnchor::Start,
+                &fonts.text.author,
+                &styles.text.author,
+                1.0,
+            ));
         }
 
         if !composers.is_empty() {
-            texts.push(HeaderText {
-                text: composers,
-                kind: HeaderKind::Name,
-                x: right,
-                anchor: TextAnchor::End,
-            });
+            texts.push(header_text(
+                composers,
+                HeaderKind::Composer,
+                right,
+                TextAnchor::End,
+                &fonts.text.composer,
+                &styles.text.composer,
+                1.0,
+            ));
         }
 
         let gap_before = if rows.is_empty() {
             0.0
         } else {
-            HEADER_TITLE_BOTTOM_GAP
+            fonts.text.title.line_height() * HEADER_TITLE_BOTTOM_GAP
         };
 
-        rows.push(HeaderRow {
-            texts,
-            height: fonts.name.line_height(),
-            gap_before,
-        });
+        push_row(&mut rows, texts, gap_before);
     }
 
     let locale = Locale::from_language(header.language.as_deref());
@@ -72,50 +83,60 @@ pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions
 
     let time_x = key
         .as_ref()
-        .map(|text| left + fonts.key.width(text) + HEADER_KEY_RIGHT_MARGIN)
+        .map(|text| {
+            left + styles.text.key.left()
+                + fonts.text.header_key.width(text)
+                + styles.text.key.right()
+                + fonts.text.header_key.size() * HEADER_KEY_RIGHT_MARGIN
+        })
         .unwrap_or(left);
 
     if key.is_some() || header.meter.is_some() || header.time.is_some() {
         let mut texts = Vec::new();
 
         if let Some(text) = key {
-            texts.push(HeaderText {
+            texts.push(header_text(
                 text,
-                kind: HeaderKind::Key,
-                x: left,
-                anchor: TextAnchor::Start,
-            });
+                HeaderKind::Key,
+                left,
+                TextAnchor::Start,
+                &fonts.text.header_key,
+                &styles.text.key,
+                1.0,
+            ));
         }
 
         if let Some(time) = &header.time {
-            texts.push(HeaderText {
-                text: time.clone(),
-                kind: HeaderKind::Meta,
-                x: time_x,
-                anchor: TextAnchor::Start,
-            });
+            texts.push(header_text(
+                time.clone(),
+                HeaderKind::Time,
+                time_x,
+                TextAnchor::Start,
+                &fonts.text.time,
+                &styles.text.time,
+                1.0,
+            ));
         }
 
         if let Some(meter) = &header.meter {
-            texts.push(HeaderText {
-                text: meter.clone(),
-                kind: HeaderKind::Meta,
-                x: center,
-                anchor: TextAnchor::Middle,
-            });
+            texts.push(header_text(
+                meter.clone(),
+                HeaderKind::Meter,
+                center,
+                TextAnchor::Middle,
+                &fonts.text.meter,
+                &styles.text.meter,
+                1.0,
+            ));
         }
 
         let gap_before = if rows.is_empty() {
             0.0
         } else {
-            HEADER_GROUP_GAP
+            fonts.text.meter.line_height() * HEADER_GROUP_GAP
         };
 
-        rows.push(HeaderRow {
-            texts,
-            height: fonts.meta.line_height().max(fonts.key.line_height()),
-            gap_before,
-        });
+        push_row(&mut rows, texts, gap_before);
     }
 
     if rows.is_empty() {
@@ -130,14 +151,13 @@ pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions
 
     for row in rows {
         y += row.gap_before;
-        let baseline = y + row.height;
 
         for text in row.texts {
             lines.push(HeaderLine {
                 text: text.text,
                 kind: text.kind,
                 x: text.x,
-                y: baseline,
+                y: y + text.baseline,
                 anchor: text.anchor,
             });
         }
@@ -147,23 +167,25 @@ pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions
 
     HeaderLayout {
         lines,
-        height: y + HEADER_BOTTOM_PADDING,
+        height: y + fonts.text.meter.line_height() * HEADER_BOTTOM_PADDING,
     }
 }
 
 pub fn emit_header(svg: &mut String, header: &HeaderLayout, options: &RenderOptions) -> Result<()> {
     for line in &header.lines {
         let class = match line.kind {
-            HeaderKind::Title => "title",
-            HeaderKind::Name => "name",
-            HeaderKind::Key => "key",
-            HeaderKind::Meta => "meta",
+            HeaderKind::Title => "title-text",
+            HeaderKind::Author => "author-text",
+            HeaderKind::Composer => "composer-text",
+            HeaderKind::Key => "key-text",
+            HeaderKind::Time => "time-text",
+            HeaderKind::Meter => "meter-text",
         };
 
         emit_text(
             svg,
             line.x,
-            options.min_margin + line.y,
+            options.page_margin.top + line.y,
             &line.text,
             class,
             line.anchor.as_str(),
@@ -176,9 +198,11 @@ pub fn emit_header(svg: &mut String, header: &HeaderLayout, options: &RenderOpti
 #[derive(Debug, Clone, Copy)]
 enum HeaderKind {
     Title,
-    Name,
+    Author,
+    Composer,
     Key,
-    Meta,
+    Time,
+    Meter,
 }
 
 struct HeaderLine {
@@ -193,6 +217,7 @@ struct HeaderText {
     text: String,
     kind: HeaderKind,
     x: f32,
+    baseline: f32,
     anchor: TextAnchor,
 }
 
@@ -205,6 +230,48 @@ struct HeaderRow {
 pub struct HeaderLayout {
     lines: Vec<HeaderLine>,
     pub height: f32,
+}
+
+fn header_text(
+    text: String,
+    kind: HeaderKind,
+    x: f32,
+    anchor: TextAnchor,
+    font: &FontMetrics,
+    style: &ElementStyle,
+    line_factor: f32,
+) -> (HeaderText, f32) {
+    let baseline = style.top() + font.line_height() * line_factor;
+    let height = baseline + style.bottom();
+
+    (
+        HeaderText {
+            text,
+            kind,
+            x: anchor_x(x, anchor, style),
+            baseline,
+            anchor,
+        },
+        height,
+    )
+}
+
+fn push_row(rows: &mut Vec<HeaderRow>, texts: Vec<(HeaderText, f32)>, gap_before: f32) {
+    let height = texts.iter().map(|(_, height)| *height).fold(0.0, f32::max);
+
+    rows.push(HeaderRow {
+        texts: texts.into_iter().map(|(text, _)| text).collect(),
+        height,
+        gap_before,
+    });
+}
+
+fn anchor_x(x: f32, anchor: TextAnchor, style: &ElementStyle) -> f32 {
+    match anchor {
+        TextAnchor::Start => x + style.left(),
+        TextAnchor::Middle => x + (style.left() - style.right()) / 2.0,
+        TextAnchor::End => x - style.right(),
+    }
 }
 
 fn wrap_text(text: &str, max_width: f32, font: &FontMetrics) -> Vec<String> {

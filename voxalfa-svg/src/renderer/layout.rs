@@ -2,12 +2,12 @@ use voxalfa_core::{data_types::Voice, ir::solfa::NoteKind};
 
 use crate::{
     fonts::Fonts,
-    layout::*,
     model::{DynamicSpanKind, MarkerGlyph, MarkerKind, System, SystemMarker},
-    options::RenderOptions,
+    options::{ElementStyle, RenderOptions},
 };
 
 use super::{
+    constants::*,
     geometry::{
         find_voice, note_text, prolonged_leading, pulse_offsets, pulse_usable_width, segno_width,
     },
@@ -16,6 +16,49 @@ use super::{
 };
 
 const MARKER_SAME_NOTE_EPSILON: f32 = 0.001;
+
+fn marker_style(kind: MarkerKind, options: &RenderOptions) -> Option<&ElementStyle> {
+    match kind {
+        MarkerKind::Key => Some(&options.elements.label.key),
+        MarkerKind::Jump => Some(&options.elements.label.jump),
+        MarkerKind::Tempo | MarkerKind::TempoNumber => Some(&options.elements.label.tempo),
+        MarkerKind::Mark => Some(&options.elements.label.mark),
+        MarkerKind::Dynamic => Some(&options.elements.label.dynamic),
+        MarkerKind::TimeSignature => Some(&options.elements.label.time),
+        MarkerKind::Touch => None,
+    }
+}
+
+fn anchor_x(x: f32, anchor: TextAnchor, style: &ElementStyle) -> f32 {
+    match anchor {
+        TextAnchor::Start => x + style.left(),
+        TextAnchor::Middle => x + (style.left() - style.right()) / 2.0,
+        TextAnchor::End => x - style.right(),
+    }
+}
+
+struct RowSpec {
+    height: f32,
+    gap_before: f32,
+}
+
+struct ColumnLayout {
+    ys: Vec<f32>,
+    height: f32,
+}
+
+fn layout_column(rows: &[RowSpec]) -> ColumnLayout {
+    let mut ys = Vec::with_capacity(rows.len());
+    let mut y = 0.0;
+
+    for row in rows {
+        y += row.gap_before;
+        ys.push(y);
+        y += row.height;
+    }
+
+    ColumnLayout { ys, height: y }
+}
 
 pub fn layout_system(
     system: &System,
@@ -26,21 +69,23 @@ pub fn layout_system(
     let has_voltas = !system.voltas.is_empty();
 
     let (mut jumps, jump_height) = if has_voltas {
-        layout_jumps(system, fonts, lead)
+        layout_jumps(system, fonts, lead, options)
     } else {
         (Vec::new(), 0.0)
     };
 
-    let (mut voltas, volta_height) = layout_voltas(system, fonts, lead);
-    let (mut markers, marker_height) = layout_markers(system, fonts, lead, has_voltas);
+    let (mut voltas, volta_height) = layout_voltas(system, fonts, lead, options);
+    let (mut markers, marker_height) = layout_markers(system, fonts, lead, has_voltas, options);
 
     let dynamic_center = markers
         .iter()
         .find(|marker| marker.kind == MarkerKind::Dynamic)
-        .map(|marker| marker.y - (fonts.dynamic.ascent() - fonts.dynamic.descent()) / 2.0);
+        .map(|marker| {
+            marker.y - (fonts.label.dynamic.ascent() - fonts.label.dynamic.descent()) / 2.0
+        });
 
     let (mut dynamic_spans, dynamic_span_height) =
-        layout_dynamic_spans(system, fonts, lead, dynamic_center, marker_height);
+        layout_dynamic_spans(system, fonts, lead, dynamic_center, marker_height, options);
 
     // A jump above a volta shares the volta's text row so it sits directly
     // on top of the bracket line instead of floating above the ending label.
@@ -49,7 +94,7 @@ pub fn layout_system(
     let volta_top = if voltas.is_empty() {
         0.0
     } else {
-        VOLTA_TOP_GAP
+        fonts.text.volta.size() * VOLTA_TOP_GAP
     };
 
     for jump in &mut jumps {
@@ -95,12 +140,21 @@ pub fn layout_system(
         }
     }
 
+    let note_scale = fonts.text.note.size() / options.solfa_font_size.max(1.0);
+    let lyric_scale = fonts.text.lyric.size() / options.lyric_font_size.max(1.0);
+    let note_style = &options.elements.text.note;
+    let lyric_style = &options.elements.text.lyrics;
+    let voice_height =
+        options.voice_row_height * note_scale + note_style.top() + note_style.bottom();
+    let lyric_height =
+        options.lyric_row_height * lyric_scale + lyric_style.top() + lyric_style.bottom();
+
     let mut specs = Vec::new();
     let mut kinds = Vec::new();
 
     for (voice_index, voice) in system.voices.iter().enumerate() {
         specs.push(RowSpec {
-            height: options.voice_row_height,
+            height: voice_height,
             gap_before: 0.0,
         });
 
@@ -108,7 +162,7 @@ pub fn layout_system(
 
         for &(group_index, verse_index) in &lyric_rows[voice_index] {
             specs.push(RowSpec {
-                height: options.lyric_row_height,
+                height: lyric_height,
                 gap_before: 0.0,
             });
             kinds.push(SystemRowKind::Lyric {
@@ -144,7 +198,12 @@ pub fn layout_system(
     }
 }
 
-fn layout_jumps(system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedMarker>, f32) {
+fn layout_jumps(
+    system: &System,
+    fonts: &Fonts,
+    lead: f32,
+    options: &RenderOptions,
+) -> (Vec<PlacedMarker>, f32) {
     let xs = pulse_offsets(system);
     let usable_widths = system
         .pulses
@@ -167,13 +226,17 @@ fn layout_jumps(system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedMarker>
             }
         };
 
+        let style = &options.elements.label.jump;
+        let anchor = TextAnchor::End;
+        let x = xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead;
+
         jumps.push(PlacedMarker {
             kind: marker.kind,
             glyph: marker.glyph.clone(),
             width,
-            anchor: TextAnchor::End,
-            x: xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead,
-            y: font.ascent(),
+            anchor,
+            x: anchor_x(x, anchor, style),
+            y: style.top() + font.ascent(),
         });
     }
 
@@ -181,20 +244,31 @@ fn layout_jumps(system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedMarker>
         return (Vec::new(), 0.0);
     }
 
-    spread_markers(&mut jumps);
-    let height = fonts.marker_bold.line_height() + MARKER_BOTTOM_GAP;
+    spread_markers(&mut jumps, fonts.label.jump.size() * MARKER_HORIZONTAL_GAP);
+    let style = &options.elements.label.jump;
+    let height = style.top()
+        + fonts.label.jump.line_height()
+        + style.bottom()
+        + fonts.label.jump.size() * MARKER_BOTTOM_GAP;
 
     (jumps, height)
 }
 
-fn layout_voltas(system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedVolta>, f32) {
+fn layout_voltas(
+    system: &System,
+    fonts: &Fonts,
+    lead: f32,
+    options: &RenderOptions,
+) -> (Vec<PlacedVolta>, f32) {
     if system.voltas.is_empty() {
         return (Vec::new(), 0.0);
     }
 
+    let style = &options.elements.text.volta;
     let xs = pulse_offsets(system);
-    let text_y = fonts.marker_bold.ascent();
-    let line_y = fonts.marker_bold.line_height() + VOLTA_TEXT_GAP;
+    let text_y = style.top() + fonts.text.volta.ascent();
+    let line_y =
+        style.top() + fonts.text.volta.line_height() + fonts.text.volta.size() * VOLTA_TEXT_GAP;
     let mut voltas = Vec::new();
 
     for volta in &system.voltas {
@@ -213,7 +287,7 @@ fn layout_voltas(system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedVolta>
             start_x,
             end_x,
             text,
-            text_x: start_x + VOLTA_TEXT_INSET,
+            text_x: start_x + style.left() + fonts.text.volta.size() * VOLTA_TEXT_INSET,
             text_y,
             line_y,
         });
@@ -223,7 +297,10 @@ fn layout_voltas(system: &System, fonts: &Fonts, lead: f32) -> (Vec<PlacedVolta>
         return (Vec::new(), 0.0);
     }
 
-    let height = line_y + VOLTA_END_TICK + VOLTA_BOTTOM_GAP;
+    let height = line_y
+        + fonts.text.volta.size() * VOLTA_END_TICK
+        + fonts.text.volta.size() * VOLTA_BOTTOM_GAP
+        + style.bottom();
 
     (voltas, height)
 }
@@ -234,35 +311,52 @@ fn layout_dynamic_spans(
     lead: f32,
     dynamic_center: Option<f32>,
     marker_height: f32,
+    options: &RenderOptions,
 ) -> (Vec<PlacedDynamicSpan>, f32) {
     if system.dynamic_spans.is_empty() {
         return (Vec::new(), 0.0);
     }
 
+    let style = &options.elements.label.dynamic;
     let xs = pulse_offsets(system);
+
     let usable_widths = system
         .pulses
         .iter()
         .map(|pulse| pulse_usable_width(pulse, fonts, lead))
         .collect::<Vec<_>>();
-    let row_height = fonts.dynamic.line_height().max(DYNAMIC_HAIRPIN_HEIGHT);
+
+    let row_height = fonts
+        .label
+        .dynamic
+        .line_height()
+        .max(fonts.label.dynamic.size() * DYNAMIC_HAIRPIN_HEIGHT);
+
     let (center_y, height) = match dynamic_center {
-        Some(center_y) => (center_y, 0.0),
+        Some(center_y) => (center_y + style.top() - style.bottom(), 0.0),
         None => (
-            marker_height + row_height / 2.0,
-            row_height + DYNAMIC_SPAN_BOTTOM_GAP,
+            marker_height + row_height / 2.0 + style.top() - style.bottom(),
+            row_height
+                + fonts.label.dynamic.size() * DYNAMIC_SPAN_BOTTOM_GAP
+                + style.top()
+                + style.bottom(),
         ),
     };
-    let baseline = center_y + (fonts.dynamic.ascent() - fonts.dynamic.descent()) / 2.0;
+
+    let baseline = center_y + (fonts.label.dynamic.ascent() - fonts.label.dynamic.descent()) / 2.0;
     let mut spans = Vec::new();
 
     for span in &system.dynamic_spans {
-        let start_x = xs[span.start] + span.start_unit * usable_widths[span.start] + lead;
-        let end_x = xs[span.end] + span.end_unit * usable_widths[span.end] + lead;
+        let start_x =
+            xs[span.start] + span.start_unit * usable_widths[span.start] + lead + style.left();
+
+        let end_x = (xs[span.end] + span.end_unit * usable_widths[span.end] + lead - style.right())
+            .max(start_x);
 
         if span.fits {
-            let start_x = start_x + DYNAMIC_SPAN_INSET;
-            let end_x = (end_x - DYNAMIC_SPAN_INSET).max(start_x + 1.0);
+            let inset = fonts.label.dynamic.size() * DYNAMIC_SPAN_INSET;
+            let start_x = start_x + inset;
+            let end_x = (end_x - inset).max(start_x + 1.0);
 
             spans.push(PlacedDynamicSpan {
                 kind: span.kind,
@@ -286,7 +380,7 @@ fn layout_dynamic_spans(
                 center_y,
                 baseline,
                 label: Some(label.to_string()),
-                label_width: fonts.dynamic.width(label),
+                label_width: fonts.label.dynamic.width(label),
             });
         }
     }
@@ -301,12 +395,14 @@ fn layout_markers(
     fonts: &Fonts,
     lead: f32,
     separate_jumps: bool,
+    options: &RenderOptions,
 ) -> (Vec<PlacedMarker>, f32) {
     if system.markers.is_empty() {
         return (Vec::new(), 0.0);
     }
 
     let xs = pulse_offsets(system);
+
     let usable_widths = system
         .pulses
         .iter()
@@ -345,7 +441,7 @@ fn layout_markers(
                     }
 
                     let (text, _) = note_text(&column.note);
-                    let glyph_width = fonts.solfa.width(&text);
+                    let glyph_width = fonts.text.note.width(&text);
                     let leading = match column.note {
                         NoteKind::ProlongedNote => lead + prolonged_leading(fonts),
                         _ => lead,
@@ -395,6 +491,7 @@ fn layout_markers(
 
         for (row, marker) in group.into_iter().enumerate() {
             let font = marker_font(marker.kind, fonts);
+
             let width = match &marker.glyph {
                 MarkerGlyph::Text(text) => font.width(text),
                 MarkerGlyph::Segno => segno_width(fonts),
@@ -402,7 +499,9 @@ fn layout_markers(
                     touch_width(&marker.glyph, fonts)
                 }
             };
+
             let fallback_x = xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead;
+
             let x = match marker.kind {
                 MarkerKind::Dynamic | MarkerKind::Touch => {
                     note_center(marker.pulse, marker.unit).unwrap_or(fallback_x)
@@ -413,22 +512,26 @@ fn layout_markers(
                 _ => fallback_x,
             };
 
+            let anchor = match marker.kind {
+                MarkerKind::TimeSignature => TextAnchor::Middle,
+                MarkerKind::Key | MarkerKind::Tempo | MarkerKind::TempoNumber => TextAnchor::Start,
+                MarkerKind::Dynamic | MarkerKind::Touch => TextAnchor::Middle,
+                MarkerKind::Jump => TextAnchor::End,
+                MarkerKind::Mark if marker.unit >= 0.5 => TextAnchor::End,
+                MarkerKind::Mark => TextAnchor::Middle,
+            };
+
+            let x = marker_style(marker.kind, options)
+                .map(|style| anchor_x(x, anchor, style))
+                .unwrap_or(x);
+
             let placed = PlacedMarker {
                 kind: marker.kind,
                 glyph: marker.glyph.clone(),
                 width,
                 x,
                 y: 0.0,
-                anchor: match marker.kind {
-                    MarkerKind::TimeSignature => TextAnchor::Middle,
-                    MarkerKind::Key | MarkerKind::Tempo | MarkerKind::TempoNumber => {
-                        TextAnchor::Start
-                    }
-                    MarkerKind::Dynamic | MarkerKind::Touch => TextAnchor::Middle,
-                    MarkerKind::Jump => TextAnchor::End,
-                    MarkerKind::Mark if marker.unit >= 0.5 => TextAnchor::End,
-                    MarkerKind::Mark => TextAnchor::Middle,
-                },
+                anchor,
             };
 
             if rows.len() <= row {
@@ -440,7 +543,17 @@ fn layout_markers(
     }
 
     for row in &mut rows {
-        spread_markers(row);
+        let gap = row
+            .iter()
+            .map(|marker| marker_font(marker.kind, fonts).size())
+            .fold(0.0, f32::max);
+        let gap_font = row
+            .iter()
+            .map(|marker| marker_font(marker.kind, fonts))
+            .find(|font| font.size() == gap)
+            .unwrap_or(&fonts.label.key);
+
+        spread_markers(row, gap_font.size() * MARKER_HORIZONTAL_GAP);
     }
 
     let mut top = 0.0;
@@ -452,7 +565,14 @@ fn layout_markers(
 
         let row_height = row
             .iter()
-            .map(|marker| marker_font(marker.kind, fonts).line_height())
+            .map(|marker| {
+                let font = marker_font(marker.kind, fonts);
+                let padding = marker_style(marker.kind, options)
+                    .map(|style| style.top() + style.bottom())
+                    .unwrap_or(0.0);
+
+                font.line_height() + padding
+            })
             .fold(0.0, f32::max);
 
         for marker in row {
@@ -468,7 +588,7 @@ fn layout_markers(
     }
 
     let markers = rows.into_iter().flatten().collect();
-    let height = top + MARKER_BOTTOM_GAP;
+    let height = top + fonts.label.key.size() * MARKER_BOTTOM_GAP;
 
     (markers, height)
 }

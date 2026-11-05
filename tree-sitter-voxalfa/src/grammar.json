@@ -657,7 +657,7 @@
     },
     "inline_string": {
       "type": "PATTERN",
-      "value": "[^\\n]+"
+      "value": "[^\\n=]+"
     },
     "boolean": {
       "type": "CHOICE",
@@ -1172,11 +1172,53 @@
           "type": "FIELD",
           "name": "value",
           "content": {
-            "type": "SYMBOL",
-            "name": "inline_string"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "PREC",
+                "value": 1,
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "style_assignments"
+                }
+              },
+              {
+                "type": "SYMBOL",
+                "name": "inline_string"
+              }
+            ]
           }
         }
       ]
+    },
+    "style_assignments": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "parameter_assignment"
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "_kv_separator"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "parameter_assignment"
+                }
+              ]
+            }
+          }
+        ]
+      }
     },
     "inline_comment": {
       "type": "SEQ",

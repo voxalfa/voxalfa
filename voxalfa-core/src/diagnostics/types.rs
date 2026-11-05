@@ -85,6 +85,8 @@ pub enum DiagnosticKind {
     UnmatchedTimestamp,
     #[error("unknown compiler directive '@{0}'")]
     UnknownDirective(String),
+    #[error("invalid value for directive '@{0}': {1}")]
+    InvalidDirective(String, String),
 }
 
 impl DiagnosticKind {
@@ -124,6 +126,7 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidSectionMerge(_) => "E031",
             DiagnosticKind::UnmatchedTimestamp => "E032",
             DiagnosticKind::UnknownDirective(_) => "E033",
+            DiagnosticKind::InvalidDirective(_, _) => "E034",
         }
     }
 

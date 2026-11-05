@@ -4,199 +4,217 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 
 use crate::{
     error::Result,
-    fonts::{
-        LYRIC_FAMILY, LYRIC_FONT, SERIF_BOLD_ITALIC_FONT, SERIF_FAMILY, SERIF_FONT,
-        SERIF_ITALIC_FONT, SOLFA_FAMILY, SOLFA_FONT, TEXT_BOLD_FONT, TEXT_FAMILY, TEXT_FONT,
-    },
-    layout::*,
-    options::RenderOptions,
+    fonts::{FontMetrics, Fonts},
 };
 
-pub fn emit_defs(svg: &mut String, options: &RenderOptions) -> Result<()> {
-    let solfa = STANDARD.encode(SOLFA_FONT);
-    let text = STANDARD.encode(TEXT_FONT);
-    let text_bold = STANDARD.encode(TEXT_BOLD_FONT);
-    let serif = STANDARD.encode(SERIF_FONT);
-    let serif_italic = STANDARD.encode(SERIF_ITALIC_FONT);
-    let serif_bold_italic = STANDARD.encode(SERIF_BOLD_ITALIC_FONT);
-    let lyric = STANDARD.encode(LYRIC_FONT);
+use super::constants::*;
+
+pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
+    writeln!(svg, "<defs>\n  <style>")?;
+
+    for face in &fonts.faces {
+        let style = if face.italic { "italic" } else { "normal" };
+        let data = STANDARD.encode(face.data.as_ref());
+
+        writeln!(
+            svg,
+            "    @font-face {{\n      font-family: '{}';\n      src: url('data:font/ttf;base64,{data}') format('truetype');\n      font-weight: {};\n      font-style: {style};\n    }}\n",
+            face.family, face.weight,
+        )?;
+    }
 
     writeln!(
         svg,
-        r#"<defs>
-  <style>
-    @font-face {{
-      font-family: '{SOLFA_FAMILY}';
-      src: url('data:font/ttf;base64,{solfa}') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }}
+        "    svg {{\n      background: #ffffff;\n    }}\n\n    text {{\n      fill: #1a1a1a;\n    }}"
+    )?;
 
-    @font-face {{
-      font-family: '{TEXT_FAMILY}';
-      src: url('data:font/ttf;base64,{text}') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }}
+    font_rule(
+        svg,
+        ".note-text",
+        &fonts.text.note,
+        "bold",
+        "normal",
+        "monospace",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".divider-text",
+        &fonts.text.divider,
+        "normal",
+        "normal",
+        "monospace",
+        Some("#333333"),
+    )?;
+    font_rule(
+        svg,
+        ".octave-text",
+        &fonts.text.octave,
+        "bold",
+        "normal",
+        "monospace",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".lyrics-text",
+        &fonts.text.lyric,
+        "normal",
+        "normal",
+        "sans-serif",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".title-text",
+        &fonts.text.title,
+        "bold",
+        "normal",
+        "sans-serif",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".author-text",
+        &fonts.text.author,
+        "normal",
+        "normal",
+        "sans-serif",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".composer-text",
+        &fonts.text.composer,
+        "normal",
+        "normal",
+        "sans-serif",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".key-text",
+        &fonts.text.header_key,
+        "bold",
+        "normal",
+        "sans-serif",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".time-text",
+        &fonts.text.time,
+        "normal",
+        "normal",
+        "sans-serif",
+        Some("#444444"),
+    )?;
+    font_rule(
+        svg,
+        ".meter-text",
+        &fonts.text.meter,
+        "normal",
+        "normal",
+        "sans-serif",
+        Some("#444444"),
+    )?;
+    font_rule(
+        svg,
+        ".key-label",
+        &fonts.label.key,
+        "bold",
+        "normal",
+        "sans-serif",
+        Some("#333333"),
+    )?;
+    font_rule(
+        svg,
+        ".jump-label",
+        &fonts.label.jump,
+        "bold",
+        "normal",
+        "sans-serif",
+        Some("#333333"),
+    )?;
+    font_rule(
+        svg,
+        ".tempo-label",
+        &fonts.label.tempo,
+        "normal",
+        "italic",
+        "serif",
+        Some("#333333"),
+    )?;
+    font_rule(
+        svg,
+        ".mark-label",
+        &fonts.label.mark,
+        "normal",
+        "italic",
+        "serif",
+        Some("#333333"),
+    )?;
+    font_rule(
+        svg,
+        ".dynamic-label",
+        &fonts.label.dynamic,
+        "bold",
+        "italic",
+        "serif",
+        None,
+    )?;
+    font_rule(
+        svg,
+        ".time-label",
+        &fonts.label.time_signature,
+        "normal",
+        "normal",
+        "sans-serif",
+        Some("#333333"),
+    )?;
+    font_rule(
+        svg,
+        ".volta-text",
+        &fonts.text.volta,
+        "bold",
+        "normal",
+        "sans-serif",
+        Some("#333333"),
+    )?;
+    font_rule(
+        svg,
+        ".page-number-text",
+        &fonts.text.page_number,
+        "normal",
+        "normal",
+        "sans-serif",
+        Some("#777777"),
+    )?;
 
-    @font-face {{
-      font-family: '{TEXT_FAMILY}';
-      src: url('data:font/ttf;base64,{text_bold}') format('truetype');
-      font-weight: bold;
-      font-style: normal;
-    }}
-
-    @font-face {{
-      font-family: '{SERIF_FAMILY}';
-      src: url('data:font/ttf;base64,{serif}') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }}
-
-    @font-face {{
-      font-family: '{SERIF_FAMILY}';
-      src: url('data:font/ttf;base64,{serif_italic}') format('truetype');
-      font-weight: normal;
-      font-style: italic;
-    }}
-
-    @font-face {{
-      font-family: '{SERIF_FAMILY}';
-      src: url('data:font/ttf;base64,{serif_bold_italic}') format('truetype');
-      font-weight: bold;
-      font-style: italic;
-    }}
-
-    @font-face {{
-      font-family: '{LYRIC_FAMILY}';
-      src: url('data:font/ttf;base64,{lyric}') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }}
-
-    svg {{
-      background: #ffffff;
-    }}
-
-    text {{
-      fill: #1a1a1a;
-    }}
-
-    .solfa {{
-      font-family: '{SOLFA_FAMILY}', monospace;
-      font-size: {solfa_size}px;
-      font-weight: bold;
-    }}
-
-    .accent, .divider {{
-      font-family: '{SOLFA_FAMILY}', monospace;
-      font-size: {symbol_size}px;
-      fill: #333333;
-    }}
-
-    .octave {{
-      font-family: '{SOLFA_FAMILY}', monospace;
-      font-size: {octave_size}px;
-      font-weight: bold;
-    }}
-
-    .lyric {{
-      font-family: '{LYRIC_FAMILY}', sans-serif;
-      font-size: {lyric_size}px;
-    }}
-
-    .title {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {title_size}px;
-      font-weight: bold;
-    }}
-
-    .name {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {name_size}px;
-    }}
-
-    .key {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {marker_size}px;
-      font-weight: bold;
-    }}
-
-    .meta {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {meta_size}px;
-      fill: #444444;
-    }}
-
-    .marker {{
-      font-family: '{SERIF_FAMILY}', serif;
-      font-size: {marker_size}px;
-      font-weight: normal;
-      fill: #333333;
-    }}
-
-    .marker-sans {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {marker_size}px;
-      font-weight: normal;
-      fill: #333333;
-    }}
-
-    .marker-bold {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {marker_size}px;
-      font-weight: bold;
-      fill: #333333;
-    }}
-
-    .marker-italic {{
-      font-family: '{SERIF_FAMILY}', serif;
-      font-size: {marker_size}px;
-      font-style: italic;
-      fill: #333333;
-    }}
-
-    .dynamic {{
-      font-family: '{SERIF_FAMILY}', serif;
-      font-size: {dynamic_size}px;
-      font-weight: bold;
-      font-style: italic;
-    }}
-
+    writeln!(
+        svg,
+        r#"
     .volta {{
       stroke: #222222;
-      stroke-width: {barline_stroke};
+      stroke-width: {barline};
       stroke-linecap: square;
-    }}
-
-    .volta-text {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {marker_size}px;
-      font-weight: bold;
-      fill: #333333;
-    }}
-
-    .page-number {{
-      font-family: '{TEXT_FAMILY}', sans-serif;
-      font-size: {page_number_size}px;
-      fill: #777777;
     }}
 
     .barline {{
       stroke: #222222;
-      stroke-width: {barline_stroke};
+      stroke-width: {barline};
       stroke-linecap: square;
     }}
 
     .medium-accent {{
       stroke: #333333;
-      stroke-width: {accent_stroke};
+      stroke-width: {accent};
       stroke-linecap: square;
     }}
 
     .underline {{
       stroke: #222222;
-      stroke-width: {underline_stroke};
+      stroke-width: {underline};
       stroke-linecap: round;
     }}
 
@@ -219,20 +237,35 @@ pub fn emit_defs(svg: &mut String, options: &RenderOptions) -> Result<()> {
 
   </style>
 </defs>"#,
-        solfa_size = options.solfa_font_size,
-        symbol_size = options.solfa_font_size * SYMBOL_FONT_SCALE,
-        octave_size = options.octave_font_size,
-        lyric_size = options.lyric_font_size,
-        title_size = options.title_font_size,
-        name_size = options.name_font_size,
-        meta_size = options.meta_font_size,
-        marker_size = options.marker_font_size,
-        dynamic_size = options.marker_font_size * DYNAMIC_FONT_SCALE,
-        page_number_size = options.meta_font_size * PAGE_NUMBER_FONT_SCALE,
-        barline_stroke = BARLINE_STROKE_WIDTH,
-        accent_stroke = ACCENT_STROKE_WIDTH,
-        underline_stroke = UNDERLINE_STROKE_WIDTH,
+        barline = fonts.text.note.size() * BARLINE_STROKE_WIDTH,
+        accent = fonts.text.note.size() * ACCENT_STROKE_WIDTH,
+        underline = fonts.text.note.size() * UNDERLINE_STROKE_WIDTH,
     )?;
+
+    Ok(())
+}
+
+fn font_rule(
+    svg: &mut String,
+    selector: &str,
+    font: &FontMetrics,
+    weight: &str,
+    style: &str,
+    fallback: &str,
+    fill: Option<&str>,
+) -> Result<()> {
+    writeln!(
+        svg,
+        "    {selector} {{\n      font-family: '{}', {fallback};\n      font-size: {:.2}px;\n      font-weight: {weight};\n      font-style: {style};",
+        font.family(),
+        font.size(),
+    )?;
+
+    if let Some(fill) = fill {
+        writeln!(svg, "      fill: {fill};")?;
+    }
+
+    writeln!(svg, "    }}\n")?;
 
     Ok(())
 }

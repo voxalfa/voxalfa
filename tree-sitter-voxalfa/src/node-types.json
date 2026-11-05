@@ -101,6 +101,10 @@
           {
             "type": "inline_string",
             "named": true
+          },
+          {
+            "type": "style_assignments",
+            "named": true
           }
         ]
       }
@@ -594,6 +598,21 @@
     "type": "strong_accent",
     "named": true,
     "fields": {}
+  },
+  {
+    "type": "style_assignments",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "parameter_assignment",
+          "named": true
+        }
+      ]
+    }
   },
   {
     "type": "sub_section",

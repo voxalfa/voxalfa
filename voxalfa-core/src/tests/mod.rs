@@ -384,7 +384,6 @@ fn test_invalid_section_merge_error() {
 }
 
 #[test]
-
 fn test_unknown_directive_error() {
     let source = r#"
 ;; @invalid foo 
@@ -394,4 +393,25 @@ fn test_unknown_directive_error() {
 "#;
 
     assert_diagnostic_snapshot("unknown_directive_error", source);
+}
+
+#[test]
+fn test_invalid_directive_value_error() {
+    let source = r#"
+;; @version 0.1.0-alpha
+;; @note-text font-size={0}
+
+[#] title="Invalid directive"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#;
+
+    assert_diagnostic_snapshot("invalid_directive_value_error", source);
 }

@@ -124,7 +124,7 @@ export default grammar({
 
     string_content: () => /[^"\n]*/,
 
-    inline_string: () => /[^\n]+/,
+    inline_string: () => /[^\n=]+/,
 
     boolean: () => choice("true", "false"),
     integer: () => /\d+/,
@@ -241,8 +241,14 @@ export default grammar({
         "@",
         field("name", $.identifier),
         $._space,
-        field("value", $.inline_string),
+        field(
+          "value",
+          choice(prec(1, $.style_assignments), $.inline_string),
+        ),
       ),
+
+    style_assignments: ($) =>
+      prec.right(sep1($._kv_separator, $.parameter_assignment)),
 
     inline_comment: (_) => seq(";", /[^\n]*/),
   },

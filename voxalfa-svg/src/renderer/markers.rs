@@ -1,10 +1,13 @@
 use crate::{
     fonts::{FontMetrics, Fonts},
-    layout::{MARCATO_WIDTH_SCALE, MARKER_HORIZONTAL_GAP, TOUCH_SYMBOL_SCALE},
     model::{MarkerGlyph, MarkerKind},
 };
 
-use super::{layout::PlacedMarker, primitives::TextAnchor};
+use super::{
+    constants::{MARCATO_WIDTH_SCALE, TOUCH_SYMBOL_SCALE},
+    layout::PlacedMarker,
+    primitives::TextAnchor,
+};
 
 pub fn marker_priority(kind: MarkerKind) -> usize {
     match kind {
@@ -19,7 +22,7 @@ pub fn marker_priority(kind: MarkerKind) -> usize {
 }
 
 pub fn touch_width(glyph: &MarkerGlyph, fonts: &Fonts) -> f32 {
-    let size = fonts.marker.size() * TOUCH_SYMBOL_SCALE;
+    let size = fonts.touch.size() * TOUCH_SYMBOL_SCALE;
 
     match glyph {
         MarkerGlyph::Fermata => size * 1.7,
@@ -31,15 +34,17 @@ pub fn touch_width(glyph: &MarkerGlyph, fonts: &Fonts) -> f32 {
 
 pub fn marker_font(kind: MarkerKind, fonts: &Fonts) -> &FontMetrics {
     match kind {
-        MarkerKind::Key | MarkerKind::Jump | MarkerKind::TempoNumber => &fonts.marker_bold,
-        MarkerKind::TimeSignature => &fonts.marker_sans,
-        MarkerKind::Touch => &fonts.marker,
-        MarkerKind::Tempo | MarkerKind::Mark => &fonts.mark,
-        MarkerKind::Dynamic => &fonts.dynamic,
+        MarkerKind::Key => &fonts.label.key,
+        MarkerKind::Jump => &fonts.label.jump,
+        MarkerKind::TempoNumber | MarkerKind::Tempo => &fonts.label.tempo,
+        MarkerKind::TimeSignature => &fonts.label.time_signature,
+        MarkerKind::Touch => &fonts.touch,
+        MarkerKind::Mark => &fonts.label.mark,
+        MarkerKind::Dynamic => &fonts.label.dynamic,
     }
 }
 
-pub fn spread_markers(markers: &mut [PlacedMarker]) {
+pub fn spread_markers(markers: &mut [PlacedMarker], gap: f32) {
     markers.sort_by(|lhs, rhs| lhs.x.total_cmp(&rhs.x));
 
     let mut right_edge = f32::NEG_INFINITY;
@@ -51,7 +56,7 @@ pub fn spread_markers(markers: &mut [PlacedMarker]) {
             TextAnchor::End => marker.x - marker.width,
         };
 
-        let shift = (right_edge + MARKER_HORIZONTAL_GAP - left).max(0.0);
+        let shift = (right_edge + gap - left).max(0.0);
 
         marker.x += shift;
         right_edge = left + marker.width + shift;

@@ -7,7 +7,6 @@ use voxalfa_core::{
 use crate::{
     error::Result,
     fonts::Fonts,
-    layout::*,
     model::{
         DynamicSpanKind, MarkerGlyph, MarkerKind, ResolvedScore, System, SystemLyricToken,
         SystemPulse,
@@ -16,6 +15,7 @@ use crate::{
 };
 
 use super::{
+    constants::*,
     geometry::{
         baseline, division_symbol, note_text, prolonged_leading, pulse_offsets, pulse_usable_width,
     },
@@ -46,11 +46,11 @@ pub fn emit_system(
         .map(|pulse| pulse.pulse_width)
         .unwrap_or(0.0);
 
-    let origin_x = options.min_margin
+    let origin_x = options.page_margin.left
         + placement.body_offset
         + placement.system.pulse_offset as f32 * pulse_width;
 
-    let mut render = SystemRender::new(svg, fonts, placement, score.lead_width, origin_x);
+    let mut render = SystemRender::new(svg, fonts, placement, score.lead_width, origin_x, options);
 
     render.emit()
 }
@@ -72,6 +72,7 @@ struct SystemRender<'a> {
     origin_x: f32,
     lead: f32,
     y: f32,
+    options: &'a RenderOptions,
 }
 
 impl<'a> SystemRender<'a> {
@@ -81,6 +82,7 @@ impl<'a> SystemRender<'a> {
         placement: SystemPlacement<'a>,
         lead: f32,
         origin_x: f32,
+        options: &'a RenderOptions,
     ) -> Self {
         let xs = pulse_offsets(placement.system);
 
@@ -101,6 +103,7 @@ impl<'a> SystemRender<'a> {
             origin_x,
             lead,
             y: placement.y,
+            options,
         }
     }
 
@@ -117,22 +120,12 @@ impl<'a> SystemRender<'a> {
             let line_y = y + volta.line_y;
 
             emit_line(self.svg, start_x, line_y, end_x, line_y, "volta")?;
-            emit_line(
-                self.svg,
-                start_x,
-                line_y,
-                start_x,
-                line_y + VOLTA_END_TICK,
-                "volta",
-            )?;
-            emit_line(
-                self.svg,
-                end_x,
-                line_y,
-                end_x,
-                line_y + VOLTA_END_TICK,
-                "volta",
-            )?;
+
+            let tick = self.fonts.text.volta.size() * VOLTA_END_TICK;
+
+            emit_line(self.svg, start_x, line_y, start_x, line_y + tick, "volta")?;
+            emit_line(self.svg, end_x, line_y, end_x, line_y + tick, "volta")?;
+
             emit_text(
                 self.svg,
                 self.origin_x + volta.text_x,
@@ -154,12 +147,12 @@ impl<'a> SystemRender<'a> {
                     baseline,
                     text,
                     match marker.kind {
-                        MarkerKind::Dynamic => "dynamic",
-                        MarkerKind::Jump | MarkerKind::Key | MarkerKind::TempoNumber => {
-                            "marker-bold"
-                        }
-                        MarkerKind::Tempo | MarkerKind::Mark => "marker-italic",
-                        MarkerKind::TimeSignature => "marker-sans",
+                        MarkerKind::Dynamic => "dynamic-label",
+                        MarkerKind::Jump => "jump-label",
+                        MarkerKind::Key => "key-label",
+                        MarkerKind::TempoNumber | MarkerKind::Tempo => "tempo-label",
+                        MarkerKind::Mark => "mark-label",
+                        MarkerKind::TimeSignature => "time-label",
                         MarkerKind::Touch => "marker",
                     },
                     marker.anchor.as_str(),
@@ -181,11 +174,12 @@ impl<'a> SystemRender<'a> {
                     start_x,
                     y + span.baseline,
                     label,
-                    "dynamic",
+                    "dynamic-label",
                     "start",
                 )?;
 
-                let dash_start = start_x + span.label_width + DYNAMIC_DASH_GAP;
+                let dash_start =
+                    start_x + span.label_width + self.fonts.label.dynamic.size() * DYNAMIC_DASH_GAP;
 
                 if dash_start < end_x {
                     emit_line(
@@ -199,7 +193,7 @@ impl<'a> SystemRender<'a> {
                 }
             } else {
                 let center_y = y + span.center_y;
-                let half = DYNAMIC_HAIRPIN_HEIGHT / 2.0;
+                let half = self.fonts.label.dynamic.size() * DYNAMIC_HAIRPIN_HEIGHT / 2.0;
 
                 let (left_top, left_bottom, right_top, right_bottom) = match span.kind {
                     DynamicSpanKind::Crescendo => {
@@ -233,10 +227,11 @@ impl<'a> SystemRender<'a> {
             match row.kind {
                 SystemRowKind::Voice(voice) => {
                     if block_top.is_none() {
-                        block_top = Some(y + row.y + BARLINE_BLOCK_INSET);
+                        block_top =
+                            Some(y + row.y + self.fonts.text.note.size() * BARLINE_BLOCK_INSET);
                     }
 
-                    let voice_baseline = baseline(y + row.y, row.height, &self.fonts.solfa);
+                    let voice_baseline = baseline(y + row.y, row.height, &self.fonts.text.note);
 
                     self.emit_voice_row(voice, voice_baseline)?;
                 }
@@ -244,7 +239,8 @@ impl<'a> SystemRender<'a> {
                     group_index,
                     verse_index,
                 } => {
-                    let voice_bottom = y + row.y - BARLINE_BLOCK_INSET;
+                    let voice_bottom =
+                        y + row.y - self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
 
                     if let Some(top) = block_top.take() {
                         self.emit_barlines(top, voice_bottom)?;
@@ -252,7 +248,7 @@ impl<'a> SystemRender<'a> {
 
                     let group = &system.lyric_groups[group_index];
                     let tokens = &group.verses[verse_index];
-                    let lyric_baseline = baseline(y + row.y, row.height, &self.fonts.lyric);
+                    let lyric_baseline = baseline(y + row.y, row.height, &self.fonts.text.lyric);
 
                     self.emit_lyric_row(tokens, lyric_baseline)?;
                 }
@@ -260,7 +256,8 @@ impl<'a> SystemRender<'a> {
         }
 
         if let Some(top) = block_top {
-            let voice_bottom = y + layout.height - BARLINE_BLOCK_INSET;
+            let voice_bottom =
+                y + layout.height - self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
             self.emit_barlines(top, voice_bottom)?;
         }
 
@@ -280,15 +277,9 @@ impl<'a> SystemRender<'a> {
 
             if pulse.section_end {
                 let end_x = x + pulse.pulse_width;
+                let gap = self.fonts.text.note.size() * DOUBLE_BARLINE_GAP;
 
-                emit_line(
-                    self.svg,
-                    end_x - DOUBLE_BARLINE_GAP,
-                    top,
-                    end_x - DOUBLE_BARLINE_GAP,
-                    bottom,
-                    "barline",
-                )?;
+                emit_line(self.svg, end_x - gap, top, end_x - gap, bottom, "barline")?;
 
                 emit_line(self.svg, end_x, top, end_x, bottom, "barline")?;
             }
@@ -300,9 +291,14 @@ impl<'a> SystemRender<'a> {
     fn emit_voice_row(&mut self, voice: Voice, baseline: f32) -> Result<()> {
         let mut underline: Option<UnderlineState> = None;
         let mut last_note_end = self.origin_x;
+        let note_offset = self.options.elements.text.note.left();
 
-        let underline_y = baseline + self.fonts.solfa.descent() + SOLFA_UNDERLINE_OFFSET;
-        let octave_y = underline_y - self.fonts.octave.descent() - BOTTOM_OCTAVE_UNDERLINE_GAP;
+        let underline_y = baseline
+            + self.fonts.text.note.descent()
+            + self.fonts.text.note.size() * SOLFA_UNDERLINE_OFFSET;
+        let octave_y = underline_y
+            - self.fonts.text.octave.descent()
+            - self.fonts.text.octave.size() * BOTTOM_OCTAVE_UNDERLINE_GAP;
 
         for (pulse_id, pulse) in self.system.pulses.iter().enumerate() {
             let Some(voice_pulse) = find_voice(pulse, voice) else {
@@ -342,49 +338,63 @@ impl<'a> SystemRender<'a> {
                 }
 
                 if !symbol.is_empty() {
+                    let style = &self.options.elements.text.divider;
+
                     emit_text(
                         self.svg,
-                        cell_x + self.lead / 2.0,
-                        baseline,
+                        cell_x + self.lead / 2.0 + (style.left() - style.right()) / 2.0,
+                        baseline + style.top() - style.bottom(),
                         symbol,
-                        "divider",
+                        "divider-text",
                         "middle",
                     )?;
                 }
 
                 if !matches!(column.note, NoteKind::EmptyNote) {
                     let (text, octave) = note_text(&column.note);
-                    let glyph_width = self.fonts.solfa.width(&text);
+                    let glyph_width = self.fonts.text.note.width(&text);
 
                     let note_leading = match column.note {
                         NoteKind::ProlongedNote => self.lead + prolonged_leading(self.fonts),
                         _ => self.lead,
                     };
 
-                    let glyph_start = cell_x + note_leading;
+                    let glyph_start = cell_x + note_leading + note_offset;
                     let glyph_center = glyph_start + glyph_width / 2.0;
 
                     note_start = glyph_start;
                     note_end = glyph_start + glyph_width;
                     last_note_end = note_end;
 
-                    emit_text(self.svg, glyph_center, baseline, &text, "solfa", "middle")?;
+                    emit_text(
+                        self.svg,
+                        glyph_center,
+                        baseline,
+                        &text,
+                        "note-text",
+                        "middle",
+                    )?;
 
                     if let Some(octave) = octave {
-                        let octave_x = glyph_center + glyph_width / 2.0 + OCTAVE_GAP;
+                        let style = &self.options.elements.text.octave;
+                        let octave_x = glyph_center
+                            + glyph_width / 2.0
+                            + self.fonts.text.note.size() * OCTAVE_GAP
+                            + (style.left() - style.right()) / 2.0;
 
                         let octave_y = if octave > 0 {
-                            baseline - self.fonts.solfa.size() * TOP_OCTAVE_OFFSET_FACTOR
+                            baseline - self.fonts.text.note.size() * TOP_OCTAVE_OFFSET_FACTOR
                         } else {
                             octave_y
-                        };
+                        } + style.top()
+                            - style.bottom();
 
                         emit_text(
                             self.svg,
                             octave_x,
                             octave_y,
                             &octave.abs().to_string(),
-                            "octave",
+                            "octave-text",
                             "middle",
                         )?;
                     }
@@ -433,8 +443,9 @@ impl<'a> SystemRender<'a> {
             PulseAccent::Strong => {}
             PulseAccent::Medium => {
                 let x = cell_x + lead / 2.0;
-                let note_center = baseline - (fonts.solfa.ascent() - fonts.solfa.descent()) / 2.0;
-                let half = fonts.solfa.size() / 2.0;
+                let note_center =
+                    baseline - (fonts.text.note.ascent() - fonts.text.note.descent()) / 2.0;
+                let half = fonts.text.note.size() / 2.0;
 
                 emit_line(
                     self.svg,
@@ -446,12 +457,14 @@ impl<'a> SystemRender<'a> {
                 )?;
             }
             PulseAccent::Weak => {
+                let style = &self.options.elements.text.divider;
+
                 emit_text(
                     self.svg,
-                    cell_x + lead / 2.0,
-                    baseline,
+                    cell_x + lead / 2.0 + (style.left() - style.right()) / 2.0,
+                    baseline + style.top() - style.bottom(),
                     ":",
-                    "divider",
+                    "divider-text",
                     "middle",
                 )?;
             }
@@ -485,22 +498,31 @@ impl<'a> SystemRender<'a> {
                 .copied()
                 .unwrap_or(system.pulses[token.start].pulse_width);
 
-            let x = origin_x + self.xs[token.start] + token.start_unit * start_width + lead;
-            let end_x = end_x.max(x);
+            let style = &self.options.elements.text.lyrics;
+            let x = origin_x
+                + self.xs[token.start]
+                + token.start_unit * start_width
+                + lead
+                + style.left();
+            let end_x = (end_x - style.right()).max(x);
 
-            emit_text(self.svg, x, baseline, &token.text, "lyric", "start")?;
+            emit_text(self.svg, x, baseline, &token.text, "lyrics-text", "start")?;
 
             if token.underline {
-                let width = fonts.lyric.width(&token.text).max(MIN_UNDERLINE_WIDTH);
-                let available = (end_x - x).max(MIN_UNDERLINE_WIDTH);
+                let min_width = fonts.text.lyric.size() * MIN_UNDERLINE_WIDTH;
+                let width = fonts.text.lyric.width(&token.text).max(min_width);
+                let available = (end_x - x).max(min_width);
                 let width = width.min(available);
+                let underline_y = baseline
+                    + fonts.text.lyric.descent()
+                    + fonts.text.lyric.size() * LYRIC_UNDERLINE_OFFSET;
 
                 emit_line(
                     self.svg,
                     x,
-                    baseline + fonts.lyric.descent() + LYRIC_UNDERLINE_OFFSET,
+                    underline_y,
                     x + width,
-                    baseline + fonts.lyric.descent() + LYRIC_UNDERLINE_OFFSET,
+                    underline_y,
                     "underline",
                 )?;
             }

@@ -1,11 +1,24 @@
-use voxalfa_core::ir::solfa::NoteKind;
+use voxalfa_core::{
+    data_types::Voice,
+    ir::solfa::{NoteKind, PulseIr},
+};
 
 use crate::{
     fonts::{FontMetrics, Fonts},
-    layout::*,
     model::{System, SystemPulse},
     symbols::{SEGNO_ASPECT_RATIO, SEGNO_HEIGHT_SCALE},
 };
+
+use super::constants::*;
+
+pub fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
+    pulse.subsections.iter().find_map(|sub| {
+        sub.voices
+            .iter()
+            .find(|(current, _)| *current == voice)
+            .map(|(_, voice_pulse)| *voice_pulse)
+    })
+}
 
 pub fn system_width(system: &System) -> f32 {
     let leading_width = system
@@ -39,13 +52,13 @@ pub fn pulse_offsets(system: &System) -> Vec<f32> {
 fn octave_width(fonts: &Fonts) -> f32 {
     ["1", "2", "3", "4", "5", "6", "7"]
         .into_iter()
-        .map(|digit| fonts.octave.width(digit))
+        .map(|digit| fonts.text.octave.width(digit))
         .fold(0.0, f32::max)
-        + GRID_RIGHT_PADDING
+        + fonts.text.note.size() * GRID_RIGHT_PADDING
 }
 
 pub fn segno_width(fonts: &Fonts) -> f32 {
-    fonts.marker.line_height() * SEGNO_HEIGHT_SCALE * SEGNO_ASPECT_RATIO
+    fonts.label.mark.line_height() * SEGNO_HEIGHT_SCALE * SEGNO_ASPECT_RATIO
 }
 
 pub fn pulse_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 {
@@ -66,7 +79,9 @@ pub fn pulse_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 
 
                 if start > 0.0 {
                     let extent = note_extent(&column.note, fonts, lead);
-                    let available = pulse.pulse_width - extent - NOTE_BARLINE_CLEARANCE;
+                    let available = pulse.pulse_width
+                        - extent
+                        - fonts.text.note.size() * NOTE_BARLINE_CLEARANCE;
 
                     if available <= 0.0 {
                         usable = 0.0;
@@ -84,21 +99,28 @@ pub fn pulse_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 
 }
 
 pub fn prolonged_leading(fonts: &Fonts) -> f32 {
-    fonts.solfa.width(" ").max(PROLONGED_LEADING_MIN)
+    fonts
+        .text
+        .note
+        .width(" ")
+        .max(fonts.text.note.size() * PROLONGED_LEADING_MIN)
 }
 
 fn note_extent(note: &NoteKind, fonts: &Fonts, lead: f32) -> f32 {
     match note {
         NoteKind::Note(_) => {
             let (text, octave) = note_text(note);
-            let base = fonts.solfa.width(&text);
+            let base = fonts.text.note.width(&text);
             let octave = octave
-                .map(|octave| fonts.octave.width(&octave.abs().to_string()) / 2.0 + OCTAVE_GAP)
+                .map(|octave| {
+                    fonts.text.octave.width(&octave.abs().to_string()) / 2.0
+                        + fonts.text.note.size() * OCTAVE_GAP
+                })
                 .unwrap_or(0.0);
 
             lead + base + octave
         }
-        NoteKind::ProlongedNote => lead + prolonged_leading(fonts) + fonts.solfa.width("-"),
+        NoteKind::ProlongedNote => lead + prolonged_leading(fonts) + fonts.text.note.width("-"),
         NoteKind::EmptyNote => lead,
     }
 }

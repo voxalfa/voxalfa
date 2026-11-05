@@ -1,35 +1,8 @@
 use crate::{
-    ast::symbols::VoiceId,
     data_types::Voice,
     ir::solfa::PulseColumn,
     output::event::{Event, NoteTimeline, Timestamp, get_note_ticks},
 };
-
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub struct VoiceSet(u8);
-
-impl VoiceSet {
-    pub fn new<T>(voices: T) -> Self
-    where
-        T: IntoIterator<Item = VoiceId>,
-    {
-        let mut flags = 0;
-
-        for voice_id in voices.into_iter() {
-            flags |= 1 << voice_id as u8;
-        }
-
-        Self(flags)
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.count_ones() as usize
-    }
-
-    pub fn is_empty(self) -> bool {
-        self.0 == 0
-    }
-}
 
 #[derive(Debug)]
 pub struct VoiceLine<'a> {

@@ -125,9 +125,11 @@ fn lcm(a: u8, b: u8) -> u8 {
 mod tests {
     use crate::ir::utils::BeatBuffer;
 
+    type BeatTestCase = (Vec<u8>, u8, fn(&mut BeatBuffer));
+
     #[test]
     fn test_beat_distribution() {
-        let test_cases: &[(Vec<u8>, u8, fn(&mut BeatBuffer))] = &[
+        let test_cases: &[BeatTestCase] = &[
             // d
             (vec![1], 1, |b| b.append_note()),
             // d . r
