@@ -12,13 +12,12 @@ use crate::{
         SystemPulse,
     },
     options::RenderOptions,
+    renderer::text::{division_symbol, note_text},
 };
 
 use super::{
     constants::*,
-    geometry::{
-        baseline, division_symbol, note_text, prolonged_leading, pulse_offsets, pulse_usable_width,
-    },
+    geometry::{baseline, prolonged_leading, pulse_offsets, pulse_usable_width},
     layout::{SystemLayout, SystemRowKind},
     primitives::{emit_line, emit_segno, emit_text, emit_touch},
 };
@@ -121,7 +120,7 @@ impl<'a> SystemRender<'a> {
 
             emit_line(self.svg, start_x, line_y, end_x, line_y, "volta")?;
 
-            let tick = self.fonts.text.volta.size() * VOLTA_END_TICK;
+            let tick = self.fonts.label.volta.size() * VOLTA_END_TICK;
 
             emit_line(self.svg, start_x, line_y, start_x, line_y + tick, "volta")?;
             emit_line(self.svg, end_x, line_y, end_x, line_y + tick, "volta")?;
@@ -131,7 +130,7 @@ impl<'a> SystemRender<'a> {
                 self.origin_x + volta.text_x,
                 y + volta.text_y,
                 &volta.text,
-                "volta-text",
+                "volta-label",
                 "start",
             )?;
         }
@@ -377,6 +376,7 @@ impl<'a> SystemRender<'a> {
 
                     if let Some(octave) = octave {
                         let style = &self.options.elements.text.octave;
+
                         let octave_x = glyph_center
                             + glyph_width / 2.0
                             + self.fonts.text.note.size() * OCTAVE_GAP
@@ -499,11 +499,13 @@ impl<'a> SystemRender<'a> {
                 .unwrap_or(system.pulses[token.start].pulse_width);
 
             let style = &self.options.elements.text.lyrics;
+
             let x = origin_x
                 + self.xs[token.start]
                 + token.start_unit * start_width
                 + lead
                 + style.left();
+
             let end_x = (end_x - style.right()).max(x);
 
             emit_text(self.svg, x, baseline, &token.text, "lyrics-text", "start")?;
@@ -513,6 +515,7 @@ impl<'a> SystemRender<'a> {
                 let width = fonts.text.lyric.width(&token.text).max(min_width);
                 let available = (end_x - x).max(min_width);
                 let width = width.min(available);
+
                 let underline_y = baseline
                     + fonts.text.lyric.descent()
                     + fonts.text.lyric.size() * LYRIC_UNDERLINE_OFFSET;

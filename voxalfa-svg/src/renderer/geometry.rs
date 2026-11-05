@@ -1,24 +1,13 @@
-use voxalfa_core::{
-    data_types::Voice,
-    ir::solfa::{NoteKind, PulseIr},
-};
+use voxalfa_core::ir::solfa::NoteKind;
 
 use crate::{
     fonts::{FontMetrics, Fonts},
     model::{System, SystemPulse},
+    renderer::text::note_text,
     symbols::{SEGNO_ASPECT_RATIO, SEGNO_HEIGHT_SCALE},
 };
 
 use super::constants::*;
-
-pub fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
-    pulse.subsections.iter().find_map(|sub| {
-        sub.voices
-            .iter()
-            .find(|(current, _)| *current == voice)
-            .map(|(_, voice_pulse)| *voice_pulse)
-    })
-}
 
 pub fn system_width(system: &System) -> f32 {
     let leading_width = system
@@ -128,42 +117,4 @@ fn note_extent(note: &NoteKind, fonts: &Fonts, lead: f32) -> f32 {
 pub fn baseline(row_y: f32, row_height: f32, font: &FontMetrics) -> f32 {
     let content = font.ascent() + font.descent();
     row_y + (row_height - content) / 2.0 + font.ascent()
-}
-
-pub fn note_text(note: &NoteKind) -> (String, Option<i8>) {
-    match note {
-        NoteKind::Note(note) => (
-            note.text(),
-            if note.octave == 0 {
-                None
-            } else {
-                Some(note.octave)
-            },
-        ),
-        NoteKind::ProlongedNote => ("-".to_string(), None),
-        NoteKind::EmptyNote => (String::new(), None),
-    }
-}
-
-pub fn division_symbol(cursor: u32, total: u32) -> &'static str {
-    if total == 0 {
-        return "";
-    }
-
-    let double = cursor.saturating_mul(2);
-    let quad = cursor.saturating_mul(4);
-
-    if double == total {
-        "."
-    } else if quad == total {
-        ","
-    } else if quad == total.saturating_mul(3) {
-        ".,"
-    } else if double.is_multiple_of(total) {
-        "."
-    } else if quad.is_multiple_of(total) {
-        ","
-    } else {
-        ""
-    }
 }

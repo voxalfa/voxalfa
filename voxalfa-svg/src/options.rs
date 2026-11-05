@@ -11,58 +11,7 @@ impl PageSize {
     };
 }
 
-use voxalfa_core::ast::directives::{
-    EdgeValues, ElementStyle as CoreElementStyle, HeaderDirective,
-};
-
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct Edges {
-    pub top: f32,
-    pub right: f32,
-    pub bottom: f32,
-    pub left: f32,
-}
-
-impl Edges {
-    fn all(value: f32) -> Self {
-        Self {
-            top: value,
-            right: value,
-            bottom: value,
-            left: value,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ElementStyle {
-    pub font_family: Option<String>,
-    pub font_size: Option<f32>,
-    pub margin: Edges,
-    pub padding: Edges,
-}
-
-impl ElementStyle {
-    pub fn top(&self) -> f32 {
-        self.margin.top + self.padding.top
-    }
-
-    pub fn right(&self) -> f32 {
-        self.margin.right + self.padding.right
-    }
-
-    pub fn bottom(&self) -> f32 {
-        self.margin.bottom + self.padding.bottom
-    }
-
-    pub fn left(&self) -> f32 {
-        self.margin.left + self.padding.left
-    }
-
-    pub fn size(&self, default: f32) -> f32 {
-        self.font_size.unwrap_or(default)
-    }
-}
+use voxalfa_core::ast::directives::{EdgeValues, ElementStyle, HeaderDirective};
 
 #[derive(Debug, Clone, Default)]
 pub struct ElementStyles {
@@ -82,7 +31,6 @@ pub struct TextStyles {
     pub octave: ElementStyle,
     pub lyrics: ElementStyle,
     pub divider: ElementStyle,
-    pub volta: ElementStyle,
     pub page_number: ElementStyle,
 }
 
@@ -94,6 +42,7 @@ pub struct LabelStyles {
     pub jump: ElementStyle,
     pub mark: ElementStyle,
     pub dynamic: ElementStyle,
+    pub volta: ElementStyle,
 }
 
 impl ElementStyles {
@@ -109,14 +58,14 @@ impl ElementStyles {
             "octave-text" => Some(&mut self.text.octave),
             "lyrics-text" => Some(&mut self.text.lyrics),
             "divider-text" => Some(&mut self.text.divider),
+            "page-number-text" => Some(&mut self.text.page_number),
             "key-label" => Some(&mut self.label.key),
             "time-label" => Some(&mut self.label.time),
             "tempo-label" => Some(&mut self.label.tempo),
             "jump-label" => Some(&mut self.label.jump),
             "mark-label" => Some(&mut self.label.mark),
             "dynamic-label" => Some(&mut self.label.dynamic),
-            "volta-text" => Some(&mut self.text.volta),
-            "page-number-text" => Some(&mut self.text.page_number),
+            "volta-label" => Some(&mut self.label.volta),
             _ => None,
         }
     }
@@ -133,15 +82,18 @@ pub struct RenderOptions {
     pub name_font_size: f32,
     pub meta_font_size: f32,
     pub marker_font_size: f32,
+    pub encode_font: bool,
 
-    pub page_margin: Edges,
+    pub page_margin: EdgeValues,
     pub col_padding: f32,
     pub min_col_width: f32,
     pub max_lyric_width: f32,
     pub voice_row_height: f32,
     pub lyric_row_height: f32,
+
     pub system_gap: f32,
     pub header_gap: f32,
+
     pub elements: ElementStyles,
 }
 
@@ -156,7 +108,8 @@ impl Default for RenderOptions {
             name_font_size: 13.0,
             meta_font_size: 13.0,
             marker_font_size: 11.0,
-            page_margin: Edges::all(56.7),
+            encode_font: true,
+            page_margin: EdgeValues::all(56.7),
             col_padding: 2.0,
             min_col_width: 12.0,
             max_lyric_width: 18.0,
@@ -190,44 +143,13 @@ impl RenderOptions {
                 self.page.height = height;
             }
 
-            apply_edges(&mut self.page_margin, &page.margin);
+            self.page_margin = page.margin;
         }
 
         for (name, style) in &directives.elements {
             if let Some(target) = self.elements.get_mut(name) {
-                apply_element_style(target, &style.value);
+                *target = style.value.clone();
             }
         }
-    }
-}
-
-fn apply_element_style(target: &mut ElementStyle, source: &CoreElementStyle) {
-    if let Some(family) = &source.font_family {
-        target.font_family = Some(family.clone());
-    }
-
-    if let Some(size) = source.font_size {
-        target.font_size = Some(size);
-    }
-
-    apply_edges(&mut target.margin, &source.margin);
-    apply_edges(&mut target.padding, &source.padding);
-}
-
-fn apply_edges(target: &mut Edges, source: &EdgeValues) {
-    if let Some(value) = source.top {
-        target.top = value;
-    }
-
-    if let Some(value) = source.right {
-        target.right = value;
-    }
-
-    if let Some(value) = source.bottom {
-        target.bottom = value;
-    }
-
-    if let Some(value) = source.left {
-        target.left = value;
     }
 }

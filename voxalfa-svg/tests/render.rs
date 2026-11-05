@@ -291,8 +291,8 @@ fn renders_volta_endings_with_labels() {
     let svg = render(&output).unwrap();
 
     assert!(svg.contains(r#"class="volta""#));
-    assert!(svg.contains(r#"class="volta-text">1. First</text>"#));
-    assert!(svg.contains(r#"class="volta-text">2.</text>"#));
+    assert!(svg.contains(r#"class="volta-label">1. First</text>"#));
+    assert!(svg.contains(r#"class="volta-label">2.</text>"#));
 }
 
 #[test]

@@ -4,12 +4,9 @@ use skrifa::{
     FontRef, MetadataProvider,
     prelude::{LocationRef, Size},
 };
-use voxalfa_core::output::metrics::StringMetric;
+use voxalfa_core::{ast::directives::ElementStyle, output::metrics::StringMetric};
 
-use crate::{
-    error::Result,
-    options::{ElementStyle, RenderOptions},
-};
+use crate::{error::Result, options::RenderOptions};
 
 pub const SOLFA_FONT: &[u8] = include_bytes!("../fonts/FiraSans-Solfa.ttf");
 pub const TEXT_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Regular.ttf");
@@ -183,10 +180,9 @@ pub struct TextFonts {
     pub title: FontMetrics,
     pub author: FontMetrics,
     pub composer: FontMetrics,
-    pub header_key: FontMetrics,
+    pub key: FontMetrics,
     pub time: FontMetrics,
     pub meter: FontMetrics,
-    pub volta: FontMetrics,
     pub page_number: FontMetrics,
     pub divider: FontMetrics,
 }
@@ -197,7 +193,8 @@ pub struct LabelFonts {
     pub mark: FontMetrics,
     pub dynamic: FontMetrics,
     pub tempo: FontMetrics,
-    pub time_signature: FontMetrics,
+    pub time: FontMetrics,
+    pub volta: FontMetrics,
 }
 
 impl Fonts {
@@ -231,10 +228,9 @@ impl TextFonts {
             title: builder.metric(&faces.text_bold, opts.title_font_size, &styles.title)?,
             author: builder.metric(&faces.text, opts.name_font_size, &styles.author)?,
             composer: builder.metric(&faces.text, opts.name_font_size, &styles.composer)?,
-            header_key: builder.metric(&faces.text_bold, opts.marker_font_size, &styles.key)?,
+            key: builder.metric(&faces.text_bold, opts.marker_font_size, &styles.key)?,
             time: builder.metric(&faces.text, meta, &styles.time)?,
             meter: builder.metric(&faces.text, meta, &styles.meter)?,
-            volta: builder.metric(&faces.text_bold, opts.marker_font_size, &styles.volta)?,
             page_number: builder.metric(
                 &faces.text,
                 meta * PAGE_NUMBER_FONT_SCALE,
@@ -264,7 +260,8 @@ impl LabelFonts {
                 &styles.dynamic,
             )?,
             tempo: builder.metric(&faces.serif_italic, marker, &styles.tempo)?,
-            time_signature: builder.metric(&faces.text, marker, &styles.time)?,
+            time: builder.metric(&faces.text, marker, &styles.time)?,
+            volta: builder.metric(&faces.text_bold, marker, &styles.volta)?,
         })
     }
 }
@@ -290,6 +287,7 @@ impl FontBuilder {
         };
 
         let metrics = FontMetrics::new(&face, style.size(default_size))?;
+
         self.register(&face);
 
         Ok(metrics)
@@ -297,6 +295,7 @@ impl FontBuilder {
 
     fn fixed(&mut self, face: &FontFace, size: f32) -> Result<FontMetrics> {
         let metrics = FontMetrics::new(face, size)?;
+
         self.register(face);
 
         Ok(metrics)

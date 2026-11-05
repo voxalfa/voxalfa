@@ -1,21 +1,33 @@
-use voxalfa_core::{data_types::Voice, ir::solfa::NoteKind};
+use voxalfa_core::{
+    ast::directives::ElementStyle,
+    data_types::Voice,
+    ir::solfa::{NoteKind, PulseIr},
+};
 
 use crate::{
     fonts::Fonts,
-    model::{DynamicSpanKind, MarkerGlyph, MarkerKind, System, SystemMarker},
-    options::{ElementStyle, RenderOptions},
+    model::{DynamicSpanKind, MarkerGlyph, MarkerKind, System, SystemMarker, SystemPulse},
+    options::RenderOptions,
+    renderer::text::note_text,
 };
 
 use super::{
     constants::*,
-    geometry::{
-        find_voice, note_text, prolonged_leading, pulse_offsets, pulse_usable_width, segno_width,
-    },
+    geometry::{prolonged_leading, pulse_offsets, pulse_usable_width, segno_width},
     markers::{marker_font, marker_priority, spread_markers, touch_width},
     primitives::TextAnchor,
 };
 
 const MARKER_SAME_NOTE_EPSILON: f32 = 0.001;
+
+pub fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
+    pulse.subsections.iter().find_map(|sub| {
+        sub.voices
+            .iter()
+            .find(|(current, _)| *current == voice)
+            .map(|(_, voice_pulse)| *voice_pulse)
+    })
+}
 
 fn marker_style(kind: MarkerKind, options: &RenderOptions) -> Option<&ElementStyle> {
     match kind {
@@ -94,7 +106,7 @@ pub fn layout_system(
     let volta_top = if voltas.is_empty() {
         0.0
     } else {
-        fonts.text.volta.size() * VOLTA_TOP_GAP
+        fonts.label.volta.size() * VOLTA_TOP_GAP
     };
 
     for jump in &mut jumps {
@@ -144,8 +156,10 @@ pub fn layout_system(
     let lyric_scale = fonts.text.lyric.size() / options.lyric_font_size.max(1.0);
     let note_style = &options.elements.text.note;
     let lyric_style = &options.elements.text.lyrics;
+
     let voice_height =
         options.voice_row_height * note_scale + note_style.top() + note_style.bottom();
+
     let lyric_height =
         options.lyric_row_height * lyric_scale + lyric_style.top() + lyric_style.bottom();
 
@@ -205,11 +219,13 @@ fn layout_jumps(
     options: &RenderOptions,
 ) -> (Vec<PlacedMarker>, f32) {
     let xs = pulse_offsets(system);
+
     let usable_widths = system
         .pulses
         .iter()
         .map(|pulse| pulse_usable_width(pulse, fonts, lead))
         .collect::<Vec<_>>();
+
     let mut jumps = Vec::new();
 
     for marker in system
@@ -245,7 +261,9 @@ fn layout_jumps(
     }
 
     spread_markers(&mut jumps, fonts.label.jump.size() * MARKER_HORIZONTAL_GAP);
+
     let style = &options.elements.label.jump;
+
     let height = style.top()
         + fonts.label.jump.line_height()
         + style.bottom()
@@ -264,11 +282,13 @@ fn layout_voltas(
         return (Vec::new(), 0.0);
     }
 
-    let style = &options.elements.text.volta;
+    let style = &options.elements.label.volta;
     let xs = pulse_offsets(system);
-    let text_y = style.top() + fonts.text.volta.ascent();
+    let text_y = style.top() + fonts.label.volta.ascent();
+
     let line_y =
-        style.top() + fonts.text.volta.line_height() + fonts.text.volta.size() * VOLTA_TEXT_GAP;
+        style.top() + fonts.label.volta.line_height() + fonts.label.volta.size() * VOLTA_TEXT_GAP;
+
     let mut voltas = Vec::new();
 
     for volta in &system.voltas {
@@ -278,6 +298,7 @@ fn layout_voltas(
 
         let start_x = xs[volta.start] + lead;
         let end_x = xs[volta.end - 1] + system.pulses[volta.end - 1].pulse_width;
+
         let text = match &volta.label {
             Some(label) => format!("{}. {label}", volta.number),
             None => format!("{}.", volta.number),
@@ -287,7 +308,7 @@ fn layout_voltas(
             start_x,
             end_x,
             text,
-            text_x: start_x + style.left() + fonts.text.volta.size() * VOLTA_TEXT_INSET,
+            text_x: start_x + style.left() + fonts.label.volta.size() * VOLTA_TEXT_INSET,
             text_y,
             line_y,
         });
@@ -298,8 +319,8 @@ fn layout_voltas(
     }
 
     let height = line_y
-        + fonts.text.volta.size() * VOLTA_END_TICK
-        + fonts.text.volta.size() * VOLTA_BOTTOM_GAP
+        + fonts.label.volta.size() * VOLTA_END_TICK
+        + fonts.label.volta.size() * VOLTA_BOTTOM_GAP
         + style.bottom();
 
     (voltas, height)
@@ -344,6 +365,7 @@ fn layout_dynamic_spans(
     };
 
     let baseline = center_y + (fonts.label.dynamic.ascent() - fonts.label.dynamic.descent()) / 2.0;
+
     let mut spans = Vec::new();
 
     for span in &system.dynamic_spans {
@@ -424,11 +446,14 @@ fn layout_markers(
                 .map(|column| column.duration as u32)
                 .sum::<u32>()
                 .max(1);
+
             let mut cursor = 0u32;
 
             for (index, column) in voice_pulse.columns.iter().enumerate() {
                 let start = cursor as f32 / total as f32;
+
                 cursor += column.duration as u32;
+
                 let end = cursor as f32 / total as f32;
                 let is_last = index + 1 == voice_pulse.columns.len();
 

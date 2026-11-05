@@ -1,9 +1,11 @@
+use voxalfa_core::ast::directives::ElementStyle;
+
 use crate::{
     error::Result,
     fonts::{FontMetrics, Fonts},
     locale::Locale,
     model::HeaderView,
-    options::{ElementStyle, RenderOptions},
+    options::RenderOptions,
 };
 
 use super::{
@@ -88,9 +90,9 @@ pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions
         .as_ref()
         .map(|text| {
             left + styles.text.key.left()
-                + fonts.text.header_key.width(text)
+                + fonts.text.key.width(text)
                 + styles.text.key.right()
-                + fonts.text.header_key.size() * HEADER_KEY_RIGHT_MARGIN
+                + fonts.text.key.size() * HEADER_KEY_RIGHT_MARGIN
         })
         .unwrap_or(left);
 
@@ -103,7 +105,7 @@ pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions
                 HeaderKind::Key,
                 left,
                 TextAnchor::Start,
-                &fonts.text.header_key,
+                &fonts.text.key,
                 &styles.text.key,
                 1.0,
             ));

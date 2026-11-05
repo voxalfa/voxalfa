@@ -38,7 +38,7 @@ pub fn marker_font(kind: MarkerKind, fonts: &Fonts) -> &FontMetrics {
         MarkerKind::Key => &fonts.label.key,
         MarkerKind::Jump => &fonts.label.jump,
         MarkerKind::TempoNumber | MarkerKind::Tempo => &fonts.label.tempo,
-        MarkerKind::TimeSignature => &fonts.label.time_signature,
+        MarkerKind::TimeSignature => &fonts.label.time,
         MarkerKind::Touch => &fonts.touch,
         MarkerKind::Mark => &fonts.label.mark,
         MarkerKind::Dynamic => &fonts.label.dynamic,

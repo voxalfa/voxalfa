@@ -9,25 +9,39 @@ use crate::{
 
 use super::constants::*;
 
-pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
+pub fn emit_defs(svg: &mut String, fonts: &Fonts, encode_font: bool) -> Result<()> {
     writeln!(svg, "<defs>\n  <style>")?;
-
-    for face in &fonts.faces {
-        let style = if face.italic { "italic" } else { "normal" };
-        let data = STANDARD.encode(face.data.as_ref());
-
-        writeln!(
-            svg,
-            "    @font-face {{\n      font-family: '{}';\n      src: url('data:font/ttf;base64,{data}') format('truetype');\n      font-weight: {};\n      font-style: {style};\n    }}\n",
-            face.family, face.weight,
-        )?;
-    }
 
     writeln!(
         svg,
         "    svg {{\n      background: #ffffff;\n    }}\n\n    text {{\n      fill: #1a1a1a;\n    }}"
     )?;
 
+    emit_font_faces(svg, fonts, encode_font)?;
+    emit_font_rules(svg, fonts)?;
+    emit_symbol_styles(svg, fonts)?;
+
+    Ok(())
+}
+
+fn emit_font_faces(svg: &mut String, fonts: &Fonts, encode_font: bool) -> Result<()> {
+    if encode_font {
+        for face in &fonts.faces {
+            let style = if face.italic { "italic" } else { "normal" };
+            let data = STANDARD.encode(face.data.as_ref());
+
+            writeln!(
+                svg,
+                "    @font-face {{\n      font-family: '{}';\n      src: url('data:font/ttf;base64,{data}') format('truetype');\n      font-weight: {};\n      font-style: {style};\n    }}\n",
+                face.family, face.weight,
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
+fn emit_font_rules(svg: &mut String, fonts: &Fonts) -> Result<()> {
     font_rule(
         svg,
         ".note-text",
@@ -37,6 +51,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "monospace",
         None,
     )?;
+
     font_rule(
         svg,
         ".divider-text",
@@ -46,6 +61,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "monospace",
         Some("#333333"),
     )?;
+
     font_rule(
         svg,
         ".octave-text",
@@ -55,6 +71,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "monospace",
         None,
     )?;
+
     font_rule(
         svg,
         ".lyrics-text",
@@ -64,6 +81,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "sans-serif",
         None,
     )?;
+
     font_rule(
         svg,
         ".title-text",
@@ -73,6 +91,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "sans-serif",
         None,
     )?;
+
     font_rule(
         svg,
         ".author-text",
@@ -82,6 +101,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "sans-serif",
         None,
     )?;
+
     font_rule(
         svg,
         ".composer-text",
@@ -91,15 +111,17 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "sans-serif",
         None,
     )?;
+
     font_rule(
         svg,
         ".key-text",
-        &fonts.text.header_key,
+        &fonts.text.key,
         "bold",
         "normal",
         "'Noto Sans Symbols', sans-serif",
         None,
     )?;
+
     font_rule(
         svg,
         ".time-text",
@@ -109,6 +131,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "sans-serif",
         Some("#444444"),
     )?;
+
     font_rule(
         svg,
         ".meter-text",
@@ -118,6 +141,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "sans-serif",
         Some("#444444"),
     )?;
+
     font_rule(
         svg,
         ".key-label",
@@ -127,6 +151,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "'Noto Sans Symbols', sans-serif",
         Some("#333333"),
     )?;
+
     font_rule(
         svg,
         ".jump-label",
@@ -136,6 +161,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "sans-serif",
         Some("#333333"),
     )?;
+
     font_rule(
         svg,
         ".tempo-label",
@@ -145,6 +171,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "serif",
         Some("#333333"),
     )?;
+
     font_rule(
         svg,
         ".mark-label",
@@ -154,6 +181,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "serif",
         Some("#333333"),
     )?;
+
     font_rule(
         svg,
         ".dynamic-label",
@@ -163,24 +191,27 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         "serif",
         None,
     )?;
+
     font_rule(
         svg,
         ".time-label",
-        &fonts.label.time_signature,
+        &fonts.label.time,
         "normal",
         "normal",
         "sans-serif",
         Some("#333333"),
     )?;
+
     font_rule(
         svg,
-        ".volta-text",
-        &fonts.text.volta,
+        ".volta-label",
+        &fonts.label.volta,
         "bold",
         "normal",
         "sans-serif",
         Some("#333333"),
     )?;
+
     font_rule(
         svg,
         ".page-number-text",
@@ -191,6 +222,10 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         Some("#777777"),
     )?;
 
+    Ok(())
+}
+
+fn emit_symbol_styles(svg: &mut String, fonts: &Fonts) -> Result<()> {
     writeln!(
         svg,
         r#"
