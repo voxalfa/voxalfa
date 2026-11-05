@@ -15,18 +15,18 @@ pub use options::{PageSize, RenderOptions};
 
 use voxalfa_core::output::FinalOutput;
 
-pub fn render(data: &FinalOutput) -> Result<String> {
-    render_with(data, RenderOptions::default())
+pub fn render_pages(data: &FinalOutput) -> Result<Vec<String>> {
+    render_pages_with(data, RenderOptions::default())
 }
 
-pub fn render_with(data: &FinalOutput, options: RenderOptions) -> Result<String> {
-    render_with_fonts(data, &options, &FontFaces::default())
+pub fn render_pages_with(data: &FinalOutput, options: RenderOptions) -> Result<Vec<String>> {
+    render_pages_with_fonts(data, &options, &FontFaces::default())
 }
 
-pub fn render_with_fonts(
+pub fn render_pages_with_fonts(
     data: &FinalOutput,
     options: &RenderOptions,
     faces: &FontFaces,
-) -> Result<String> {
-    renderer::render(data, options, faces)
+) -> Result<Vec<String>> {
+    renderer::render_pages(data, options, faces)
 }

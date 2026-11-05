@@ -97,7 +97,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         &fonts.text.header_key,
         "bold",
         "normal",
-        "sans-serif",
+        "'Noto Sans Symbols', sans-serif",
         None,
     )?;
     font_rule(
@@ -124,7 +124,7 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts) -> Result<()> {
         &fonts.label.key,
         "bold",
         "normal",
-        "sans-serif",
+        "'Noto Sans Symbols', sans-serif",
         Some("#333333"),
     )?;
     font_rule(

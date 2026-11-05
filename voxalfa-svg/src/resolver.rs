@@ -580,9 +580,16 @@ fn combined_views(sections: &[SectionIr], section_id: usize, sub_id: usize) -> V
 fn key_text(key: Key) -> String {
     let mut text = key.to_string();
 
-    if key.accidental == KeyAccidental::Flat {
-        text.pop();
-        text.push('♭');
+    match key.accidental {
+        KeyAccidental::Neutral => {}
+        KeyAccidental::Flat => {
+            text.pop();
+            text.push('♭');
+        }
+        KeyAccidental::Sharp => {
+            text.pop();
+            text.push('♯');
+        }
     }
 
     text

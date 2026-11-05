@@ -13,11 +13,14 @@ use super::{
 
 pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions) -> HeaderLayout {
     let left = options.page_margin.left;
+
     let right = options.page.width
         - options.page_margin.right
         - fonts.text.meter.size() * HEADER_RIGHT_INSET;
+
     let center = left + options.printable_width() / 2.0;
     let styles = &options.elements;
+
     let mut rows = Vec::new();
 
     if let Some(title) = &header.title {

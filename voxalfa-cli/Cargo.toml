@@ -17,4 +17,5 @@ thiserror = { workspace = true }
 voxalfa-formatter = { workspace = true }
 voxalfa-midi = { workspace = true }
 voxalfa-core = { workspace = true }
+voxalfa-pdf = { workspace = true }
 voxalfa-svg = { workspace = true }

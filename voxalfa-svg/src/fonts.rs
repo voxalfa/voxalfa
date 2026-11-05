@@ -18,11 +18,13 @@ pub const SERIF_FONT: &[u8] = include_bytes!("../fonts/NotoSerif-Regular.ttf");
 pub const SERIF_ITALIC_FONT: &[u8] = include_bytes!("../fonts/NotoSerif-Italic.ttf");
 pub const SERIF_BOLD_ITALIC_FONT: &[u8] = include_bytes!("../fonts/NotoSerif-BoldItalic.ttf");
 pub const LYRIC_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Lyrics.ttf");
+pub const MUSIC_FONT: &[u8] = include_bytes!("../fonts/NotoSansSymbols-Bold.ttf");
 
-pub const SOLFA_FAMILY: &str = "voxalfa-solfa";
-pub const TEXT_FAMILY: &str = "voxalfa-text";
-pub const SERIF_FAMILY: &str = "voxalfa-serif";
-pub const LYRIC_FAMILY: &str = "voxalfa-lyrics";
+pub const SOLFA_FAMILY: &str = "Fira Sans";
+pub const MUSIC_FAMILY: &str = "Noto Sans Symbols";
+pub const TEXT_FAMILY: &str = "Noto Sans";
+pub const SERIF_FAMILY: &str = "Noto Serif";
+pub const LYRIC_FAMILY: &str = "Noto Sans Condensed";
 
 const SYMBOL_FONT_SCALE: f32 = 0.85;
 const DYNAMIC_FONT_SCALE: f32 = 0.9;
@@ -66,6 +68,23 @@ pub struct FontFaces {
     pub serif_italic: FontFace,
     pub serif_bold_italic: FontFace,
     pub lyric: FontFace,
+    pub music: FontFace,
+}
+
+impl FontFaces {
+    pub fn iter(&self) -> impl Iterator<Item = &FontFace> {
+        [
+            &self.solfa,
+            &self.text,
+            &self.text_bold,
+            &self.serif,
+            &self.serif_italic,
+            &self.serif_bold_italic,
+            &self.lyric,
+            &self.music,
+        ]
+        .into_iter()
+    }
 }
 
 impl Default for FontFaces {
@@ -80,6 +99,7 @@ impl Default for FontFaces {
                 .bold()
                 .italic(),
             lyric: FontFace::new(LYRIC_FAMILY, LYRIC_FONT),
+            music: FontFace::new(MUSIC_FAMILY, MUSIC_FONT).bold(),
         }
     }
 }
@@ -183,9 +203,12 @@ pub struct LabelFonts {
 impl Fonts {
     pub fn with_faces(options: &RenderOptions, faces: &FontFaces) -> Result<Self> {
         let mut builder = FontBuilder::default();
+
         let text = TextFonts::new(options, faces, &mut builder)?;
         let label = LabelFonts::new(options, faces, &mut builder)?;
         let touch = builder.fixed(&faces.serif, options.marker_font_size)?;
+
+        builder.register(&faces.music);
 
         Ok(Self {
             text,

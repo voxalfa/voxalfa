@@ -26,7 +26,11 @@ use system::{SystemPlacement, emit_system};
 
 const INITIAL_SVG_CAPACITY: usize = 32 * 1024;
 
-pub fn render(data: &FinalOutput, options: &RenderOptions, faces: &FontFaces) -> Result<String> {
+pub fn render_pages(
+    data: &FinalOutput,
+    options: &RenderOptions,
+    faces: &FontFaces,
+) -> Result<Vec<String>> {
     let mut options = options.clone();
     options.apply_directives(&data.header.directives);
     let options = &options;
@@ -43,30 +47,25 @@ pub fn render(data: &FinalOutput, options: &RenderOptions, faces: &FontFaces) ->
 
     let pages = paginate(&system_layouts, header.height, options);
     let page_count = pages.len().max(1);
-    let total_height = options.page.height * page_count as f32;
-
-    let mut svg = String::with_capacity(INITIAL_SVG_CAPACITY);
-
-    writeln!(
-        svg,
-        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {:.2} {:.2}" width="{:.2}px" height="{:.2}px">"#,
-        options.page.width, total_height, options.page.width, total_height,
-    )?;
-
-    emit_defs(&mut svg, &fonts)?;
+    let mut result = Vec::with_capacity(pages.len());
 
     for (page_id, page) in pages.iter().enumerate() {
-        let offset_y = page_id as f32 * options.page.height;
-
         let body_width = page
             .systems
             .iter()
             .map(|placed| system_width(&score.systems[placed.index]))
             .fold(0.0, f32::max);
-
         let body_offset = ((options.printable_width() - body_width) / 2.0).max(0.0);
 
-        writeln!(svg, r#"<g transform="translate(0 {offset_y:.2})">"#)?;
+        let mut svg = String::with_capacity(INITIAL_SVG_CAPACITY);
+
+        writeln!(
+            svg,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {:.2} {:.2}" width="{:.2}px" height="{:.2}px">"#,
+            options.page.width, options.page.height, options.page.width, options.page.height,
+        )?;
+
+        emit_defs(&mut svg, &fonts)?;
 
         writeln!(
             svg,
@@ -103,12 +102,11 @@ pub fn render(data: &FinalOutput, options: &RenderOptions, faces: &FontFaces) ->
             )?;
         }
 
-        writeln!(svg, "</g>")?;
+        writeln!(svg, "</svg>")?;
+        result.push(svg);
     }
 
-    writeln!(svg, "</svg>")?;
-
-    Ok(svg)
+    Ok(result)
 }
 
 fn paginate(layouts: &[SystemLayout], header_height: f32, options: &RenderOptions) -> Vec<Page> {

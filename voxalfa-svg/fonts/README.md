@@ -11,6 +11,7 @@ The renderer embeds subsetted TrueType fonts so the generated SVG is portable.
 | `NotoSerif-Regular.ttf` | time signatures, tempo labels | Noto Serif Regular |
 | `NotoSerif-Italic.ttf` | Fine, Coda, To Coda marks | Noto Serif Italic |
 | `NotoSerif-BoldItalic.ttf` | dynamics | Noto Serif Bold Italic |
+| `NotoSansSymbols-Bold.ttf` | flat/sharp/natural glyph fallback | Noto Sans Symbols Bold (scaled 1.25×) |
 
 The Noto Sans and Noto Serif faces are distributed under the SIL Open Font
 License; see `OFL.txt`.
@@ -42,4 +43,14 @@ subset NotoSans-Bold.ttf NotoSans-Bold.ttf
 subset NotoSerif-Regular.ttf NotoSerif-Regular.ttf
 subset NotoSerif-Italic.ttf NotoSerif-Italic.ttf
 subset NotoSerif-BoldItalic.ttf NotoSerif-BoldItalic.ttf
+
+pyftsubset NotoSansSymbols-Bold.ttf \
+  --output-file="voxalfa-svg/fonts/NotoSansSymbols-Bold.ttf" \
+  --unicodes="U+266D-266F" \
+  --no-hinting \
+  --name-IDs='*' \
+  --name-languages='*' \
+  --name-legacy \
+  --notdef-outline \
+  --recommended-glyphs
 ```

@@ -1,7 +1,15 @@
-use voxalfa_core::validation::Validator;
-use voxalfa_svg::{RenderOptions, render, render_with};
+use voxalfa_core::{output::FinalOutput, validation::Validator};
+use voxalfa_svg::{RenderOptions, render_pages, render_pages_with};
 
-fn analyze(source: &str) -> voxalfa_core::output::FinalOutput {
+fn render(output: &FinalOutput) -> voxalfa_svg::Result<String> {
+    render_pages(output).map(|pages| pages.join("\n"))
+}
+
+fn render_with(output: &FinalOutput, options: RenderOptions) -> voxalfa_svg::Result<String> {
+    render_pages_with(output, options).map(|pages| pages.join("\n"))
+}
+
+fn analyze(source: &str) -> FinalOutput {
     let mut validator = Validator::init().unwrap();
     let output = validator.analyze(source);
 
@@ -120,12 +128,12 @@ fn renders_time_signature_and_jump_markers() {
 }
 
 #[test]
-fn renders_flat_keys_with_a_music_symbol() {
+fn renders_accidentals() {
     let output = analyze(
         r#"
 ;; @version 0.1.0-alpha
 
-[#] title="Flat keys"
+[#] title="Accidental keys"
 [#] language="en"
 
 [$] key={Bb} | time={4,4} | tempo={100} | voices={S}
@@ -139,6 +147,12 @@ fn renders_flat_keys_with_a_music_symbol() {
 [$] key={Ab}
 
 [S] |d :r !m :f ||
+
+--
+
+[$] key={F#}
+
+[S] |d :r !m :f ||
 "#,
     );
 
@@ -146,6 +160,7 @@ fn renders_flat_keys_with_a_music_symbol() {
 
     assert!(svg.contains(r#"class="key-text">Do is B♭</text>"#));
     assert!(svg.contains(r#"class="key-label">Do is A♭</text>"#));
+    assert!(svg.contains(r#"class="key-label">Do is F♯</text>"#));
 }
 
 #[test]
