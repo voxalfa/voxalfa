@@ -24,7 +24,7 @@ pub(crate) struct FlatPulse<'a> {
     pub accent: PulseAccent,
     pub measure_start: bool,
     pub section_end: bool,
-    pub grid_offset: usize, // number of pulse before strong pulse
+    pub pulse_offset: usize,
     pub subsections: Vec<FlatSubPulse<'a>>,
     pub markers: Vec<FlatMarker>,
     pub volta: Option<FlatVolta>,
@@ -88,7 +88,7 @@ pub(crate) struct System<'a> {
     pub markers: Vec<SystemMarker>,
     pub dynamic_spans: Vec<SystemDynamicSpan>,
     pub voltas: Vec<SystemVolta>,
-    pub grid_offset: usize,
+    pub pulse_offset: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

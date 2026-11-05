@@ -632,7 +632,7 @@ impl Renderer {
 
         let origin_x = self.options.min_margin
             + placement.body_offset
-            + placement.system.grid_offset as f32 * pulse_width;
+            + placement.system.pulse_offset as f32 * pulse_width;
 
         let mut render = SystemRender::new(svg, fonts, placement, score.lead_width, origin_x);
 
@@ -654,7 +654,7 @@ impl Renderer {
             .first()
             .map(|pulse| pulse.pulse_width)
             .unwrap_or(0.0)
-            * system.grid_offset as f32;
+            * system.pulse_offset as f32;
 
         let pulses_width = system
             .pulses
@@ -1420,36 +1420,6 @@ impl<'a> SystemRender<'a> {
             self.emit_barlines(top, voice_bottom)?;
         }
 
-        let system_top = layout
-            .rows
-            .iter()
-            .find_map(|row| match row.kind {
-                SystemRowKind::Voice(_) => Some(y + row.y + BARLINE_BLOCK_INSET),
-                SystemRowKind::Lyric { .. } => None,
-            })
-            .unwrap_or(y + BARLINE_BLOCK_INSET);
-
-        let system_bottom = y + layout.height - BARLINE_BLOCK_INSET;
-
-        for (pulse_id, pulse) in system.pulses.iter().enumerate() {
-            if !pulse.section_end {
-                continue;
-            }
-
-            let x = self.origin_x + self.xs[pulse_id] + pulse.pulse_width;
-
-            Renderer::emit_line(
-                self.svg,
-                x - DOUBLE_BARLINE_GAP,
-                system_top,
-                x - DOUBLE_BARLINE_GAP,
-                system_bottom,
-                "barline",
-            )?;
-
-            Renderer::emit_line(self.svg, x, system_top, x, system_bottom, "barline")?;
-        }
-
         Ok(())
     }
 
@@ -1458,9 +1428,25 @@ impl<'a> SystemRender<'a> {
         let origin_x = self.origin_x;
 
         for (pulse_id, pulse) in system.pulses.iter().enumerate() {
+            let x = origin_x + self.xs[pulse_id];
+
             if pulse.measure_start {
-                let x = origin_x + self.xs[pulse_id];
                 Renderer::emit_line(self.svg, x, top, x, bottom, "barline")?;
+            }
+
+            if pulse.section_end {
+                let end_x = x + pulse.pulse_width;
+
+                Renderer::emit_line(
+                    self.svg,
+                    end_x - DOUBLE_BARLINE_GAP,
+                    top,
+                    end_x - DOUBLE_BARLINE_GAP,
+                    bottom,
+                    "barline",
+                )?;
+
+                Renderer::emit_line(self.svg, end_x, top, end_x, bottom, "barline")?;
             }
         }
 

@@ -2,6 +2,7 @@ use voxalfa_core::{
     ast::solfa::PulseAccent,
     data_types::{
         Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature, Touch,
+        Voice,
     },
     ir::{
         PulseView, SectionIr, SubSectionIr,
@@ -27,6 +28,8 @@ use crate::{
     visitor::SvgVisitor,
 };
 
+type PulseId = usize;
+
 pub(crate) fn resolve<'a>(
     data: &'a FinalOutput,
     fonts: &Fonts,
@@ -43,232 +46,14 @@ pub(crate) fn resolve<'a>(
     let language = data.header.get_metadata(|m| &m.language);
     let locale = Locale::from_language(language.map(String::as_str));
     let max_factor = data.resolve_maximum_factor();
-    let (lyric_width, lyrics_map) =
-        LyricsBuilder::new(&fonts.lyric).build_map::<SvgVisitor>(data, max_factor);
 
-    let mut pulses = Vec::new();
-    let mut dynamic_spans = Vec::new();
-    let mut current_time = default_time;
-
-    for (section_id, section) in data.body.sections.iter().enumerate() {
-        let declared_time = section.params.time.as_ref().map(|time| time.value);
-        let time_changed = declared_time.is_some_and(|time| time != current_time);
-
-        if let Some(time) = declared_time {
-            current_time = time;
-        }
-
-        let section_start = pulses.len();
-        let pulse_count = section
-            .items
-            .iter()
-            .map(|sub| sub.views.len())
-            .max()
-            .unwrap_or(0);
-
-        if pulse_count == 0 {
-            continue;
-        }
-
-        let volta = section.params.ending.as_ref().map(|ending| FlatVolta {
-            number: ending.value,
-            label: section
-                .params
-                .label
-                .as_ref()
-                .map(|label| label.value.clone()),
-        });
-
-        // Resolve lyric columns once per sub-section and verse. The result is
-        // stored by the pulse each token starts on, which keeps the later
-        // system splitting simple.
-        let lyrics: Vec<Vec<Vec<LyricToken>>> = section
-            .items
-            .iter()
-            .map(|sub| {
-                sub.lyrics
-                    .iter()
-                    .map(|line| build_lyric_tokens(&sub.views, line, &lyrics_map))
-                    .collect()
-            })
-            .collect();
-
-        for pulse_id in 0..pulse_count {
-            let mut subsections = Vec::new();
-            let mut max_columns = 1;
-            let mut accent = PulseAccent::Weak;
-
-            for (sub_id, sub) in section.items.iter().enumerate() {
-                let Some(view) = sub.views.get(pulse_id) else {
-                    continue;
-                };
-
-                max_columns = max_columns.max(view.durations.len().max(1));
-
-                let voices = sub
-                    .solfa
-                    .iter()
-                    .filter_map(|line| line.pulses.get(pulse_id).map(|pulse| (line.voice, pulse)))
-                    .collect::<Vec<_>>();
-
-                if let Some((_, first)) = voices.first() {
-                    accent = first.accent;
-                }
-
-                for (_, pulse) in &voices {
-                    max_columns = max_columns.max(pulse.columns.len().max(1));
-                }
-
-                let mut pulse_lyrics = Vec::new();
-
-                for verse in &lyrics[sub_id] {
-                    let mut tokens = Vec::new();
-
-                    for token in verse {
-                        if token.start_pulse == pulse_id {
-                            let mut token = token.clone();
-                            token.start_pulse += section_start;
-                            token.end_pulse += section_start;
-                            tokens.push(token);
-                        }
-                    }
-
-                    pulse_lyrics.push(tokens);
-                }
-
-                let mut lyric_voices = Vec::new();
-
-                for line in &sub.solfa {
-                    if !lyric_voices.contains(&line.voice) {
-                        lyric_voices.push(line.voice);
-                    }
-                }
-
-                subsections.push(FlatSubPulse {
-                    voices,
-                    lyric_voices,
-                    lyrics: pulse_lyrics,
-                });
-            }
-
-            pulses.push(FlatPulse {
-                time: current_time,
-                accent,
-                measure_start: false,
-                section_end: false,
-                grid_offset: 0,
-                subsections,
-                markers: Vec::new(),
-                volta: volta.clone(),
-                max_columns,
-            });
-        }
-
-        if time_changed && pulse_count > 0 {
-            pulses[section_start].markers.push(FlatMarker {
-                kind: MarkerKind::TimeSignature,
-                glyph: MarkerGlyph::Text(format!("{}/{}", current_time.top, current_time.bottom)),
-                unit: 0.0,
-            });
-        }
-
-        if let Some(key) = section.params.key.as_ref().map(|key| key.value)
-            && pulse_count > 0
-        {
-            pulses[section_start].markers.push(FlatMarker {
-                kind: MarkerKind::Key,
-                glyph: MarkerGlyph::Text(locale.key_label(&key_text(key))),
-                unit: 0.0,
-            });
-        }
-
-        if let Some(tempo) = section.params.tempo.as_ref().map(|tempo| tempo.value)
-            && pulse_count > 0
-        {
-            let kind = match tempo {
-                ExtendedTempo::Static(StaticTempo::Custom(_)) => MarkerKind::TempoNumber,
-                _ => MarkerKind::Tempo,
-            };
-
-            pulses[section_start].markers.push(FlatMarker {
-                kind,
-                glyph: MarkerGlyph::Text(tempo.to_string()),
-                unit: 0.0,
-            });
-        }
-
-        if !section.merge {
-            for (sub_id, sub) in section.items.iter().enumerate() {
-                let views = combined_views(&data.body.sections, section_id, sub_id);
-                add_dynamics(&mut pulses, section_start, sub, &views, &mut dynamic_spans);
-            }
-        }
-
-        add_touches(&mut pulses, section_start, section);
-
-        if let Some(jump) = &section.params.jump
-            && pulse_count > 0
-        {
-            pulses[section_start + pulse_count - 1]
-                .markers
-                .push(FlatMarker {
-                    kind: MarkerKind::Jump,
-                    glyph: MarkerGlyph::Text(jump_label(
-                        jump.value,
-                        section
-                            .params
-                            .repeat
-                            .as_ref()
-                            .map(|repeat| repeat.value as u8),
-                    )),
-                    unit: 1.0,
-                });
-        }
-
-        if let Some(mark) = &section.params.mark
-            && pulse_count > 0
-        {
-            let (glyph, pulse, unit) = match mark.value {
-                Mark::Segno => (MarkerGlyph::Segno, section_start, 0.0),
-                Mark::Coda => (MarkerGlyph::Text("Coda".to_string()), section_start, 0.0),
-                Mark::ToCoda => (
-                    MarkerGlyph::Text("To Coda".to_string()),
-                    section_start + pulse_count - 1,
-                    1.0,
-                ),
-                Mark::Fine => (
-                    MarkerGlyph::Text("Fine".to_string()),
-                    section_start + pulse_count - 1,
-                    1.0,
-                ),
-            };
-
-            pulses[pulse].markers.push(FlatMarker {
-                kind: MarkerKind::Mark,
-                glyph,
-                unit,
-            });
-        }
-
-        let next_is_major = data
-            .body
-            .sections
-            .get(section_id + 1)
-            .is_some_and(|s| s.major_start);
-
-        if (next_is_major || section_id == data.body.sections.len() - 1)
-            && let Some(last) = pulses.get_mut(section_start + pulse_count - 1)
-        {
-            last.section_end = true;
-        }
-    }
-
-    compute_measures(&mut pulses);
-
+    let lyrics_builder = LyricsBuilder::new(&fonts.lyric);
+    let (lyric_width, lyrics_map) = lyrics_builder.build_map::<SvgVisitor>(data, max_factor);
     let (col_width, lead_width) = compute_widths(fonts, options, lyric_width);
 
-    // A single pulse width is used for the whole score, so every pulse and
-    // every measure is vertically aligned across systems and pages.
+    let pulse_resolver = PulseResolver::new(data, &locale, lyrics_map, default_time);
+    let (pulses, dynamic_spans) = pulse_resolver.resolve();
+
     let max_columns = pulses
         .iter()
         .map(|pulse| pulse.max_columns)
@@ -289,6 +74,423 @@ pub(crate) fn resolve<'a>(
         systems,
         lead_width,
     })
+}
+
+struct PulseResolver<'a, 'd> {
+    data: &'a FinalOutput,
+    locale: &'d Locale,
+    lyrics_map: LyricsMap<f32>,
+    pulses: Vec<FlatPulse<'a>>,
+    dynamic_spans: Vec<FlatDynamicSpan>,
+    current_time: TimeSignature,
+}
+
+struct SectionContext<'a> {
+    section: &'a SectionIr,
+    start: usize,
+    pulse_count: usize,
+    time: TimeSignature,
+    time_changed: bool,
+    volta: Option<FlatVolta>,
+    lyrics: Vec<Vec<Vec<LyricToken>>>,
+}
+
+impl<'a, 'b> PulseResolver<'a, 'b> {
+    fn new(
+        data: &'a FinalOutput,
+        locale: &'b Locale,
+        lyrics_map: LyricsMap<f32>,
+        default_time: TimeSignature,
+    ) -> Self {
+        Self {
+            data,
+            locale,
+            lyrics_map,
+            pulses: Vec::new(),
+            dynamic_spans: Vec::new(),
+            current_time: default_time,
+        }
+    }
+
+    fn resolve(mut self) -> (Vec<FlatPulse<'a>>, Vec<FlatDynamicSpan>) {
+        for (section_id, section) in self.data.body.sections.iter().enumerate() {
+            self.resolve_section(section_id, section);
+        }
+
+        self.compute_measures();
+
+        (self.pulses, self.dynamic_spans)
+    }
+
+    fn resolve_section(&mut self, section_id: usize, section: &'a SectionIr) {
+        let declared_time = section.params.time.as_ref().map(|time| time.value);
+        let time_changed = declared_time.is_some_and(|time| time != self.current_time);
+
+        if let Some(time) = declared_time {
+            self.current_time = time;
+        }
+
+        let pulse_count = section
+            .items
+            .iter()
+            .map(|sub| sub.views.len())
+            .max()
+            .unwrap_or(0);
+
+        if pulse_count == 0 {
+            return;
+        }
+
+        let context = SectionContext {
+            start: self.pulses.len(),
+            time: self.current_time,
+            volta: build_volta(section),
+            lyrics: build_section_lyrics(section, &mut self.lyrics_map),
+            section,
+            time_changed,
+            pulse_count,
+        };
+
+        for pulse_id in 0..pulse_count {
+            let pulse = build_pulse(&context, pulse_id);
+            self.pulses.push(pulse);
+        }
+
+        self.add_start_markers(&context);
+        self.add_dynamic_markers(section_id, &context);
+        self.add_touch_markers(context.start, section);
+        self.add_jump_markers(&context);
+        self.mark_section_end(section_id, &context);
+    }
+
+    fn compute_measures(&mut self) {
+        let mut start = 0;
+
+        while start < self.pulses.len() {
+            let time = self.pulses[start].time;
+            let mut end = start;
+
+            while end < self.pulses.len() && self.pulses[end].time == time {
+                end += 1;
+            }
+
+            let top = time.top as usize;
+
+            let offset = (start..end)
+                .find(|&index| self.pulses[index].accent == PulseAccent::Strong)
+                .map(|index| index - start)
+                .unwrap_or(0);
+
+            for index in start..end {
+                let relative = index - start;
+
+                self.pulses[index].measure_start =
+                    relative >= offset && (relative - offset) % top == 0;
+                self.pulses[index].pulse_offset = offset;
+            }
+
+            start = end;
+        }
+    }
+
+    fn add_start_markers(&mut self, context: &SectionContext) {
+        let section = context.section;
+        let pulse = &mut self.pulses[context.start];
+
+        if context.time_changed
+            && let Some(time) = section.params.time.as_ref().map(|time| time.value)
+        {
+            pulse.markers.push(FlatMarker {
+                kind: MarkerKind::TimeSignature,
+                glyph: MarkerGlyph::Text(format!("{}/{}", time.top, time.bottom)),
+                unit: 0.0,
+            });
+        }
+
+        if let Some(key) = section.params.key.as_ref().map(|key| key.value) {
+            pulse.markers.push(FlatMarker {
+                kind: MarkerKind::Key,
+                glyph: MarkerGlyph::Text(self.locale.key_label(&key_text(key))),
+                unit: 0.0,
+            });
+        }
+
+        if let Some(tempo) = section.params.tempo.as_ref().map(|tempo| tempo.value) {
+            let kind = match tempo {
+                ExtendedTempo::Static(StaticTempo::Custom(_)) => MarkerKind::TempoNumber,
+                _ => MarkerKind::Tempo,
+            };
+
+            pulse.markers.push(FlatMarker {
+                kind,
+                glyph: MarkerGlyph::Text(tempo.to_string()),
+                unit: 0.0,
+            });
+        }
+    }
+
+    fn add_dynamic_markers(&mut self, section_id: usize, context: &SectionContext) {
+        if context.section.merge {
+            return;
+        }
+
+        for (sub_id, sub) in context.section.items.iter().enumerate() {
+            let views = combined_views(&self.data.body.sections, section_id, sub_id);
+
+            self.add_dynamic_markers_impl(context.start, sub, &views);
+        }
+    }
+
+    fn add_dynamic_markers_impl(
+        &mut self,
+        section_start: usize,
+        sub: &SubSectionIr,
+        views: &[PulseView],
+    ) {
+        let Some(dynamics) = &sub.params.dynamics else {
+            return;
+        };
+
+        let positions = note_positions(views);
+
+        for timed in &dynamics.value {
+            let event = &timed.value;
+            let dynamic = event.value;
+
+            if matches!(dynamic, Dynamic::Cre | Dynamic::Dec) {
+                let Some(end) = event.end else {
+                    continue;
+                };
+
+                let Some((start_pulse, start_unit)) = event_unit(&positions, event.start) else {
+                    continue;
+                };
+
+                let Some((end_pulse, end_unit)) = event_unit(&positions, end) else {
+                    continue;
+                };
+
+                self.dynamic_spans.push(FlatDynamicSpan {
+                    kind: match dynamic {
+                        Dynamic::Cre => DynamicSpanKind::Crescendo,
+                        Dynamic::Dec => DynamicSpanKind::Decrescendo,
+                        _ => unreachable!(),
+                    },
+                    start_pulse: section_start + start_pulse,
+                    start_unit,
+                    end_pulse: section_start + end_pulse,
+                    end_unit,
+                });
+
+                continue;
+            }
+
+            let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
+                continue;
+            };
+
+            let text = dynamic.to_string();
+
+            let Some(pulse) = self.pulses.get_mut(section_start + pulse_id) else {
+                continue;
+            };
+
+            pulse.markers.push(FlatMarker {
+                kind: MarkerKind::Dynamic,
+                glyph: MarkerGlyph::Text(text),
+                unit,
+            });
+        }
+    }
+
+    fn add_jump_markers(&mut self, context: &SectionContext) {
+        let section = context.section;
+        let last = context.start + context.pulse_count - 1;
+
+        if let Some(jump) = &section.params.jump {
+            self.pulses[last].markers.push(FlatMarker {
+                kind: MarkerKind::Jump,
+                glyph: MarkerGlyph::Text(jump_label(
+                    jump.value,
+                    section
+                        .params
+                        .repeat
+                        .as_ref()
+                        .map(|repeat| repeat.value as u8),
+                )),
+                unit: 1.0,
+            });
+        }
+
+        if let Some(mark) = &section.params.mark {
+            let (glyph, pulse, unit) = match mark.value {
+                Mark::Segno => (MarkerGlyph::Segno, context.start, 0.0),
+                Mark::Coda => (MarkerGlyph::Text("Coda".to_string()), context.start, 0.0),
+                Mark::ToCoda => (MarkerGlyph::Text("To Coda".to_string()), last, 1.0),
+                Mark::Fine => (MarkerGlyph::Text("Fine".to_string()), last, 1.0),
+            };
+
+            self.pulses[pulse].markers.push(FlatMarker {
+                kind: MarkerKind::Mark,
+                glyph,
+                unit,
+            });
+        }
+    }
+
+    fn mark_section_end(&mut self, section_id: usize, context: &SectionContext) {
+        let remaining = &self.data.body.sections[section_id + 1..];
+        let is_last = remaining.is_empty();
+        let next_is_major = remaining.first().is_some_and(|section| section.major_start);
+        let last = context.start + context.pulse_count - 1;
+
+        if (next_is_major || is_last)
+            && let Some(pulse) = self.pulses.get_mut(last)
+        {
+            pulse.section_end = true;
+        }
+    }
+
+    fn add_touch_markers(&mut self, section_start: usize, section: &SectionIr) {
+        let Some(touches) = &section.params.touches else {
+            return;
+        };
+        let Some(sub) = section.items.first() else {
+            return;
+        };
+
+        let positions = note_positions(&sub.views);
+
+        for timed in &touches.value {
+            let event = &timed.value;
+            let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
+                continue;
+            };
+
+            let glyph = match event.value {
+                Touch::Fermata => MarkerGlyph::Fermata,
+                Touch::Staccato => MarkerGlyph::Staccato,
+                Touch::Marcato => MarkerGlyph::Marcato,
+            };
+
+            if let Some(pulse) = self.pulses.get_mut(section_start + pulse_id) {
+                pulse.markers.push(FlatMarker {
+                    kind: MarkerKind::Touch,
+                    glyph,
+                    unit,
+                });
+            }
+        }
+    }
+}
+
+fn build_volta(section: &SectionIr) -> Option<FlatVolta> {
+    section.params.ending.as_ref().map(|ending| FlatVolta {
+        number: ending.value,
+        label: section
+            .params
+            .label
+            .as_ref()
+            .map(|label| label.value.clone()),
+    })
+}
+
+fn build_section_lyrics(
+    section: &SectionIr,
+    lyrics_map: &mut LyricsMap<f32>,
+) -> Vec<Vec<Vec<LyricToken>>> {
+    section
+        .items
+        .iter()
+        .map(|sub| {
+            sub.lyrics
+                .iter()
+                .map(|line| build_lyric_tokens(&sub.views, line, lyrics_map))
+                .collect()
+        })
+        .collect()
+}
+
+fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> FlatPulse<'a> {
+    let mut subsections = Vec::new();
+    let mut max_columns = 1;
+    let mut accent = PulseAccent::Strong;
+
+    for (sub_id, sub) in context.section.items.iter().enumerate() {
+        let Some(view) = sub.views.get(pulse_id) else {
+            continue;
+        };
+
+        max_columns = max_columns.max(view.durations.len());
+
+        let voices = sub
+            .solfa
+            .iter()
+            .filter_map(|line| line.pulses.get(pulse_id).map(|pulse| (line.voice, pulse)))
+            .collect::<Vec<_>>();
+
+        if let Some((_, first)) = voices.first() {
+            accent = first.accent;
+        }
+
+        for (_, pulse) in &voices {
+            max_columns = max_columns.max(pulse.columns.len().max(1));
+        }
+
+        let mut lyric_voices = Vec::new();
+
+        for line in &sub.solfa {
+            if !lyric_voices.contains(&line.voice) {
+                lyric_voices.push(line.voice);
+            }
+        }
+
+        let lyrics = context
+            .lyrics
+            .get(sub_id)
+            .map(|verses| build_pulse_lyrics(verses, pulse_id, context.start))
+            .unwrap_or_default();
+
+        subsections.push(FlatSubPulse {
+            voices,
+            lyric_voices,
+            lyrics,
+        });
+    }
+
+    FlatPulse {
+        time: context.time,
+        accent,
+        measure_start: false,
+        section_end: false,
+        pulse_offset: 0,
+        subsections,
+        markers: Vec::new(),
+        volta: context.volta.clone(),
+        max_columns,
+    }
+}
+
+fn build_pulse_lyrics(
+    verses: &[Vec<LyricToken>],
+    pulse_id: usize,
+    section_start: usize,
+) -> Vec<Vec<LyricToken>> {
+    verses
+        .iter()
+        .map(|verse| {
+            verse
+                .iter()
+                .filter(|token| token.start_pulse == pulse_id)
+                .map(|token| {
+                    let mut token = token.clone();
+                    token.start_pulse += section_start;
+                    token.end_pulse += section_start;
+                    token
+                })
+                .collect()
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy)]
@@ -316,7 +518,7 @@ fn note_positions(views: &[PulseView]) -> Vec<NotePosition> {
 
         for &duration in &view.durations {
             let start = relative;
-            let end = relative + duration as f32 / view.factor.max(1) as f32;
+            let end = relative + duration as f32 / view.factor as f32;
             let unit_start = cursor as f32 / total as f32;
 
             cursor += duration as u32;
@@ -328,6 +530,7 @@ fn note_positions(views: &[PulseView]) -> Vec<NotePosition> {
                 unit_start,
                 unit_end: cursor as f32 / total as f32,
             });
+
             relative = end;
         }
     }
@@ -372,109 +575,6 @@ fn combined_views(sections: &[SectionIr], section_id: usize, sub_id: usize) -> V
     }
 
     views
-}
-
-fn add_dynamics(
-    pulses: &mut [FlatPulse],
-    section_start: usize,
-    sub: &SubSectionIr,
-    views: &[PulseView],
-    spans: &mut Vec<FlatDynamicSpan>,
-) {
-    let Some(dynamics) = &sub.params.dynamics else {
-        return;
-    };
-
-    let positions = note_positions(views);
-
-    for timed in &dynamics.value {
-        let event = &timed.value;
-        let dynamic = event.value;
-
-        if matches!(dynamic, Dynamic::Cre | Dynamic::Dec) {
-            let Some(end) = event.end else {
-                continue;
-            };
-
-            let Some((start_pulse, start_unit)) = event_unit(&positions, event.start) else {
-                continue;
-            };
-
-            let Some((end_pulse, end_unit)) = event_unit(&positions, end) else {
-                continue;
-            };
-
-            spans.push(FlatDynamicSpan {
-                kind: match dynamic {
-                    Dynamic::Cre => DynamicSpanKind::Crescendo,
-                    Dynamic::Dec => DynamicSpanKind::Decrescendo,
-                    _ => unreachable!(),
-                },
-                start_pulse: section_start + start_pulse,
-                start_unit,
-                end_pulse: section_start + end_pulse,
-                end_unit,
-            });
-
-            continue;
-        }
-
-        let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
-            continue;
-        };
-
-        let text = dynamic.to_string();
-
-        let Some(pulse) = pulses.get_mut(section_start + pulse_id) else {
-            continue;
-        };
-
-        let duplicate = pulse.markers.iter().any(|marker| {
-            marker.kind == MarkerKind::Dynamic
-                && marker.unit == unit
-                && matches!(&marker.glyph, MarkerGlyph::Text(existing) if *existing == text)
-        });
-
-        if !duplicate {
-            pulse.markers.push(FlatMarker {
-                kind: MarkerKind::Dynamic,
-                glyph: MarkerGlyph::Text(text),
-                unit,
-            });
-        }
-    }
-}
-
-fn add_touches(pulses: &mut [FlatPulse], section_start: usize, section: &SectionIr) {
-    let Some(touches) = &section.params.touches else {
-        return;
-    };
-    let Some(sub) = section.items.first() else {
-        return;
-    };
-
-    let positions = note_positions(&sub.views);
-
-    for timed in &touches.value {
-        let event = &timed.value;
-        let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
-            continue;
-        };
-
-        let glyph = match event.value {
-            Touch::Fermata => MarkerGlyph::Fermata,
-            Touch::Staccato => MarkerGlyph::Staccato,
-            Touch::Marcato => MarkerGlyph::Marcato,
-        };
-
-        if let Some(pulse) = pulses.get_mut(section_start + pulse_id) {
-            pulse.markers.push(FlatMarker {
-                kind: MarkerKind::Touch,
-                glyph,
-                unit,
-            });
-        }
-    }
 }
 
 fn key_text(key: Key) -> String {
@@ -567,7 +667,7 @@ fn build_header(data: &FinalOutput) -> HeaderView {
 fn build_lyric_tokens(
     views: &[PulseView],
     line: &LyricLineIr,
-    lyrics_map: &LyricsMap<f32>,
+    lyrics_map: &mut LyricsMap<f32>,
 ) -> Vec<LyricToken> {
     let mut tokens = Vec::new();
 
@@ -575,8 +675,8 @@ fn build_lyric_tokens(
         return tokens;
     }
 
-    let mut pulse = 0usize;
-    let mut slot = 0usize;
+    let mut pulse = 0;
+    let mut slot = 0;
 
     for column in &line.columns {
         if pulse >= views.len() {
@@ -585,25 +685,25 @@ fn build_lyric_tokens(
 
         let start_pulse = pulse;
         let start_unit = slot_unit(&views[pulse], slot);
-        let span = column.span.max(1);
-        let mut remaining = span;
+
+        let mut remaining = column.span;
 
         while remaining > 0 && pulse < views.len() {
-            let len = views[pulse].durations.len();
+            let slot_count = views[pulse].durations.len();
 
-            if slot >= len {
+            if slot >= slot_count {
                 pulse += 1;
                 slot = 0;
                 continue;
             }
 
-            let available = len - slot;
-            let take = remaining.min(available);
+            let available = slot_count - slot;
+            let step = remaining.min(available);
 
-            remaining -= take;
-            slot += take;
+            remaining -= step;
+            slot += step;
 
-            if slot >= len {
+            if slot >= slot_count {
                 pulse += 1;
                 slot = 0;
             }
@@ -615,9 +715,8 @@ fn build_lyric_tokens(
             (pulse, slot_unit(&views[pulse], slot))
         };
 
-        let rendered = lyrics_map.get(&column.sid);
-
-        let text = rendered
+        let text = lyrics_map
+            .remove(&column.sid)
             .map(|rendered| rendered.content.clone())
             .unwrap_or_default();
 
@@ -661,37 +760,6 @@ fn slot_unit(view: &PulseView, slot: usize) -> f32 {
     elapsed as f32 / total as f32
 }
 
-/// Measures are resolved from the time signature, not from section
-/// boundaries. Pulses from all sections are treated as one continuous line,
-/// exactly like the AST validator does.
-fn compute_measures(pulses: &mut [FlatPulse]) {
-    let mut start = 0usize;
-
-    while start < pulses.len() {
-        let time = pulses[start].time;
-        let mut end = start;
-
-        while end < pulses.len() && pulses[end].time == time {
-            end += 1;
-        }
-
-        let top = (time.top as usize).max(1);
-
-        let offset = (start..end)
-            .find(|&index| pulses[index].accent == PulseAccent::Strong)
-            .map(|index| index - start)
-            .unwrap_or(0);
-
-        for index in start..end {
-            let relative = index - start;
-            pulses[index].measure_start = relative >= offset && (relative - offset) % top == 0;
-            pulses[index].grid_offset = offset;
-        }
-
-        start = end;
-    }
-}
-
 fn compute_widths(fonts: &Fonts, options: &RenderOptions, lyric_width: f32) -> (f32, f32) {
     let lead_width = fonts
         .solfa
@@ -714,10 +782,8 @@ fn build_systems<'a>(
     pulse_width: f32,
     max_width: f32,
 ) -> Vec<System<'a>> {
-    // Split into measures first. The pulse before the first strong accent is
-    // an anacrusis and forms its own (partial) measure.
-    let mut measures: Vec<Vec<usize>> = Vec::new();
-    let mut current: Vec<usize> = Vec::new();
+    let mut measures: Vec<Vec<PulseId>> = Vec::new();
+    let mut current: Vec<PulseId> = Vec::new();
 
     for (index, pulse) in pulses.iter().enumerate() {
         if !current.is_empty() && (pulse.measure_start || pulse.time != pulses[current[0]].time) {
@@ -764,7 +830,7 @@ fn build_systems<'a>(
             }
 
             first_system_in_group = true;
-            pickup_offset = pulses[measure[0]].grid_offset;
+            pickup_offset = pulses[measure[0]].pulse_offset;
             width = 0.0;
         } else if overflow {
             let offset = if first_system_in_group {
@@ -784,7 +850,7 @@ fn build_systems<'a>(
             first_system_in_group = false;
             width = 0.0;
         } else if time.is_none() {
-            pickup_offset = pulses[measure[0]].grid_offset;
+            pickup_offset = pulses[measure[0]].pulse_offset;
         }
 
         time = Some(measure_time);
@@ -814,191 +880,258 @@ fn build_systems<'a>(
 fn make_system<'a>(
     pulses: &[FlatPulse<'a>],
     spans: &[FlatDynamicSpan],
-    indices: Vec<usize>,
+    indices: Vec<PulseId>,
     pulse_width: f32,
     grid_offset: usize,
 ) -> System<'a> {
-    let system_start = indices[0];
-    let system_end = system_start + indices.len();
-    let mut dynamic_spans = Vec::new();
+    let layout = SystemLayout::new(pulses, &indices);
+    let (voices, lyric_groups) = layout.lyrics();
 
-    for span in spans {
-        if span.end_pulse < system_start || span.start_pulse >= system_end {
-            continue;
-        }
+    System {
+        pulses: layout.system_pulses(pulse_width),
+        voices,
+        lyric_groups,
+        markers: layout.markers(),
+        dynamic_spans: layout.dynamic_spans(spans),
+        voltas: layout.voltas(),
+        pulse_offset: grid_offset,
+    }
+}
 
-        let start = span.start_pulse.saturating_sub(system_start);
+struct SystemLayout<'a, 'b> {
+    pulses: &'b [FlatPulse<'a>],
+    indices: &'b [usize],
+    start: usize,
+    end: usize,
+}
 
-        let start_unit = if span.start_pulse < system_start {
-            0.0
-        } else {
-            span.start_unit
-        };
+impl<'a, 'p> SystemLayout<'a, 'p> {
+    fn new(pulses: &'p [FlatPulse<'a>], indices: &'p [usize]) -> Self {
+        let start = indices[0];
 
-        let end = (span.end_pulse - system_start).min(indices.len() - 1);
-
-        let end_unit = if span.end_pulse >= system_end {
-            1.0
-        } else {
-            span.end_unit
-        };
-
-        let fits = span.start_pulse >= system_start && span.end_pulse < system_end;
-
-        dynamic_spans.push(SystemDynamicSpan {
-            kind: span.kind,
+        Self {
+            pulses,
+            indices,
             start,
-            start_unit,
-            end,
-            end_unit,
-            fits,
-        });
+            end: start + indices.len(),
+        }
     }
 
-    let system_pulses = indices
-        .iter()
-        .map(|&index| {
-            let pulse = &pulses[index];
+    fn len(&self) -> usize {
+        self.indices.len()
+    }
 
-            SystemPulse {
-                accent: pulse.accent,
-                measure_start: pulse.measure_start,
-                section_end: pulse.section_end,
-                pulse_width,
-                subsections: pulse
-                    .subsections
+    fn dynamic_spans(&self, spans: &[FlatDynamicSpan]) -> Vec<SystemDynamicSpan> {
+        spans
+            .iter()
+            .filter(|span| span.end_pulse >= self.start && span.start_pulse < self.end)
+            .map(|span| {
+                let start = span.start_pulse.saturating_sub(self.start);
+
+                let start_unit = if span.start_pulse < self.start {
+                    0.0
+                } else {
+                    span.start_unit
+                };
+
+                let end = (span.end_pulse - self.start).min(self.len() - 1);
+
+                let end_unit = if span.end_pulse >= self.end {
+                    1.0
+                } else {
+                    span.end_unit
+                };
+
+                let fits = span.start_pulse >= self.start && span.end_pulse < self.end;
+
+                SystemDynamicSpan {
+                    kind: span.kind,
+                    start,
+                    start_unit,
+                    end,
+                    end_unit,
+                    fits,
+                }
+            })
+            .collect()
+    }
+
+    fn system_pulses(&self, pulse_width: f32) -> Vec<SystemPulse<'a>> {
+        self.indices
+            .iter()
+            .map(|&index| {
+                let pulse = &self.pulses[index];
+
+                SystemPulse {
+                    accent: pulse.accent,
+                    measure_start: pulse.measure_start,
+                    section_end: pulse.section_end,
+                    pulse_width,
+                    subsections: pulse
+                        .subsections
+                        .iter()
+                        .map(|sub| SystemSubPulse {
+                            voices: sub.voices.clone(),
+                        })
+                        .collect(),
+                }
+            })
+            .collect()
+    }
+
+    fn markers(&self) -> Vec<SystemMarker> {
+        self.indices
+            .iter()
+            .enumerate()
+            .flat_map(|(pulse, &global)| {
+                self.pulses[global]
+                    .markers
                     .iter()
-                    .map(|sub| SystemSubPulse {
-                        voices: sub.voices.clone(),
+                    .map(move |marker| SystemMarker {
+                        pulse,
+                        unit: marker.unit,
+                        kind: marker.kind,
+                        glyph: marker.glyph.clone(),
                     })
-                    .collect(),
-            }
-        })
-        .collect();
+            })
+            .collect()
+    }
 
-    let markers = indices
-        .iter()
-        .enumerate()
-        .flat_map(|(pulse, &global)| {
-            pulses[global]
-                .markers
-                .iter()
-                .map(move |marker| SystemMarker {
-                    pulse,
-                    unit: marker.unit,
-                    kind: marker.kind,
-                    glyph: marker.glyph.clone(),
-                })
-        })
-        .collect();
+    fn voltas(&self) -> Vec<SystemVolta> {
+        let mut voltas = Vec::new();
+        let mut current: Option<(usize, FlatVolta)> = None;
 
-    let mut voltas = Vec::new();
-    let mut current_volta: Option<(usize, FlatVolta)> = None;
-
-    for (local, &global) in indices.iter().enumerate() {
-        if let Some(volta) = &pulses[global].volta {
-            let continues = current_volta
-                .as_ref()
-                .is_some_and(|(_, current)| current == volta);
-
-            if !continues {
-                if let Some((start, current)) = current_volta.take() {
-                    voltas.push(SystemVolta {
-                        start,
-                        end: local,
-                        number: current.number,
-                        label: current.label,
-                    });
+        for (local, &global) in self.indices.iter().enumerate() {
+            let Some(volta) = &self.pulses[global].volta else {
+                if let Some((start, volta)) = current.take() {
+                    voltas.push(volta_span(start, local, volta));
                 }
 
-                current_volta = Some((local, volta.clone()));
+                continue;
+            };
+
+            let continues = current.as_ref().is_some_and(|(_, active)| active == volta);
+
+            if continues {
+                continue;
             }
-        } else if let Some((start, current)) = current_volta.take() {
-            voltas.push(SystemVolta {
-                start,
-                end: local,
-                number: current.number,
-                label: current.label,
-            });
-        }
-    }
 
-    if let Some((start, current)) = current_volta {
-        voltas.push(SystemVolta {
-            start,
-            end: indices.len(),
-            number: current.number,
-            label: current.label,
-        });
-    }
-
-    // Voice order is the order of first appearance across all sub-sections.
-    // The same voice may be declared by different sub-sections, but it still
-    // owns exactly one row in the system.
-    let mut voices = Vec::new();
-    let mut max_verses = 0usize;
-
-    for &global in &indices {
-        for sub in &pulses[global].subsections {
-            max_verses = max_verses.max(sub.lyrics.len());
-
-            for &voice in &sub.lyric_voices {
-                if !voices.contains(&voice) {
-                    voices.push(voice);
-                }
+            if let Some((start, active)) = current.take() {
+                voltas.push(volta_span(start, local, active));
             }
+
+            current = Some((local, volta.clone()));
         }
+
+        if let Some((start, volta)) = current {
+            voltas.push(volta_span(start, self.len(), volta));
+        }
+
+        voltas
     }
 
-    // Collect the lyrics of every voice separately. A lyric line declared by
-    // a sub-section belongs to every voice of that sub-section, so a shared
-    // line is copied onto each voice. Voices that end up with identical lines
-    // are merged again when the rows are emitted.
-    let mut voice_lyrics: Vec<Vec<Vec<SystemLyricToken>>> =
-        vec![vec![Vec::new(); max_verses]; voices.len()];
+    fn lyrics(&self) -> (Vec<Voice>, Vec<SystemLyricGroup>) {
+        let (voices, max_verses) = self.voices();
+        let voice_lyrics = self.collect_lyrics(&voices, max_verses);
+        let groups = merge_lyric_groups(&voices, &voice_lyrics);
 
-    for (local, &global) in indices.iter().enumerate() {
-        let pulse = &pulses[global];
+        (voices, groups)
+    }
 
-        for sub in &pulse.subsections {
-            for (verse, tokens) in sub.lyrics.iter().enumerate() {
-                for token in tokens {
-                    if token.start_pulse != global || token.text.is_empty() {
-                        continue;
+    /// Voice order is the order of first appearance across all sub-sections.
+    /// The same voice may be declared by different sub-sections, but it still
+    /// owns exactly one row in the system.
+    fn voices(&self) -> (Vec<Voice>, usize) {
+        let mut voices = Vec::new();
+        let mut max_verses = 0;
+
+        for &global in self.indices {
+            for sub in &self.pulses[global].subsections {
+                max_verses = max_verses.max(sub.lyrics.len());
+
+                for &voice in &sub.lyric_voices {
+                    if !voices.contains(&voice) {
+                        voices.push(voice);
                     }
+                }
+            }
+        }
 
-                    let end = token
-                        .end_pulse
-                        .saturating_sub(system_start)
-                        .min(indices.len() - 1);
-                    let end_unit = if token.end_pulse >= system_end {
-                        1.0
-                    } else {
-                        token.end_unit
-                    };
+        (voices, max_verses)
+    }
 
-                    let system_token = SystemLyricToken {
-                        start: local,
-                        start_unit: token.start_unit,
-                        end,
-                        end_unit,
-                        text: token.text.clone(),
-                        underline: token.underline,
-                    };
+    /// Collects the lyrics of every voice separately. A lyric line declared by
+    /// a sub-section belongs to every voice of that sub-section, so a shared
+    /// line is copied onto each voice. Voices that end up with identical lines
+    /// are merged again when the rows are emitted.
+    fn collect_lyrics(
+        &self,
+        voices: &[Voice],
+        max_verses: usize,
+    ) -> Vec<Vec<Vec<SystemLyricToken>>> {
+        let mut voice_lyrics = vec![vec![Vec::new(); max_verses]; voices.len()];
 
-                    for &voice in &sub.lyric_voices {
-                        if let Some(voice_index) = voices.iter().position(|item| *item == voice) {
-                            voice_lyrics[voice_index][verse].push(system_token.clone());
+        for (local, &global) in self.indices.iter().enumerate() {
+            let pulse = &self.pulses[global];
+
+            for sub in &pulse.subsections {
+                for (verse, tokens) in sub.lyrics.iter().enumerate() {
+                    for token in tokens {
+                        if token.start_pulse != global || token.text.is_empty() {
+                            continue;
+                        }
+
+                        let end = token
+                            .end_pulse
+                            .saturating_sub(self.start)
+                            .min(self.len() - 1);
+
+                        let end_unit = if token.end_pulse >= self.end {
+                            1.0
+                        } else {
+                            token.end_unit
+                        };
+
+                        let system_token = SystemLyricToken {
+                            start: local,
+                            start_unit: token.start_unit,
+                            end,
+                            end_unit,
+                            text: token.text.clone(),
+                            underline: token.underline,
+                        };
+
+                        for &voice in &sub.lyric_voices {
+                            if let Some(voice_index) = voices.iter().position(|item| *item == voice)
+                            {
+                                voice_lyrics[voice_index][verse].push(system_token.clone());
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    // Merge consecutive voices whose collected lyrics are identical. The
-    // resulting group is emitted once, after the last voice it contains.
-    let mut lyric_groups = Vec::new();
+        voice_lyrics
+    }
+}
+
+fn volta_span(start: usize, end: usize, volta: FlatVolta) -> SystemVolta {
+    SystemVolta {
+        start,
+        end,
+        number: volta.number,
+        label: volta.label,
+    }
+}
+
+/// Merges consecutive voices whose collected lyrics are identical. The
+/// resulting group is emitted once, after the last voice it contains.
+fn merge_lyric_groups(
+    voices: &[Voice],
+    voice_lyrics: &[Vec<Vec<SystemLyricToken>>],
+) -> Vec<SystemLyricGroup> {
+    let mut groups = Vec::new();
     let mut start = 0usize;
 
     while start < voices.len() {
@@ -1009,7 +1142,7 @@ fn make_system<'a>(
         }
 
         if voice_lyrics[start].iter().any(|tokens| !tokens.is_empty()) {
-            lyric_groups.push(SystemLyricGroup {
+            groups.push(SystemLyricGroup {
                 voices: voices[start..end].to_vec(),
                 verses: voice_lyrics[start].clone(),
             });
@@ -1018,13 +1151,5 @@ fn make_system<'a>(
         start = end;
     }
 
-    System {
-        pulses: system_pulses,
-        voices,
-        lyric_groups,
-        markers,
-        dynamic_spans,
-        voltas,
-        grid_offset,
-    }
+    groups
 }
