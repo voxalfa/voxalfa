@@ -1,0 +1,26 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+assertion_line: 46
+expression: output_str
+---
+=== INPUT ===
+;; @version 0.1.0-alpha
+;; @note-text font-size={0}
+
+[#] title="Invalid directive"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+
+=== DIAGNOSTICS ===
+error[E034]: invalid value for directive '@note-text': non-positive value
+  ┌─ invalid_directive_value_error.vfa:3:15
+  │
+3 │ ;; @note-text font-size={0}
+  │               ^^^^^^^^^

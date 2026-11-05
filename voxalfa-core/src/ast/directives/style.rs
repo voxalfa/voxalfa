@@ -8,19 +8,19 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct EdgeValues {
-    pub top: Option<f32>,
-    pub right: Option<f32>,
-    pub bottom: Option<f32>,
-    pub left: Option<f32>,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub left: f32,
 }
 
 impl EdgeValues {
-    fn all(value: f32) -> Self {
+    pub fn all(value: f32) -> Self {
         Self {
-            top: Some(value),
-            right: Some(value),
-            bottom: Some(value),
-            left: Some(value),
+            top: value,
+            right: value,
+            bottom: value,
+            left: value,
         }
     }
 }
@@ -29,8 +29,32 @@ impl EdgeValues {
 pub struct ElementStyle {
     pub font_family: Option<String>,
     pub font_size: Option<f32>,
+    pub font_weight: u16,
+    pub italic: bool,
     pub margin: EdgeValues,
     pub padding: EdgeValues,
+}
+
+impl ElementStyle {
+    pub fn top(&self) -> f32 {
+        self.margin.top + self.padding.top
+    }
+
+    pub fn right(&self) -> f32 {
+        self.margin.right + self.padding.right
+    }
+
+    pub fn bottom(&self) -> f32 {
+        self.margin.bottom + self.padding.bottom
+    }
+
+    pub fn left(&self) -> f32 {
+        self.margin.left + self.padding.left
+    }
+
+    pub fn size(&self, default: f32) -> f32 {
+        self.font_size.unwrap_or(default)
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -125,27 +149,41 @@ pub fn parse_element_style(
         }
 
         let assignment = assignment_parts(context, assignment)?;
+        let key_node = assignment.key_node;
+        let value_node = assignment.value_node;
 
         match assignment.key.as_str() {
             "font-family" => {
-                let family = context.parse_node::<String>(assignment.value_node, scope_id)?;
+                let family = context.parse_node::<String>(value_node, scope_id)?;
 
                 style.font_family = Some(family);
             }
+            "font-style" => {
+                let value = context.parse_node::<String>(value_node, scope_id)?;
+
+                match value.as_str() {
+                    "normal" => style.italic = false,
+                    "italic" => style.italic = true,
+                    _ => invalid_directive(context, key_node.range(), name, "invalid style"),
+                }
+            }
+            "font-weight" => {
+                let value = context.parse_node::<String>(value_node, scope_id)?;
+
+                if let Some(weight) = font_weight(&value) {
+                    style.font_weight = weight;
+                } else {
+                    invalid_directive(context, key_node.range(), name, "invalid weight value");
+                }
+            }
             "font-size" => {
-                let size = context.parse_node::<f32>(assignment.value_node, scope_id)?;
+                let size = context.parse_node::<f32>(value_node, scope_id)?;
 
                 if !size.is_finite() || size <= 0.0 {
-                    invalid_directive(
-                        context,
-                        assignment.key_node.range(),
-                        name,
-                        "font-size must be positive",
-                    );
-                    return None;
+                    invalid_directive(context, key_node.range(), name, "non-positive value");
+                } else {
+                    style.font_size = Some(size);
                 }
-
-                style.font_size = Some(size);
             }
             _ => apply_box_modifier(
                 context,
@@ -224,17 +262,17 @@ fn apply_edges(
 ) -> Option<()> {
     match side {
         None => *edges = EdgeValues::all(value),
-        Some("top") => edges.top = Some(value),
-        Some("right") => edges.right = Some(value),
-        Some("bottom") => edges.bottom = Some(value),
-        Some("left") => edges.left = Some(value),
+        Some("top") => edges.top = value,
+        Some("right") => edges.right = value,
+        Some("bottom") => edges.bottom = value,
+        Some("left") => edges.left = value,
         Some("x") => {
-            edges.left = Some(value);
-            edges.right = Some(value);
+            edges.left = value;
+            edges.right = value;
         }
         Some("y") => {
-            edges.top = Some(value);
-            edges.bottom = Some(value);
+            edges.top = value;
+            edges.bottom = value;
         }
         _ => {
             invalid_directive(context, assignment.key_node.range(), name, &assignment.key);
@@ -261,5 +299,20 @@ fn split_key(key: &str) -> (&str, Option<&str>) {
     match key.split_once('-') {
         Some((kind, side)) => (kind, Some(side)),
         None => (key, None),
+    }
+}
+
+fn font_weight(weight: &str) -> Option<u16> {
+    match weight {
+        "thin" => Some(100),
+        "extra-light" => Some(200),
+        "light" => Some(300),
+        "normal" => Some(400),
+        "medium" => Some(500),
+        "semibold" => Some(600),
+        "bold" => Some(700),
+        "extra-bold" => Some(800),
+        "black" => Some(900),
+        _ => None,
     }
 }

@@ -32,9 +32,10 @@ pub fn render_pages(
     faces: &FontFaces,
 ) -> Result<Vec<String>> {
     let mut options = options.clone();
-    options.apply_directives(&data.header.directives);
-    let options = &options;
 
+    options.apply_directives(&data.header.directives);
+
+    let options = &options;
     let fonts = Fonts::with_faces(options, faces)?;
     let score = resolver::resolve(data, &fonts, options)?;
     let header = layout_header(&score.header, &fonts, options);
@@ -47,6 +48,7 @@ pub fn render_pages(
 
     let pages = paginate(&system_layouts, header.height, options);
     let page_count = pages.len().max(1);
+
     let mut result = Vec::with_capacity(pages.len());
 
     for (page_id, page) in pages.iter().enumerate() {
@@ -65,7 +67,7 @@ pub fn render_pages(
             options.page.width, options.page.height, options.page.width, options.page.height,
         )?;
 
-        emit_defs(&mut svg, &fonts)?;
+        emit_defs(&mut svg, &fonts, options.encode_font)?;
 
         writeln!(
             svg,
@@ -103,6 +105,7 @@ pub fn render_pages(
         }
 
         writeln!(svg, "</svg>")?;
+
         result.push(svg);
     }
 

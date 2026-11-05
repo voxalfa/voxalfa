@@ -1,9 +1,11 @@
+use voxalfa_core::ast::directives::ElementStyle;
+
 use crate::{
     error::Result,
     fonts::{FontMetrics, Fonts},
     locale::Locale,
     model::HeaderView,
-    options::{ElementStyle, RenderOptions},
+    options::RenderOptions,
 };
 
 use super::{

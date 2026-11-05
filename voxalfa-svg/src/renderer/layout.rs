@@ -1,9 +1,9 @@
-use voxalfa_core::{data_types::Voice, ir::solfa::NoteKind};
+use voxalfa_core::{ast::directives::ElementStyle, data_types::Voice, ir::solfa::NoteKind};
 
 use crate::{
     fonts::Fonts,
     model::{DynamicSpanKind, MarkerGlyph, MarkerKind, System, SystemMarker},
-    options::{ElementStyle, RenderOptions},
+    options::RenderOptions,
 };
 
 use super::{

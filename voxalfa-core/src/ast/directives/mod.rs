@@ -26,14 +26,14 @@ pub const STYLE_ELEMENTS: &[&str] = &[
     "octave-text",
     "lyrics-text",
     "divider-text",
+    "page-number-text",
     "key-label",
     "time-label",
     "tempo-label",
     "jump-label",
     "mark-label",
     "dynamic-label",
-    "volta-text",
-    "page-number-text",
+    "volta-label",
 ];
 
 #[derive(Debug, Default)]

@@ -2,16 +2,15 @@
 
 The renderer embeds subsetted TrueType fonts so the generated SVG is portable.
 
-| File | Role | Source |
-| --- | --- | --- |
-| `FiraSans-Solfa.ttf` | tonic solfa, accents, octaves | Fira Sans Bold |
-| `NotoSans-Lyrics.ttf` | lyrics | Noto Sans Condensed Regular |
-| `NotoSans-Regular.ttf` | authors, meta information, page numbers | Noto Sans Regular |
-| `NotoSans-Bold.ttf` | title, key labels, jumps | Noto Sans Bold |
-| `NotoSerif-Regular.ttf` | time signatures, tempo labels | Noto Serif Regular |
-| `NotoSerif-Italic.ttf` | Fine, Coda, To Coda marks | Noto Serif Italic |
-| `NotoSerif-BoldItalic.ttf` | dynamics | Noto Serif Bold Italic |
-| `NotoSansSymbols-Bold.ttf` | flat/sharp/natural glyph fallback | Noto Sans Symbols Bold (scaled 1.25×) |
+| File                       | Role                                    | Source                                |
+| -------------------------- | --------------------------------------- | ------------------------------------- |
+| `FiraSans-Solfa.ttf`       | tonic solfa, accents, octaves           | Fira Sans Bold                        |
+| `NotoSans-Lyrics.ttf`      | lyrics                                  | Noto Sans Condensed Regular           |
+| `NotoSans-Regular.ttf`     | authors, meta information, page numbers | Noto Sans Regular                     |
+| `NotoSans-Bold.ttf`        | title, key labels, jumps                | Noto Sans Bold                        |
+| `NotoSerif-Italic.ttf`     | Tempo, Fine, Coda, To Coda marks        | Noto Serif Italic                     |
+| `NotoSerif-BoldItalic.ttf` | dynamics                                | Noto Serif Bold Italic                |
+| `NotoSansSymbols-Bold.ttf` | flat/sharp/natural glyph fallback       | Noto Sans Symbols Bold (scaled 1.25×) |
 
 The Noto Sans and Noto Serif faces are distributed under the SIL Open Font
 License; see `OFL.txt`.

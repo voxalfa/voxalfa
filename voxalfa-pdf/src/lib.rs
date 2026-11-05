@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use fontdb::{Database, Family, Query, Style, Weight};
 use krilla::{Document, geom::Size, page::PageSettings};
 use krilla_svg::{SurfaceExt, SvgSettings};
 use thiserror::Error;
@@ -32,57 +33,108 @@ pub fn render(data: &FinalOutput, options: &RenderOptions) -> Result<Vec<u8>> {
     render_with_fonts(data, options, &FontFaces::default())
 }
 
+pub fn build_font_faces(db: &Database, data: &FinalOutput) -> Result<FontFaces> {
+    let mut faces = FontFaces::default();
+
+    for (key, style) in data.header.directives.elements.iter() {
+        let Some(font_family) = style.value.font_family.as_ref() else {
+            continue;
+        };
+
+        // let default = match key.as_str() {
+        //     "note-text" => faces.solfa,
+        //     _ => continue,
+        // };
+        //
+        // let Some(id) = db.query(&Query {
+        //     families: &[Family::Name(font_family)],
+        //     ..Default::default()
+        // }) else {
+        //     continue;
+        // };
+    }
+
+    Ok(faces)
+}
+
 pub fn render_with_fonts(
     data: &FinalOutput,
     options: &RenderOptions,
     faces: &FontFaces,
 ) -> Result<Vec<u8>> {
-    let pages = voxalfa_svg::render_pages_with_fonts(data, options, faces)?;
-
     let mut fontdb = fontdb::Database::new();
 
-    for face in faces.iter() {
-        fontdb.load_font_data(face.data.to_vec());
-    }
+    fontdb.load_system_fonts();
 
-    let usvg_options = usvg::Options {
-        fontdb: Arc::new(fontdb),
+    // fontdb.set_sans_serif_family("NotoSans");
+
+    // for face in fontdb.faces() {
+    //     println!("{}", face.families[0].0);
+    // }
+    //
+    // todo!()
+    let id = fontdb.query(&Query {
+        families: &[Family::Name("Noto Sans")],
+        weight: Weight::NORMAL,
+        style: Style::Italic,
         ..Default::default()
-    };
+    });
 
-    let mut document = Document::new();
-
-    for svg in &pages {
-        let tree = usvg::Tree::from_data(svg.as_bytes(), &usvg_options)?;
-
-        let page_size = Size::from_wh(
-            tree.size().width() * PDF_PX_TO_PT,
-            tree.size().height() * PDF_PX_TO_PT,
-        )
-        .ok_or(Error::PageSize)?;
-
-        let page_settings =
-            PageSettings::from_wh(page_size.width(), page_size.height()).ok_or(Error::PageSize)?;
-
-        let mut page = document.start_page_with(page_settings);
-        let mut surface = page.surface();
-
-        surface
-            .draw_svg(
-                &tree,
-                page_size,
-                SvgSettings {
-                    embed_text: true,
-                    ..Default::default()
-                },
-            )
-            .ok_or(Error::Render)?;
-
-        surface.finish();
-        page.finish();
+    if let Some(face) = id.and_then(|id| fontdb.face(id)) {
+        // match face.source {
+        //     fontdb::Source::Binary(as_ref) => todo!(),
+        //     fontdb::Source::File(path_buf) => todo!(),
+        //     fontdb::Source::SharedFile(path_buf, as_ref) => todo!(),
+        // }
+        println!("{:?}", face.source);
     }
 
-    Ok(document.finish()?)
+    todo!("Font id is: {id:?}")
+
+    // let pages = voxalfa_svg::render_pages_with_fonts(data, options, faces)?;
+    //
+    // for face in faces.iter() {
+    //     fontdb.load_font_data(face.data.to_vec());
+    // }
+    //
+    // let usvg_options = usvg::Options {
+    //     fontdb: Arc::new(fontdb),
+    //     ..Default::default()
+    // };
+    //
+    // let mut document = Document::new();
+    //
+    // for svg in &pages {
+    //     let tree = usvg::Tree::from_data(svg.as_bytes(), &usvg_options)?;
+    //
+    //     let page_size = Size::from_wh(
+    //         tree.size().width() * PDF_PX_TO_PT,
+    //         tree.size().height() * PDF_PX_TO_PT,
+    //     )
+    //     .ok_or(Error::PageSize)?;
+    //
+    //     let page_settings =
+    //         PageSettings::from_wh(page_size.width(), page_size.height()).ok_or(Error::PageSize)?;
+    //
+    //     let mut page = document.start_page_with(page_settings);
+    //     let mut surface = page.surface();
+    //
+    //     surface
+    //         .draw_svg(
+    //             &tree,
+    //             page_size,
+    //             SvgSettings {
+    //                 embed_text: true,
+    //                 ..Default::default()
+    //             },
+    //         )
+    //         .ok_or(Error::Render)?;
+    //
+    //     surface.finish();
+    //     page.finish();
+    // }
+    //
+    // Ok(document.finish()?)
 }
 
 #[cfg(test)]
