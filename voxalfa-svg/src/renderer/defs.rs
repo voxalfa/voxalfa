@@ -1,15 +1,17 @@
 use std::fmt::Write;
 
 use base64::{Engine, engine::general_purpose::STANDARD};
+use voxalfa_core::ast::directives::ElementStyle;
 
 use crate::{
     error::Result,
     fonts::{FontMetrics, Fonts},
+    options::RenderOptions,
 };
 
 use super::constants::*;
 
-pub fn emit_defs(svg: &mut String, fonts: &Fonts, encode_font: bool) -> Result<()> {
+pub fn emit_defs(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> Result<()> {
     writeln!(svg, "<defs>\n  <style>")?;
 
     writeln!(
@@ -17,8 +19,8 @@ pub fn emit_defs(svg: &mut String, fonts: &Fonts, encode_font: bool) -> Result<(
         "    svg {{\n      background: #ffffff;\n    }}\n\n    text {{\n      fill: #1a1a1a;\n    }}"
     )?;
 
-    emit_font_faces(svg, fonts, encode_font)?;
-    emit_font_rules(svg, fonts)?;
+    emit_font_faces(svg, fonts, options.encode_font)?;
+    emit_font_rules(svg, fonts, options)?;
     emit_symbol_styles(svg, fonts)?;
 
     Ok(())
@@ -41,186 +43,44 @@ fn emit_font_faces(svg: &mut String, fonts: &Fonts, encode_font: bool) -> Result
     Ok(())
 }
 
-fn emit_font_rules(svg: &mut String, fonts: &Fonts) -> Result<()> {
-    font_rule(
-        svg,
-        ".note-text",
-        &fonts.text.note,
-        "bold",
-        "normal",
-        "monospace",
-        None,
-    )?;
+fn emit_font_rules(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> Result<()> {
+    let text = &fonts.text;
+    let label = &fonts.label;
+    let ts = &options.elements.text;
+    let ls = &options.elements.label;
+    let sans = "sans-serif";
+    let mono = "monospace";
+    let symbols = "'Noto Sans Symbols', sans-serif";
 
-    font_rule(
-        svg,
-        ".divider-text",
-        &fonts.text.divider,
-        "normal",
-        "normal",
-        "monospace",
-        Some("#333333"),
-    )?;
+    let rules: [(&str, &FontMetrics, &str, &ElementStyle); 18] = [
+        (".note-text", &text.note, mono, &ts.note),
+        (".divider-text", &text.divider, sans, &ts.divider),
+        (".octave-text", &text.octave, mono, &ts.octave),
+        (".lyrics-text", &text.lyric, sans, &ts.lyrics),
+        (".title-text", &text.title, sans, &ts.title),
+        (".author-text", &text.author, sans, &ts.author),
+        (".composer-text", &text.composer, sans, &ts.composer),
+        (".key-text", &text.key, symbols, &ts.key),
+        (".time-text", &text.time, sans, &ts.time),
+        (".meter-text", &text.meter, sans, &ts.meter),
+        (".key-label", &label.key, symbols, &ls.key),
+        (".jump-label", &label.jump, sans, &ls.jump),
+        (".tempo-label", &label.tempo, "serif", &ls.tempo),
+        (".mark-label", &label.mark, "serif", &ls.mark),
+        (".dynamic-label", &label.dynamic, "serif", &ls.dynamic),
+        (".time-label", &label.time, sans, &ls.time),
+        (".volta-label", &label.volta, sans, &ls.volta),
+        (
+            ".page-number-text",
+            &text.page_number,
+            sans,
+            &ts.page_number,
+        ),
+    ];
 
-    font_rule(
-        svg,
-        ".octave-text",
-        &fonts.text.octave,
-        "bold",
-        "normal",
-        "monospace",
-        None,
-    )?;
-
-    font_rule(
-        svg,
-        ".lyrics-text",
-        &fonts.text.lyric,
-        "normal",
-        "normal",
-        "sans-serif",
-        None,
-    )?;
-
-    font_rule(
-        svg,
-        ".title-text",
-        &fonts.text.title,
-        "bold",
-        "normal",
-        "sans-serif",
-        None,
-    )?;
-
-    font_rule(
-        svg,
-        ".author-text",
-        &fonts.text.author,
-        "normal",
-        "normal",
-        "sans-serif",
-        None,
-    )?;
-
-    font_rule(
-        svg,
-        ".composer-text",
-        &fonts.text.composer,
-        "normal",
-        "normal",
-        "sans-serif",
-        None,
-    )?;
-
-    font_rule(
-        svg,
-        ".key-text",
-        &fonts.text.key,
-        "bold",
-        "normal",
-        "'Noto Sans Symbols', sans-serif",
-        None,
-    )?;
-
-    font_rule(
-        svg,
-        ".time-text",
-        &fonts.text.time,
-        "normal",
-        "normal",
-        "sans-serif",
-        Some("#444444"),
-    )?;
-
-    font_rule(
-        svg,
-        ".meter-text",
-        &fonts.text.meter,
-        "normal",
-        "normal",
-        "sans-serif",
-        Some("#444444"),
-    )?;
-
-    font_rule(
-        svg,
-        ".key-label",
-        &fonts.label.key,
-        "bold",
-        "normal",
-        "'Noto Sans Symbols', sans-serif",
-        Some("#333333"),
-    )?;
-
-    font_rule(
-        svg,
-        ".jump-label",
-        &fonts.label.jump,
-        "bold",
-        "normal",
-        "sans-serif",
-        Some("#333333"),
-    )?;
-
-    font_rule(
-        svg,
-        ".tempo-label",
-        &fonts.label.tempo,
-        "normal",
-        "italic",
-        "serif",
-        Some("#333333"),
-    )?;
-
-    font_rule(
-        svg,
-        ".mark-label",
-        &fonts.label.mark,
-        "normal",
-        "italic",
-        "serif",
-        Some("#333333"),
-    )?;
-
-    font_rule(
-        svg,
-        ".dynamic-label",
-        &fonts.label.dynamic,
-        "bold",
-        "italic",
-        "serif",
-        None,
-    )?;
-
-    font_rule(
-        svg,
-        ".time-label",
-        &fonts.label.time,
-        "normal",
-        "normal",
-        "sans-serif",
-        Some("#333333"),
-    )?;
-
-    font_rule(
-        svg,
-        ".volta-label",
-        &fonts.label.volta,
-        "bold",
-        "normal",
-        "sans-serif",
-        Some("#333333"),
-    )?;
-
-    font_rule(
-        svg,
-        ".page-number-text",
-        &fonts.text.page_number,
-        "normal",
-        "normal",
-        "sans-serif",
-        Some("#777777"),
-    )?;
+    for (selector, font, fallback, style) in rules {
+        font_rule(svg, selector, font, style, fallback)?;
+    }
 
     Ok(())
 }
@@ -284,23 +144,19 @@ fn font_rule(
     svg: &mut String,
     selector: &str,
     font: &FontMetrics,
-    weight: &str,
-    style: &str,
+    element: &ElementStyle,
     fallback: &str,
-    fill: Option<&str>,
 ) -> Result<()> {
+    let style = if font.italic() { "italic" } else { "normal" };
+    let fill = element.color.as_deref().unwrap_or("black");
+
     writeln!(
         svg,
-        "    {selector} {{\n      font-family: '{}', {fallback};\n      font-size: {:.2}px;\n      font-weight: {weight};\n      font-style: {style};",
+        "    {selector} {{\n      font-family: '{}', {fallback};\n      font-size: {:.2}px;\n      font-weight: {};\n      font-style: {style};\n      fill: {fill};\n    }}\n",
         font.family(),
         font.size(),
+        font.weight(),
     )?;
-
-    if let Some(fill) = fill {
-        writeln!(svg, "      fill: {fill};")?;
-    }
-
-    writeln!(svg, "    }}\n")?;
 
     Ok(())
 }

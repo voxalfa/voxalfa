@@ -18,7 +18,7 @@ expression: output_str
 [1] do re mi fa
 
 === DIAGNOSTICS ===
-error[E034]: invalid value for directive '@note-text': font-size must be positive
+error[E034]: invalid value for directive '@note-text': non-positive value
   ┌─ invalid_directive_value_error.vfa:3:15
   │
 3 │ ;; @note-text font-size={0}

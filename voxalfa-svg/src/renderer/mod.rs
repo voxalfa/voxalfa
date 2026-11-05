@@ -69,7 +69,7 @@ pub fn render_pages(
             options.page.width, options.page.height, options.page.width, options.page.height,
         )?;
 
-        emit_defs(&mut svg, &fonts, options.encode_font)?;
+        emit_defs(&mut svg, &fonts, options)?;
 
         writeln!(
             svg,

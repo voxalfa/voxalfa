@@ -1,5 +1,7 @@
 use voxalfa_core::{output::FinalOutput, validation::Validator};
-use voxalfa_svg::{RenderOptions, render_pages, render_pages_with};
+use voxalfa_svg::{
+    FontFace, FontFaces, RenderOptions, render_pages, render_pages_with, render_pages_with_fonts,
+};
 
 fn render(output: &FinalOutput) -> voxalfa_svg::Result<String> {
     render_pages(output).map(|pages| pages.join("\n"))
@@ -453,6 +455,125 @@ fn applies_per_element_font_directives() {
     assert!(svg.contains("font-size: 18.00px;"));
     assert!(svg.contains(".lyrics-text {"));
     assert!(svg.contains("font-size: 9.00px;"));
+}
+
+#[test]
+fn applies_element_color_directives() {
+    let output = analyze(
+        r##"
+;; @version 0.1.0-alpha
+;; @title-text color={"#ff0000"}
+;; @time-text color={"rebeccapurple"}
+
+[#] title="Colored"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"##,
+    );
+
+    let mut options = RenderOptions::default();
+    options.apply_directives(&output.header.directives);
+
+    assert_eq!(
+        options.elements.text.title.color.as_deref(),
+        Some("#ff0000")
+    );
+    assert_eq!(
+        options.elements.text.time.color.as_deref(),
+        Some("rebeccapurple")
+    );
+
+    let svg = render_with(&output, options).unwrap();
+
+    assert!(svg.contains(".title-text {"));
+    assert!(svg.contains("      fill: #ff0000;"));
+    assert!(svg.contains("      fill: rebeccapurple;"));
+    assert!(svg.contains(".page-number-text {"));
+    assert!(svg.contains("      fill: black;"));
+    assert!(svg.contains(".note-text {"));
+    assert!(svg.contains(
+        ".note-text {\n      font-family: 'Fira Sans', monospace;\n      font-size: 12.00px;\n      font-weight: 700;\n      font-style: normal;\n      fill: black;"
+    ));
+}
+
+#[test]
+fn applies_font_weight_and_style_directives() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+;; @title-text font-weight={"normal"}
+;; @tempo-label font-style={"normal"}
+
+[#] title="Font styles"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert!(svg.contains(
+        ".title-text {\n      font-family: 'Noto Sans', sans-serif;\n      font-size: 16.00px;\n      font-weight: 400;\n      font-style: normal;"
+    ));
+    assert!(svg.contains(
+        ".tempo-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: normal;"
+    ));
+    assert!(svg.contains(
+        ".mark-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: italic;"
+    ));
+    assert!(svg.contains(
+        ".note-text {\n      font-family: 'Fira Sans', monospace;\n      font-size: 12.00px;\n      font-weight: 700;\n      font-style: normal;"
+    ));
+}
+
+#[test]
+fn resolves_fonts_from_the_supplied_face_set() {
+    const CUSTOM_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Regular.ttf");
+
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+;; @note-text font-family={"Custom Note"} | font-weight={"normal"} | font-style={"italic"}
+
+[#] title="Custom faces"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let faces = FontFaces::default().with(FontFace::new("Custom Note", CUSTOM_FONT));
+    let svg = render_pages_with_fonts(&output, &RenderOptions::default(), &faces)
+        .unwrap()
+        .join("\n");
+
+    assert!(svg.contains("font-family: 'Custom Note', monospace;"));
+    assert!(svg.contains(
+        ".note-text {\n      font-family: 'Custom Note', monospace;\n      font-size: 12.00px;\n      font-weight: 400;\n      font-style: italic;"
+    ));
+    assert!(svg.contains(
+        "@font-face {\n      font-family: 'Custom Note';\n      src: url('data:font/ttf;base64,"
+    ));
 }
 
 #[test]

@@ -10,7 +10,7 @@ mod visitor;
 pub mod options;
 
 pub use error::{Error, Result};
-pub use fonts::{FontFace, FontFaces};
+pub use fonts::{FontFace, FontFaces, default_font_style};
 pub use options::{PageSize, RenderOptions};
 
 use voxalfa_core::output::FinalOutput;

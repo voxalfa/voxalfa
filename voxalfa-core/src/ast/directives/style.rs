@@ -29,8 +29,9 @@ impl EdgeValues {
 pub struct ElementStyle {
     pub font_family: Option<String>,
     pub font_size: Option<f32>,
-    pub font_weight: u16,
-    pub italic: bool,
+    pub font_weight: Option<u16>,
+    pub italic: Option<bool>,
+    pub color: Option<String>,
     pub margin: EdgeValues,
     pub padding: EdgeValues,
 }
@@ -162,8 +163,8 @@ pub fn parse_element_style(
                 let value = context.parse_node::<String>(value_node, scope_id)?;
 
                 match value.as_str() {
-                    "normal" => style.italic = false,
-                    "italic" => style.italic = true,
+                    "normal" => style.italic = Some(false),
+                    "italic" => style.italic = Some(true),
                     _ => invalid_directive(context, key_node.range(), name, "invalid style"),
                 }
             }
@@ -171,7 +172,7 @@ pub fn parse_element_style(
                 let value = context.parse_node::<String>(value_node, scope_id)?;
 
                 if let Some(weight) = font_weight(&value) {
-                    style.font_weight = weight;
+                    style.font_weight = Some(weight);
                 } else {
                     invalid_directive(context, key_node.range(), name, "invalid weight value");
                 }
@@ -184,6 +185,11 @@ pub fn parse_element_style(
                 } else {
                     style.font_size = Some(size);
                 }
+            }
+            "color" => {
+                let color = context.parse_node::<String>(value_node, scope_id)?;
+
+                style.color = Some(color);
             }
             _ => apply_box_modifier(
                 context,
