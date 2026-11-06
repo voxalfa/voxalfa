@@ -8,6 +8,7 @@ members = [
   "voxalfa-formatter",
   "voxalfa-pdf",
   "voxalfa-svg",
+  "voxalfa-wasm",
   "tree-sitter-voxalfa",
 ]
 
