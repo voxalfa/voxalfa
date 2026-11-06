@@ -163,7 +163,7 @@ impl FaceRole {
     }
 
     fn for_element(element: &str) -> Option<Self> {
-        Some(match element {
+        let role = match element {
             "note-text" | "octave-text" | "divider-text" => Self::SOLFA,
             "lyrics-text" => Self::LYRIC,
             "title-text" | "key-text" | "key-label" | "jump-label" | "volta-label" => {
@@ -174,7 +174,9 @@ impl FaceRole {
             "mark-label" | "tempo-label" => Self::SERIF_ITALIC,
             "dynamic-label" => Self::SERIF_BOLD_ITALIC,
             _ => return None,
-        })
+        };
+
+        Some(role)
     }
 
     fn face(self) -> FontFace {
@@ -322,6 +324,7 @@ pub struct LabelFonts {
 impl Fonts {
     pub fn with_faces(options: &RenderOptions, faces: &FontFaces) -> Result<Self> {
         let fallback = FontFaces::default();
+
         let mut builder = FontBuilder::new(faces, &fallback);
 
         let text = TextFonts::new(options, &mut builder)?;
@@ -418,6 +421,7 @@ impl<'a> FontBuilder<'a> {
         style: &ElementStyle,
     ) -> Result<FontMetrics> {
         let query = FaceQuery::for_style(role, style);
+
         let mut face = self.resolve(role, query);
 
         if !face.family.eq_ignore_ascii_case(query.family) {

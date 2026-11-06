@@ -1,8 +1,4 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use voxalfa_svg::RenderOptions;
@@ -10,7 +6,7 @@ use voxalfa_svg::RenderOptions;
 use crate::{
     error::Result,
     reporter::CliReporter,
-    utils::fs::{parse_file, read_files},
+    utils::fs::{parse_file, read_files, write_file},
 };
 
 #[derive(Parser)]
@@ -43,12 +39,7 @@ pub fn execute(params: PdfParams) -> Result<()> {
                 _ => default_path,
             };
 
-            File::options()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(output_path)?
-                .write_all(&pdf)?;
+            write_file(output_path, pdf)?;
         }
     }
 

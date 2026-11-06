@@ -1,6 +1,8 @@
 use voxalfa_core::{output::FinalOutput, validation::Validator};
 use voxalfa_svg::{
-    FontFace, FontFaces, RenderOptions, render_pages, render_pages_with, render_pages_with_fonts,
+    RenderOptions,
+    fonts::{FontFace, FontFaces},
+    render_pages, render_pages_with, render_pages_with_fonts,
 };
 
 fn render(output: &FinalOutput) -> voxalfa_svg::Result<String> {
@@ -597,6 +599,7 @@ fn applies_header_box_directives() {
     );
 
     let mut options = RenderOptions::default();
+
     options.apply_directives(&output.header.directives);
 
     assert_eq!(options.page.width, 800.0);

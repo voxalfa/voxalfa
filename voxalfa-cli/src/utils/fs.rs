@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use glob::glob;
 use voxalfa_core::{output::FinalOutput, validation::Validator};
@@ -45,4 +49,19 @@ pub fn parse_file(content: &str) -> Result<FinalOutput> {
     let output = validator.analyze(content);
 
     Ok(output)
+}
+
+pub fn write_file<P, B>(path: P, content: B) -> Result<()>
+where
+    P: AsRef<Path>,
+    B: AsRef<[u8]>,
+{
+    File::options()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(path.as_ref())?
+        .write_all(content.as_ref())?;
+
+    Ok(())
 }

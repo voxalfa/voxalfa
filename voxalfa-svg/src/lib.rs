@@ -1,5 +1,4 @@
 mod error;
-mod fonts;
 mod locale;
 mod model;
 mod renderer;
@@ -7,13 +6,15 @@ mod resolver;
 mod symbols;
 mod visitor;
 
+pub mod fonts;
 pub mod options;
 
 pub use error::{Error, Result};
-pub use fonts::{FontFace, FontFaces, default_font_style};
 pub use options::{PageSize, RenderOptions};
 
 use voxalfa_core::output::FinalOutput;
+
+use fonts::FontFaces;
 
 pub fn render_pages(data: &FinalOutput) -> Result<Vec<String>> {
     render_pages_with(data, RenderOptions::default())

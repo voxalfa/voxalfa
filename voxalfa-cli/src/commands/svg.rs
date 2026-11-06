@@ -1,8 +1,4 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use voxalfa_svg::render_pages_with;
@@ -10,7 +6,7 @@ use voxalfa_svg::render_pages_with;
 use crate::{
     error::Result,
     reporter::CliReporter,
-    utils::fs::{parse_file, read_files},
+    utils::fs::{parse_file, read_files, write_file},
 };
 
 #[derive(Parser)]
@@ -34,6 +30,7 @@ pub fn execute(params: SvgParams) -> Result<()> {
             let pages = render_pages_with(&output, Default::default())?;
             let file_path = Path::new(&file.path);
             let default_path = file_path.with_extension("svg");
+
             let base_path = match params.output.as_ref().map(PathBuf::from) {
                 Some(path) if path.extension().is_some() => path,
                 Some(path) => path.join(
@@ -47,12 +44,7 @@ pub fn execute(params: SvgParams) -> Result<()> {
             for (index, page) in pages.iter().enumerate() {
                 let output_path = page_path(&base_path, index, pages.len());
 
-                File::options()
-                    .create(true)
-                    .write(true)
-                    .truncate(true)
-                    .open(output_path)?
-                    .write_all(page.as_bytes())?;
+                write_file(output_path, page)?;
             }
         }
     }
@@ -71,6 +63,7 @@ fn page_path(path: &Path, index: usize, page_count: usize) -> PathBuf {
         .file_stem()
         .and_then(|stem| stem.to_str())
         .unwrap_or("page");
+
     let extension = path
         .extension()
         .and_then(|ext| ext.to_str())
