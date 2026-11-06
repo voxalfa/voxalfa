@@ -410,8 +410,7 @@ fn layout_dynamic_spans(
     (spans, height)
 }
 
-/// Place section markers above the note block. Time signatures get the
-/// top lane; every other marker shares the lane below it.
+// markers sharing a note are stacked vertically following the order priority
 fn layout_markers(
     system: &System,
     fonts: &Fonts,
@@ -509,12 +508,14 @@ fn layout_markers(
         groups.push(vec![marker]);
     }
 
-    let mut rows: Vec<Vec<PlacedMarker>> = Vec::new();
+    let row_count = groups.iter().map(Vec::len).max().unwrap_or(0);
+    let mut rows: Vec<Vec<PlacedMarker>> = vec![Vec::new(); row_count];
 
     for mut group in groups {
         group.sort_by_key(|marker| marker_priority(marker.kind));
+        let start_row = row_count - group.len();
 
-        for (row, marker) in group.into_iter().enumerate() {
+        for (offset, marker) in group.into_iter().enumerate() {
             let font = marker_font(marker.kind, fonts);
 
             let width = match &marker.glyph {
@@ -559,11 +560,7 @@ fn layout_markers(
                 anchor,
             };
 
-            if rows.len() <= row {
-                rows.resize_with(row + 1, Vec::new);
-            }
-
-            rows[row].push(placed);
+            rows[start_row + offset].push(placed);
         }
     }
 

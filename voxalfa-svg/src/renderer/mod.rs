@@ -15,6 +15,7 @@ use voxalfa_core::output::FinalOutput;
 use crate::{
     error::Result,
     fonts::{FontFaces, Fonts},
+    model::System,
     options::RenderOptions,
     resolver,
 };
@@ -49,17 +50,21 @@ pub fn render_pages(
 
     let pages = paginate(&system_layouts, header.height, options);
     let page_count = pages.len().max(1);
+    let max_pulses_per_line = max_pulses_per_line(&score.systems, options.printable_width());
 
     let mut result = Vec::with_capacity(pages.len());
 
     for (page_id, page) in pages.iter().enumerate() {
-        let body_width = page
+        let full_line_width = page
             .systems
             .iter()
+            .filter(|placed| is_full_line(&score.systems[placed.index], max_pulses_per_line))
             .map(|placed| system_width(&score.systems[placed.index]))
-            .fold(0.0, f32::max);
+            .reduce(f32::max);
 
-        let body_offset = ((options.printable_width() - body_width) / 2.0).max(0.0);
+        let full_line_offset = full_line_width
+            .map(|width| ((options.printable_width() - width) / 2.0).max(0.0))
+            .unwrap_or(0.0);
 
         let mut svg = String::with_capacity(INITIAL_SVG_CAPACITY);
 
@@ -81,9 +86,17 @@ pub fn render_pages(
             emit_header(&mut svg, &header, options)?;
         }
 
-        for placed in &page.systems {
+        for (index, placed) in page.systems.iter().enumerate() {
+            let system = &score.systems[placed.index];
+
+            let body_offset = if index == 0 && !is_full_line(system, max_pulses_per_line) {
+                0.0
+            } else {
+                full_line_offset
+            };
+
             let placement = SystemPlacement {
-                system: &score.systems[placed.index],
+                system,
                 layout: &system_layouts[placed.index],
                 y: placed.y,
                 body_offset,
@@ -111,6 +124,24 @@ pub fn render_pages(
     }
 
     Ok(result)
+}
+
+fn max_pulses_per_line(systems: &[System<'_>], printable_width: f32) -> usize {
+    let pulse_width = systems
+        .first()
+        .and_then(|system| system.pulses.first())
+        .map(|pulse| pulse.pulse_width)
+        .unwrap_or(0.0);
+
+    if pulse_width <= 0.0 {
+        0
+    } else {
+        (printable_width / pulse_width).floor() as usize
+    }
+}
+
+fn is_full_line(system: &System<'_>, max_pulses_per_line: usize) -> bool {
+    max_pulses_per_line > 0 && system.pulses.len() == max_pulses_per_line
 }
 
 fn paginate(layouts: &[SystemLayout], header_height: f32, options: &RenderOptions) -> Vec<Page> {
