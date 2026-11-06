@@ -1,6 +1,6 @@
 mod style;
 
-pub use style::{EdgeValues, ElementStyle, PageStyle};
+pub use style::{EdgeValues, ElementStyle, FontStretch, PageStyle};
 
 use std::collections::BTreeMap;
 

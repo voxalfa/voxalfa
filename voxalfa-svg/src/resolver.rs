@@ -897,6 +897,7 @@ fn make_system<'a>(
 
     System {
         pulses: layout.system_pulses(pulse_width),
+        time: pulses[indices[0]].time,
         voices,
         lyric_groups,
         markers: layout.markers(),

@@ -619,3 +619,36 @@ fn applies_header_box_directives() {
     assert!(svg.contains("class=\"title-text\""));
     assert!(svg.contains("class=\"author-text\""));
 }
+
+#[test]
+fn applies_font_stretch_directive() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+;; @note-text font-stretch={"condensed"}
+
+[#] title="Stretch"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let mut options = RenderOptions::default();
+    options.apply_directives(&output.header.directives);
+
+    assert_eq!(
+        options.elements.text.note.font_stretch,
+        Some(voxalfa_core::ast::directives::FontStretch::Condensed)
+    );
+
+    let svg = render_with(&output, options).unwrap();
+
+    assert!(svg.contains("font-stretch: condensed;"));
+}

@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use base64::{Engine, engine::general_purpose::STANDARD};
-use voxalfa_core::ast::directives::ElementStyle;
+use voxalfa_core::ast::directives::{ElementStyle, FontStretch};
 
 use crate::{
     error::Result,
@@ -32,11 +32,20 @@ fn emit_font_faces(svg: &mut String, fonts: &Fonts, encode_font: bool) -> Result
             let style = if face.italic { "italic" } else { "normal" };
             let data = STANDARD.encode(face.data.as_ref());
 
+            writeln!(svg, "    @font-face {{")?;
+            writeln!(svg, "      font-family: '{}';", face.family)?;
             writeln!(
                 svg,
-                "    @font-face {{\n      font-family: '{}';\n      src: url('data:font/ttf;base64,{data}') format('truetype');\n      font-weight: {};\n      font-style: {style};\n    }}\n",
-                face.family, face.weight,
+                "      src: url('data:font/ttf;base64,{data}') format('truetype');"
             )?;
+            writeln!(svg, "      font-weight: {};", face.weight)?;
+
+            if let Some(stretch) = stretch_css(face.stretch) {
+                writeln!(svg, "      font-stretch: {stretch};")?;
+            }
+
+            writeln!(svg, "      font-style: {style};")?;
+            writeln!(svg, "    }}")?;
         }
     }
 
@@ -150,13 +159,32 @@ fn font_rule(
     let style = if font.italic() { "italic" } else { "normal" };
     let fill = element.color.as_deref().unwrap_or("black");
 
-    writeln!(
-        svg,
-        "    {selector} {{\n      font-family: '{}', {fallback};\n      font-size: {:.2}px;\n      font-weight: {};\n      font-style: {style};\n      fill: {fill};\n    }}\n",
-        font.family(),
-        font.size(),
-        font.weight(),
-    )?;
+    writeln!(svg, "    {selector} {{")?;
+    writeln!(svg, "      font-family: '{}', {fallback};", font.family())?;
+    writeln!(svg, "      font-size: {:.2}px;", font.size())?;
+    writeln!(svg, "      font-weight: {};", font.weight())?;
+
+    if let Some(stretch) = stretch_css(font.stretch()) {
+        writeln!(svg, "      font-stretch: {stretch};")?;
+    }
+
+    writeln!(svg, "      font-style: {style};")?;
+    writeln!(svg, "      fill: {fill};")?;
+    writeln!(svg, "    }}")?;
 
     Ok(())
+}
+
+fn stretch_css(stretch: FontStretch) -> Option<&'static str> {
+    match stretch {
+        FontStretch::UltraCondensed => Some("ultra-condensed"),
+        FontStretch::ExtraCondensed => Some("extra-condensed"),
+        FontStretch::Condensed => Some("condensed"),
+        FontStretch::SemiCondensed => Some("semi-condensed"),
+        FontStretch::Normal => None,
+        FontStretch::SemiExpanded => Some("semi-expanded"),
+        FontStretch::Expanded => Some("expanded"),
+        FontStretch::ExtraExpanded => Some("extra-expanded"),
+        FontStretch::UltraExpanded => Some("ultra-expanded"),
+    }
 }

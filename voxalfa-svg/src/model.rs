@@ -83,6 +83,7 @@ pub struct LyricToken {
 
 pub struct System<'a> {
     pub pulses: Vec<SystemPulse<'a>>,
+    pub time: TimeSignature,
     pub voices: Vec<Voice>,
     pub lyric_groups: Vec<SystemLyricGroup>,
     pub markers: Vec<SystemMarker>,

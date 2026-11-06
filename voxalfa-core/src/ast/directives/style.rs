@@ -25,11 +25,57 @@ impl EdgeValues {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FontStretch {
+    UltraCondensed,
+    ExtraCondensed,
+    Condensed,
+    SemiCondensed,
+    #[default]
+    Normal,
+    SemiExpanded,
+    Expanded,
+    ExtraExpanded,
+    UltraExpanded,
+}
+
+impl FontStretch {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "ultra-condensed" => Some(Self::UltraCondensed),
+            "extra-condensed" => Some(Self::ExtraCondensed),
+            "condensed" => Some(Self::Condensed),
+            "semi-condensed" => Some(Self::SemiCondensed),
+            "normal" => Some(Self::Normal),
+            "semi-expanded" => Some(Self::SemiExpanded),
+            "expanded" => Some(Self::Expanded),
+            "extra-expanded" => Some(Self::ExtraExpanded),
+            "ultra-expanded" => Some(Self::UltraExpanded),
+            _ => None,
+        }
+    }
+
+    pub fn rank(self) -> u8 {
+        match self {
+            Self::UltraCondensed => 0,
+            Self::ExtraCondensed => 1,
+            Self::Condensed => 2,
+            Self::SemiCondensed => 3,
+            Self::Normal => 4,
+            Self::SemiExpanded => 5,
+            Self::Expanded => 6,
+            Self::ExtraExpanded => 7,
+            Self::UltraExpanded => 8,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ElementStyle {
     pub font_family: Option<String>,
     pub font_size: Option<f32>,
     pub font_weight: Option<u16>,
+    pub font_stretch: Option<FontStretch>,
     pub italic: Option<bool>,
     pub color: Option<String>,
     pub margin: EdgeValues,
@@ -175,6 +221,15 @@ pub fn parse_element_style(
                     style.font_weight = Some(weight);
                 } else {
                     invalid_directive(context, key_node.range(), name, "invalid weight value");
+                }
+            }
+            "font-stretch" => {
+                let value = context.parse_node::<String>(value_node, scope_id)?;
+
+                if let Some(stretch) = FontStretch::parse(&value) {
+                    style.font_stretch = Some(stretch);
+                } else {
+                    invalid_directive(context, key_node.range(), name, "invalid stretch value");
                 }
             }
             "font-size" => {

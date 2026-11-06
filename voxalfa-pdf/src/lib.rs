@@ -85,7 +85,7 @@ mod tests {
     use crate::render;
 
     #[test]
-    fn renders_a_pdf_document() {
+    fn test_pdf_rendering() {
         let source = r#"
 ;; @version 0.1.0-alpha
 

@@ -261,8 +261,20 @@ fn header_text(
     )
 }
 
-fn push_row(rows: &mut Vec<HeaderRow>, texts: Vec<(HeaderText, f32)>, gap_before: f32) {
-    let height = texts.iter().map(|(_, height)| *height).fold(0.0, f32::max);
+fn push_row(rows: &mut Vec<HeaderRow>, mut texts: Vec<(HeaderText, f32)>, gap_before: f32) {
+    let baseline = texts
+        .iter()
+        .map(|(text, _)| text.baseline)
+        .fold(0.0, f32::max);
+
+    let height = texts
+        .iter()
+        .map(|(text, text_height)| baseline + (*text_height - text.baseline))
+        .fold(0.0, f32::max);
+
+    for (text, _) in &mut texts {
+        text.baseline = baseline;
+    }
 
     rows.push(HeaderRow {
         texts: texts.into_iter().map(|(text, _)| text).collect(),
