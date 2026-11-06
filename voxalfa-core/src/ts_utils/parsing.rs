@@ -39,9 +39,10 @@ impl ParseNode for usize {
                 .reporter
                 .error(range, DiagnosticKind::InvalidType(Primitive::Integer));
         } else {
-            context
-                .reporter
-                .error(range, DiagnosticKind::ExpectedType("integer", node.kind()));
+            context.reporter.error(
+                range,
+                DiagnosticKind::ExpectedType("integer", node.kind().to_string()),
+            );
         }
 
         None
@@ -68,9 +69,10 @@ impl ParseNode for f32 {
                 .reporter
                 .error(range, DiagnosticKind::InvalidType(Primitive::Float));
         } else {
-            context
-                .reporter
-                .error(range, DiagnosticKind::ExpectedType("float", node.kind()));
+            context.reporter.error(
+                range,
+                DiagnosticKind::ExpectedType("float", node.kind().to_string()),
+            );
         }
 
         None
@@ -94,9 +96,10 @@ impl ParseNode for String {
 
             Some(value)
         } else {
-            context
-                .reporter
-                .error(range, DiagnosticKind::ExpectedType("string", node.kind()));
+            context.reporter.error(
+                range,
+                DiagnosticKind::ExpectedType("string", node.kind().to_string()),
+            );
             None
         }
     }
@@ -118,9 +121,10 @@ impl ParseNode for bool {
                 _ => Some(false),
             }
         } else {
-            context
-                .reporter
-                .error(range, DiagnosticKind::ExpectedType("boolean", node.kind()));
+            context.reporter.error(
+                range,
+                DiagnosticKind::ExpectedType("boolean", node.kind().to_string()),
+            );
             None
         }
     }

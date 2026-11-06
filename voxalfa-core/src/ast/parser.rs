@@ -532,7 +532,7 @@ impl<'a> Parser<'a> {
         let mut matches = cursor.matches(&context.query, root, self.source);
 
         while let Some(m) = matches.next() {
-            for capture in m.captures.iter() {
+            for capture in m.captures().iter() {
                 let node = capture.node;
                 let name = capture_names[capture.index as usize];
 

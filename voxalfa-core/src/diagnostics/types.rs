@@ -32,7 +32,7 @@ pub enum DiagnosticKind {
     #[error("unknown parameter '{0}'")]
     UnknownParameter(String),
     #[error("expected {0}, got {1}")]
-    ExpectedType(&'static str, &'static str),
+    ExpectedType(&'static str, String),
     #[error("invalid {0}")]
     InvalidType(Primitive),
     #[error("invalid time signature, expected two non-null integers")]

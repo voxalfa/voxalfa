@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 semver = "1.0.28"
 thiserror = { workspace = true }
-tree-sitter = "0.26.8"
+tree-sitter = "0.27.1"
 tree-sitter-voxalfa = { workspace = true }
 
 [dev-dependencies]
