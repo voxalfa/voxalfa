@@ -8,13 +8,13 @@ use voxalfa_core::{ast::directives::ElementStyle, output::metrics::StringMetric}
 
 use crate::{error::Result, options::RenderOptions};
 
-pub const SOLFA_FONT: &[u8] = include_bytes!("../fonts/FiraSans-Solfa.ttf");
+pub const SOLFA_FONT: &[u8] = include_bytes!("../fonts/FiraSans-Bold.ttf");
 pub const TEXT_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Regular.ttf");
 pub const TEXT_BOLD_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Bold.ttf");
 pub const SERIF_FONT: &[u8] = include_bytes!("../fonts/NotoSerif-Regular.ttf");
 pub const SERIF_ITALIC_FONT: &[u8] = include_bytes!("../fonts/NotoSerif-Italic.ttf");
 pub const SERIF_BOLD_ITALIC_FONT: &[u8] = include_bytes!("../fonts/NotoSerif-BoldItalic.ttf");
-pub const LYRIC_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Lyrics.ttf");
+pub const LYRIC_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Condensed.ttf");
 pub const MUSIC_FONT: &[u8] = include_bytes!("../fonts/NotoSansSymbols-Bold.ttf");
 
 pub const SOLFA_FAMILY: &str = "Fira Sans";

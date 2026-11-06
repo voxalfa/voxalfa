@@ -19,6 +19,26 @@ jobs:
       - name: Run all workspace tests
         run: cargo test --workspace
 
+  check-fonts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install fonttools
+        run: python3 -m pip install 'fonttools==4.63.0'
+
+      - name: Regenerate subsetted fonts
+        run: python3 voxalfa-svg/fonts/subset.py
+
+      - name: Check that fonts are up to date
+        run: git diff --exit-code -- voxalfa-svg/fonts
+
   test-parser:
     runs-on: ubuntu-latest
 
