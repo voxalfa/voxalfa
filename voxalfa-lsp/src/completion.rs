@@ -13,12 +13,11 @@ pub fn get_completion_context(
     column: usize,
 ) -> Option<CompletionContext> {
     let root = doc.data.tree.as_ref().map(|t| t.root_node())?;
-    let point = Point::new(line, column);
-    let target = root.named_descendant_for_point_range(point, point)?;
-    let line_str = doc.source.lines().nth(line)?;
+    let line_str = doc.source.split('\n').nth(line)?; // use split to keep trailing newlines
+    let target = resolve_node_at(doc, root, line, column)?;
 
     match target.kind_id() {
-        node_types::HEADER => {
+        node_types::HEADER | node_types::SOURCE_FILE => {
             if line_str.contains("[$]") {
                 Some(CompletionContext::InitialParams)
             } else if line_str.contains("[#]") {
@@ -44,6 +43,33 @@ pub fn get_completion_context(
             Some(context)
         }
         _ => None,
+    }
+}
+
+fn resolve_node_at<'tree>(
+    doc: &Document,
+    root: Node<'tree>,
+    line: usize,
+    column: usize,
+) -> Option<Node<'tree>> {
+    let point = Point::new(line, column);
+    let target = root.named_descendant_for_point_range(point, point)?;
+
+    // source_file is returned at the end position of the document
+    // the last node should be used at the end position to give the correct context
+    if target.kind_id() != node_types::SOURCE_FILE {
+        return Some(target);
+    }
+
+    let previous_line = line.checked_sub(1)?;
+    let previous_column = doc.source.split('\n').nth(previous_line)?.len();
+    let previous_point = Point::new(previous_line, previous_column);
+    let previous_target = root.named_descendant_for_point_range(previous_point, previous_point)?;
+
+    if previous_target.kind_id() == node_types::SOURCE_FILE {
+        Some(target)
+    } else {
+        Some(previous_target)
     }
 }
 
@@ -329,6 +355,7 @@ fn get_builtin_context(target: Node<'_>, source: &str) -> Option<Builtin> {
         node_types::BUILTIN => target.prev_named_sibling()?,
         _ => target.named_child(0)?,
     };
+
     let source = source.as_bytes();
     let identifier = identifier.utf8_text(source).ok()?;
 
@@ -348,6 +375,7 @@ fn get_section_context(document: &Document, line: usize) -> Option<SectionContex
     let header = &document.data.header;
     let voices = header.params.voices.clone()?.value;
     let verses = header.metadata.verses.clone().map(|v| v.value);
+
     let mut time = header.params.time.clone()?.value;
     let mut used_voices = Vec::new();
 
@@ -375,4 +403,77 @@ fn get_section_context(document: &Document, line: usize) -> Option<SectionContex
         verses: verses.unwrap_or_default() as u8,
         voices: voices.iter().map(|v| v.value).collect(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use async_lsp::lsp_types::Url;
+    use voxalfa_core::validation::Validator;
+
+    use super::*;
+
+    fn document(source: &str) -> Document {
+        let mut validator = Validator::init().unwrap();
+        let data = validator.analyze(source);
+
+        Document::new(
+            Url::parse("file:///test.vfa").unwrap(),
+            source.to_string(),
+            data,
+        )
+    }
+
+    #[test]
+    fn test_initial_completion_context() {
+        let doc = document("\n");
+        let context = get_completion_context(&doc, 0, 0);
+
+        assert!(matches!(context, Some(CompletionContext::Header)));
+    }
+
+    #[test]
+    fn test_header_completion_context() {
+        let doc = document("[#] title=\"test\"\n");
+        let context = get_completion_context(&doc, 1, 0);
+
+        assert!(matches!(context, Some(CompletionContext::Header)),);
+    }
+
+    #[test]
+    fn test_params_completion_context() {
+        let doc = document("[$] \n");
+        let context = get_completion_context(&doc, 0, 4);
+
+        assert!(matches!(context, Some(CompletionContext::InitialParams)),);
+    }
+
+    #[test]
+    fn test_builtin_completion_context() {
+        let doc = document("[$] dynamics={}\n");
+        let context = get_completion_context(&doc, 0, 14);
+
+        assert!(matches!(
+            context,
+            Some(CompletionContext::Builtin(Builtin::Dynamics))
+        ),);
+    }
+
+    #[test]
+    fn test_section_completion_context() {
+        let doc = document("[$] voices={S} time={3,4}\n\n---\n\n");
+        let context = get_completion_context(&doc, 4, 0);
+
+        assert!(matches!(
+            context,
+            Some(CompletionContext::Section(SectionContext { .. }))
+        ),);
+    }
+
+    #[test]
+    fn test_end_position_completion_context() {
+        let doc = document("[#] title=\"test\"\n\n");
+        let context = get_completion_context(&doc, 2, 0);
+
+        assert!(matches!(context, Some(CompletionContext::Header)),);
+    }
 }
