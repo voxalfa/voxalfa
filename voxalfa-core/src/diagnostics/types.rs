@@ -73,8 +73,8 @@ pub enum DiagnosticKind {
     UndefinedVoiceParameter(Range),
     #[error("'time' parameter has not been defined")]
     UndefinedTimeParameter(Range),
-    #[error("parameter override should be done at the top level")]
-    NonTopLevelParamsOverride(Range),
+    #[error("section parameters should be done at the top level")]
+    NonTopLevelSectionParams(Range),
     #[error("missing lyrics operator and anchor")]
     ExpectedLyricJoin(Range),
     #[error("lyrics join is unused (must be followed by a section)")]
@@ -120,7 +120,7 @@ impl DiagnosticKind {
             DiagnosticKind::UndefinedVersesMetadata(_) => "E025",
             DiagnosticKind::UndefinedVoiceParameter(_) => "E026",
             DiagnosticKind::UndefinedTimeParameter(_) => "E027",
-            DiagnosticKind::NonTopLevelParamsOverride(_) => "E028",
+            DiagnosticKind::NonTopLevelSectionParams(_) => "E028",
             DiagnosticKind::ExpectedLyricJoin(_) => "E029",
             DiagnosticKind::UnusedLyricJoin(_) => "E030",
             DiagnosticKind::InvalidSectionMerge(_) => "E031",
@@ -178,7 +178,7 @@ impl DiagnosticKind {
                 message: "consider adding 'time' parameter".to_string(),
                 range: *range,
             }],
-            DiagnosticKind::NonTopLevelParamsOverride(range) => vec![DiagnosticRelatedInfo {
+            DiagnosticKind::NonTopLevelSectionParams(range) => vec![DiagnosticRelatedInfo {
                 message: "set parameter override here".to_string(),
                 range: *range,
             }],

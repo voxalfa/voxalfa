@@ -23,11 +23,7 @@ use crate::{
         types::{DiagnosticKind, ReportStage},
     },
     ts_utils::{
-        context::TSContext,
-        node_types,
-        parsing::ParseNode,
-        range::{Range, RangeUtil},
-        types::AssignmentData,
+        context::TSContext, node_types, parsing::ParseNode, range::Range, types::AssignmentData,
     },
 };
 
@@ -203,14 +199,14 @@ impl<'a> Parser<'a> {
         section_sid: ScopeId,
         section: &mut Section,
     ) {
-        if !section.items.is_empty() {
-            let context_range = self.tree.get_scope_range(section.sid).start();
-
-            self.reporter.error(
-                node.range(),
-                DiagnosticKind::NonTopLevelParamsOverride(context_range),
-            );
-        }
+        // if !section.items.is_empty() {
+        //     let context_range = self.tree.get_scope_range(section.sid).start();
+        //
+        //     self.reporter.error(
+        //         node.range(),
+        //         DiagnosticKind::NonTopLevelParamsOverride(context_range),
+        //     );
+        // }
 
         self.handle_local_params_node(node, section_sid, &mut section.params)
     }

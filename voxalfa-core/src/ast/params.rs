@@ -8,7 +8,7 @@ use crate::{
         Touch, Voice,
     },
     diagnostics::types::DiagnosticKind,
-    ts_utils::types::AssignmentData,
+    ts_utils::{range::RangeUtil, types::AssignmentData},
 };
 
 #[derive(Debug, Default)]
@@ -95,7 +95,28 @@ pub struct SubSectionParams {
 impl FieldAssign for SubSectionParams {
     fn assign_field(&mut self, data: AssignmentData, context: &mut Parser) {
         if data.key_name.as_str() == "dynamics" {
-            context.assign_field(data, &mut self.dynamics)
+            context.assign_field(data, &mut self.dynamics);
+            return;
+        }
+
+        let sub_sid = context
+            .tree
+            .get_scope(data.scope_id)
+            .parent
+            .and_then(|sid| context.tree.get_scope(sid).parent);
+
+        let Some(sub_sid) = sub_sid else { return };
+        let sub_section_scope = context.tree.get_scope(sub_sid);
+
+        if sub_section_scope.local_id > 0
+            && let Some(parent_sid) = sub_section_scope.parent
+        {
+            let context_range = context.tree.get_scope_range(parent_sid).start();
+
+            context.reporter.error(
+                data.full_range,
+                DiagnosticKind::NonTopLevelSectionParams(context_range),
+            );
         }
     }
 }
