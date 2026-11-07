@@ -21,12 +21,6 @@ use crate::{
 pub type LyricId = usize;
 pub type LyricsMap<W> = HashMap<LyricId, RenderedLyric<W>>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WidthBasis {
-    Span,
-    Units,
-}
-
 #[derive(Debug)]
 pub enum LyricEvent<'a> {
     UnderlineStart,
@@ -52,10 +46,16 @@ pub struct RenderedLyric<W> {
     pub width: W,
 }
 
+#[derive(Debug, Default)]
+pub struct ReferenceColumn<W> {
+    pub width: W,
+    pub extact_match: bool, // maps to an actual column width instead of an average width
+}
+
 pub struct LyricsBuilder<M: StringMetric> {
     measurer: M,
     map: LyricsMap<M::Output>,
-    max_width: M::Output,
+    ref_col: ReferenceColumn<M::Output>,
 }
 
 impl<M: StringMetric> LyricsBuilder<M> {
@@ -63,24 +63,18 @@ impl<M: StringMetric> LyricsBuilder<M> {
         Self {
             measurer,
             map: HashMap::new(),
-            max_width: Default::default(),
+            ref_col: ReferenceColumn::default(),
         }
     }
 
     pub fn build_map<V: LyricVisitor>(
-        self,
-        output: &FinalOutput,
-        max_factor: u8,
-    ) -> (M::Output, LyricsMap<M::Output>) {
-        self.build_map_with_basis::<V>(output, max_factor, WidthBasis::Span)
-    }
-
-    pub fn build_map_with_basis<V: LyricVisitor>(
         mut self,
         output: &FinalOutput,
         max_factor: u8,
-        basis: WidthBasis,
-    ) -> (M::Output, LyricsMap<M::Output>) {
+    ) -> (ReferenceColumn<M::Output>, LyricsMap<M::Output>)
+    where
+        <M as StringMetric>::Output: std::fmt::Debug,
+    {
         let tree = &output.symbols;
         let sub_sections = output.body.sections.iter().flat_map(|s| &s.items);
 
@@ -88,7 +82,7 @@ impl<M: StringMetric> LyricsBuilder<M> {
             let view_columns = section
                 .views
                 .iter()
-                .flat_map(|v| v.durations.iter().map(|d| (*d, v.factor)))
+                .flat_map(|v| v.durations.iter().map(|d| (d, v.factor)))
                 .collect::<Vec<_>>();
 
             for line in &section.lyrics {
@@ -98,20 +92,17 @@ impl<M: StringMetric> LyricsBuilder<M> {
                     let rendered = self.build_lyric_column::<V>(column, tree);
                     let span = column.span.max(1);
 
-                    let units = match basis {
-                        WidthBasis::Span => span as f32,
-                        WidthBasis::Units => view_columns[col_index..col_index + span]
-                            .iter()
-                            .map(|(duration, factor)| {
-                                *duration as f32 * max_factor as f32 / *factor as f32
-                            })
-                            .sum::<f32>(),
-                    };
+                    let ratio = view_columns[col_index..col_index + span]
+                        .iter()
+                        .map(|(d, f)| **d as f32 * max_factor as f32 / *f as f32)
+                        .sum::<f32>();
 
-                    let width = M::Output::per_column(rendered.width, units);
+                    let width = M::Output::get_average_width(rendered.width, ratio);
 
-                    if width > self.max_width {
-                        self.max_width = width;
+                    if width >= self.ref_col.width {
+                        let (_, factor) = view_columns[col_index];
+                        self.ref_col.width = width;
+                        self.ref_col.extact_match = span == 1 && factor > 1;
                     }
 
                     self.map.insert(column.sid, rendered);
@@ -120,7 +111,7 @@ impl<M: StringMetric> LyricsBuilder<M> {
             }
         }
 
-        (self.max_width, self.map)
+        (self.ref_col, self.map)
     }
 
     fn build_lyric_column<V: LyricVisitor>(

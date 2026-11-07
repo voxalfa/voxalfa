@@ -1,25 +1,25 @@
 pub trait SpanWidth: Copy {
-    fn per_column(width: Self, units: f32) -> Self;
+    fn get_average_width(width: Self, ratio: f32) -> Self;
 }
 
 impl SpanWidth for f32 {
-    fn per_column(width: Self, units: f32) -> Self {
-        width / units.max(1.0)
+    fn get_average_width(width: Self, ratio: f32) -> Self {
+        width / ratio
     }
 }
 
 impl SpanWidth for usize {
-    fn per_column(width: Self, units: f32) -> Self {
-        (width as f32 / units.max(1.0)).ceil() as usize
+    fn get_average_width(width: Self, ratio: f32) -> Self {
+        (width as f32 / ratio).ceil() as usize
     }
 }
 
 impl SpanWidth for () {
-    fn per_column(_width: Self, _units: f32) -> Self {}
+    fn get_average_width(_width: Self, _ratio: f32) -> Self {}
 }
 
 pub trait StringMetric {
-    type Output: Default + PartialOrd + Copy + SpanWidth;
+    type Output: Default + PartialOrd + Copy + SpanWidth + std::fmt::Debug;
 
     fn measure_string(&self, s: &str) -> Self::Output;
 }

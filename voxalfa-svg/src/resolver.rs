@@ -49,8 +49,8 @@ pub fn resolve<'a>(
     let max_factor = data.resolve_maximum_factor();
 
     let lyrics_builder = LyricsBuilder::new(&fonts.text.lyric);
-    let (lyric_width, lyrics_map) = lyrics_builder.build_map::<SvgVisitor>(data, max_factor);
-    let (col_width, lead_width) = compute_widths(fonts, options, lyric_width);
+    let (ref_col, lyrics_map) = lyrics_builder.build_map::<SvgVisitor>(data, max_factor);
+    let (col_width, lead_width) = compute_widths(fonts, options, ref_col.width);
 
     let pulse_resolver = PulseResolver::new(data, &locale, lyrics_map, default_time);
     let (pulses, dynamic_spans) = pulse_resolver.resolve();
