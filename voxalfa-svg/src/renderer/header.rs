@@ -28,6 +28,7 @@ struct HeaderRows<'a> {
     options: &'a RenderOptions,
     rows: Vec<HeaderRow>,
     left: f32,
+    right: f32,
     center: f32,
 }
 
@@ -35,6 +36,9 @@ impl<'a> HeaderRows<'a> {
     fn new(header: &'a HeaderView, fonts: &'a Fonts, options: &'a RenderOptions) -> Self {
         let left = options.page_margin.left;
         let center = left + options.printable_width() / 2.0;
+        let right = options.page.width
+            - options.page_margin.right
+            - fonts.text.meter.size() * HEADER_RIGHT_INSET;
 
         Self {
             header,
@@ -42,6 +46,7 @@ impl<'a> HeaderRows<'a> {
             options,
             rows: Vec::new(),
             left,
+            right,
             center,
         }
     }
@@ -73,16 +78,23 @@ impl<'a> HeaderRows<'a> {
         let authors = self.header.authors.join(", ");
         let composers = self.header.composers.join(", ");
 
-        if authors.is_empty() && composers.is_empty() {
+        let styles = &self.options.elements;
+        let mut texts = Vec::new();
+
+        // move the author to the metadata row if composer is empty
+        if composers.is_empty() {
             return;
         }
 
-        let right = self.options.page.width
-            - self.options.page_margin.right
-            - self.fonts.text.meter.size() * HEADER_RIGHT_INSET;
-
-        let styles = &self.options.elements;
-        let mut texts = Vec::new();
+        texts.push(header_text(
+            composers,
+            HeaderKind::Composer,
+            self.right,
+            TextAnchor::End,
+            &self.fonts.text.composer,
+            &styles.text.composer,
+            1.0,
+        ));
 
         if !authors.is_empty() {
             texts.push(header_text(
@@ -92,18 +104,6 @@ impl<'a> HeaderRows<'a> {
                 TextAnchor::Start,
                 &self.fonts.text.author,
                 &styles.text.author,
-                1.0,
-            ));
-        }
-
-        if !composers.is_empty() {
-            texts.push(header_text(
-                composers,
-                HeaderKind::Composer,
-                right,
-                TextAnchor::End,
-                &self.fonts.text.composer,
-                &styles.text.composer,
                 1.0,
             ));
         }
@@ -122,16 +122,30 @@ impl<'a> HeaderRows<'a> {
         let locale = Locale::from_language(self.header.language.as_deref());
         let key = self.header.key.as_ref().map(|key| locale.key_label(key));
         let (time_x, tempo_x) = self.meta_x_positions(key.as_deref(), self.header.time.as_deref());
+        let author_on_meta = self.header.composers.is_empty() && !self.header.authors.is_empty();
 
         if key.is_none()
             && self.header.meter.is_none()
             && self.header.time.is_none()
             && self.header.tempo.is_none()
+            && !author_on_meta
         {
             return;
         }
 
         let mut texts = Vec::new();
+
+        if author_on_meta {
+            texts.push(header_text(
+                self.header.authors.join(", "),
+                HeaderKind::Author,
+                self.right,
+                TextAnchor::End,
+                &self.fonts.text.author,
+                &styles.text.author,
+                1.0,
+            ));
+        }
 
         if let Some(text) = key {
             texts.push(header_text(

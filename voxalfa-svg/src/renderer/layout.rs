@@ -110,13 +110,15 @@ pub fn layout_system(
         fonts.label.volta.size() * VOLTA_TOP_GAP
     };
 
+    let top_offset = marker_height + volta_top;
+
     for jump in &mut jumps {
-        jump.y += volta_top;
+        jump.y += top_offset;
     }
 
     for volta in &mut voltas {
-        volta.text_y += volta_top + jump_offset;
-        volta.line_y += volta_top + jump_offset;
+        volta.text_y += top_offset + jump_offset;
+        volta.line_y += top_offset + jump_offset;
     }
 
     let marker_shift = volta_top + jump_offset + volta_height;
