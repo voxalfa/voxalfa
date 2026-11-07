@@ -89,7 +89,6 @@ pub struct RenderOptions {
     pub page_margin: EdgeValues,
     pub col_padding: f32,
     pub min_col_width: f32,
-    pub max_lyric_width: f32,
     pub voice_row_height: f32,
     pub lyric_row_height: f32,
 
@@ -114,7 +113,6 @@ impl Default for RenderOptions {
             page_margin: EdgeValues::all(56.7),
             col_padding: 2.0,
             min_col_width: 12.0,
-            max_lyric_width: 18.0,
             voice_row_height: 28.0,
             lyric_row_height: 22.0,
             system_gap: 18.0,

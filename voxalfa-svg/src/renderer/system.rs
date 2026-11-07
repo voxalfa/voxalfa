@@ -116,11 +116,6 @@ impl<'a> SystemRender<'a> {
         let layout = self.layout;
         let y = self.y;
 
-        let mut block_top: Option<f32> = None;
-        let mut voice_groups: Vec<VoiceGroupSpan> = Vec::new();
-        let mut current_group: Option<VoiceGroupSpan> = None;
-        let mut group_closed = false;
-
         for volta in &layout.voltas {
             let start_x = self.origin_x + volta.start_x;
             let end_x = self.origin_x + volta.end_x;
@@ -234,31 +229,6 @@ impl<'a> SystemRender<'a> {
         for row in &layout.rows {
             match row.kind {
                 SystemRowKind::Voice(voice) => {
-                    if block_top.is_none() {
-                        block_top =
-                            Some(y + row.y + self.fonts.text.note.size() * BARLINE_BLOCK_INSET);
-                    }
-
-                    if group_closed {
-                        if let Some(group) = current_group.take() {
-                            voice_groups.push(group);
-                        }
-
-                        group_closed = false;
-                    }
-
-                    match current_group.as_mut() {
-                        Some(group) => {
-                            group.bottom = y + row.y + row.height;
-                        }
-                        None => {
-                            current_group = Some(VoiceGroupSpan {
-                                top: y + row.y,
-                                bottom: y + row.y + row.height,
-                            });
-                        }
-                    }
-
                     let voice_baseline = baseline(y + row.y, row.height, &self.fonts.text.note);
 
                     self.emit_voice_row(voice, voice_baseline)?;
@@ -267,17 +237,6 @@ impl<'a> SystemRender<'a> {
                     group_index,
                     verse_index,
                 } => {
-                    if current_group.is_some() {
-                        group_closed = true;
-                    }
-
-                    let voice_bottom =
-                        y + row.y - self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
-
-                    if let Some(top) = block_top.take() {
-                        self.emit_barlines(top, voice_bottom)?;
-                    }
-
                     let group = &system.lyric_groups[group_index];
                     let tokens = &group.verses[verse_index];
                     let lyric_baseline = baseline(y + row.y, row.height, &self.fonts.text.lyric);
@@ -287,23 +246,17 @@ impl<'a> SystemRender<'a> {
             }
         }
 
-        if let Some(top) = block_top {
-            let voice_bottom =
-                y + layout.height - self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
-            self.emit_barlines(top, voice_bottom)?;
-        }
+        if let Some(first_voice) = layout
+            .rows
+            .iter()
+            .find(|row| matches!(row.kind, SystemRowKind::Voice(_)))
+        {
+            let inset = self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
+            let top = y + first_voice.y + inset;
+            let bottom = y + layout.height - inset;
 
-        if let Some(group) = current_group.take() {
-            voice_groups.push(group);
-        }
-
-        let group_count = voice_groups.len();
-
-        for (index, group) in voice_groups.iter().enumerate() {
-            let is_last_group = index + 1 == group_count;
-            let close = !(self.is_last_system && is_last_group);
-
-            self.emit_voice_braces(group.top, group.bottom, close)?;
+            self.emit_barlines(top, bottom)?;
+            self.emit_voice_braces(y + first_voice.y, y + layout.height, !self.is_last_system)?;
         }
 
         Ok(())
@@ -624,11 +577,6 @@ impl<'a> SystemRender<'a> {
 
         Ok(())
     }
-}
-
-struct VoiceGroupSpan {
-    top: f32,
-    bottom: f32,
 }
 
 struct UnderlineState {

@@ -780,12 +780,13 @@ fn compute_widths(fonts: &Fonts, options: &RenderOptions, lyric_width: f32) -> (
         .max(fonts.text.note.width(":"))
         .max(4.0);
 
-    let col_width = lyric_width
-        .min(options.max_lyric_width)
-        .max(options.min_col_width)
-        + options.col_padding;
+    let col_width = column_width(lyric_width, options);
 
     (col_width, lead_width)
+}
+
+fn column_width(lyric_width: f32, options: &RenderOptions) -> f32 {
+    lyric_width.max(options.min_col_width) + options.col_padding
 }
 
 fn build_systems<'a>(

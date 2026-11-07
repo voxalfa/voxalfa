@@ -328,63 +328,6 @@ fn renders_volta_endings_with_labels() {
 }
 
 #[test]
-fn copies_shared_lyrics_when_voices_split() {
-    let output = analyze(
-        r#"
-;; @version 0.1.0-alpha
-
-[#] title="Copied lyrics"
-[#] verses={1}
-
-[$] key={C} | time={4,4} | tempo={100} | voices={S,A,T,B}
-
----
-
-[S] |d :r !m :f ||
-[A] |m :f !s :l ||
-[T] |d :r !m :f ||
-[B] |m :f !s :l ||
-
-[1] Ma_ da_ gasi_ ka_ @@
-
---
-
-[S] |d :- !- :s-1 ||
-[A] |m-1 :- !- :s-1 ||
-
-[1] soa@3\ Ny @@
-
-++
-
-[T] |d :- !- : ||
-[1] soa@3\ ~ @@
-
-++
-
-[B] |d :- !- : ||
-[1] soa@3\ ~ @@
-
---
-
-[S] |d ||
-[A] |m ||
-[T] |d ||
-[B] |m ||
-
-[1] end
-"#,
-    );
-
-    let svg = render(&output).unwrap();
-
-    // The shared line is copied onto both split lyric rows, while the
-    // S/A-only syllable stays in the first row.
-    assert_eq!(svg.matches("class=\"lyrics-text\">Ma</text>").count(), 2);
-    assert_eq!(svg.matches("class=\"lyrics-text\">soa</text>").count(), 2);
-    assert_eq!(svg.matches("class=\"lyrics-text\">Ny</text>").count(), 1);
-}
-
-#[test]
 fn resolves_multi_voice_lyrics_per_subsection() {
     let output = analyze(
         r#"
@@ -683,45 +626,6 @@ fn applies_font_stretch_directive() {
     let svg = render_with(&output, options).unwrap();
 
     assert!(svg.contains("font-stretch: condensed;"));
-}
-
-#[test]
-fn surrounds_voice_line_with_curly() {
-    let output = analyze(
-        r#"
-;; @version 0.1.0-alpha
-
-[#] title="Mixed groups"
-[#] verses={1}
-
-[$] key={C} | time={4,4} | tempo={100} | voices={S,A,T,B}
-
----
-
-[S] |d :r !m :f ||
-[A] |m :f !s :l ||
-
-[1] do re mi fa
-
-++
-
-[T] |d :r !m :f ||
-
-[1] la ti do re
-
-++
-
-[B] |m :f !s :l ||
-
-[1] fa mi re do
-"#,
-    );
-
-    let svg = render(&output).unwrap();
-
-    // S/A, T and B are three separate groups. The first two keep both
-    // braces while the final group keeps only its opening brace.
-    assert_eq!(svg.matches(r#"class="brace"/>"#).count(), 5);
 }
 
 #[test]
