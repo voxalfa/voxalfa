@@ -652,3 +652,105 @@ fn applies_font_stretch_directive() {
 
     assert!(svg.contains("font-stretch: condensed;"));
 }
+
+#[test]
+fn surrounds_voice_line_with_curly() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+[#] title="Mixed groups"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S,A,T,B}
+
+---
+
+[S] |d :r !m :f ||
+[A] |m :f !s :l ||
+
+[1] do re mi fa
+
+++
+
+[T] |d :r !m :f ||
+
+[1] la ti do re
+
+++
+
+[B] |m :f !s :l ||
+
+[1] fa mi re do
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    // S/A, T and B are three separate groups. The first two keep both
+    // braces while the final group keeps only its opening brace.
+    assert_eq!(svg.matches(r#"class="brace"/>"#).count(), 5);
+}
+
+#[test]
+fn keeps_braces_inside_the_printable_width() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+;; @page width={800} | height={1000} | margin-x={30} | margin-y={40}
+
+[#] title="Brace bounds"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S,A}
+
+---
+
+[S] |d :r !m :f ||
+[A] |m :f !s :l ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    for path in svg.split("<path d=\"").skip(1).filter_map(|chunk| {
+        chunk
+            .split_once("\" class=\"brace\"/>")
+            .map(|(path, _)| path)
+    }) {
+        let numbers = path
+            .split_whitespace()
+            .filter_map(|token| token.parse::<f32>().ok())
+            .collect::<Vec<_>>();
+
+        for x in numbers.iter().step_by(2) {
+            assert!(
+                (30.0..=770.0).contains(x),
+                "brace coordinate {x} escaped the printable width in {path}"
+            );
+        }
+    }
+}
+
+#[test]
+fn renders_curly_for_a_single_voice() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+[#] title="Single voice braces"
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert_eq!(svg.matches(r#"class="brace"/>"#).count(), 1);
+}

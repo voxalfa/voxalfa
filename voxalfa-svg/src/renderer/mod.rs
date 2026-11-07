@@ -26,6 +26,8 @@ use header::{emit_header, layout_header};
 use layout::{SystemLayout, layout_system};
 use system::{SystemPlacement, emit_system};
 
+use constants::{BRACE_PADDING_LEFT, BRACE_PADDING_RIGHT};
+
 const INITIAL_SVG_CAPACITY: usize = 32 * 1024;
 
 pub fn render_pages(
@@ -39,7 +41,9 @@ pub fn render_pages(
 
     let options = &options;
     let fonts = Fonts::with_faces(options, faces)?;
-    let score = resolver::resolve(data, &fonts, options)?;
+    let brace_padding = brace_padding(&fonts);
+    let content_width = (options.printable_width() - brace_padding.0 - brace_padding.1).max(1.0);
+    let score = resolver::resolve(data, &fonts, options, content_width)?;
     let header = layout_header(&score.header, &fonts, options);
 
     let system_layouts = score
@@ -50,7 +54,7 @@ pub fn render_pages(
 
     let pages = paginate(&system_layouts, header.height, options);
     let page_count = pages.len().max(1);
-    let max_pulses_per_line = max_pulses_per_line(&score.systems, options.printable_width());
+    let max_pulses_per_line = max_pulses_per_line(&score.systems, content_width);
     let max_measure_pulses = score
         .systems
         .iter()
@@ -75,7 +79,7 @@ pub fn render_pages(
             .reduce(f32::max);
 
         let full_line_offset = full_line_width
-            .map(|width| ((options.printable_width() - width) / 2.0).max(0.0))
+            .map(|width| ((content_width - width) / 2.0).max(0.0))
             .unwrap_or(0.0);
 
         let mut svg = String::with_capacity(INITIAL_SVG_CAPACITY);
@@ -106,6 +110,8 @@ pub fn render_pages(
                 layout: &system_layouts[placed.index],
                 y: placed.y,
                 body_offset: full_line_offset,
+                brace_padding_left: brace_padding.0,
+                is_last_system: placed.index + 1 == score.systems.len(),
             };
 
             emit_system(&mut svg, &fonts, &score, placement, options)?;
@@ -130,6 +136,11 @@ pub fn render_pages(
     }
 
     Ok(result)
+}
+
+fn brace_padding(fonts: &Fonts) -> (f32, f32) {
+    let size = fonts.text.note.size();
+    (size * BRACE_PADDING_LEFT, size * BRACE_PADDING_RIGHT)
 }
 
 fn max_pulses_per_line(systems: &[System<'_>], printable_width: f32) -> usize {

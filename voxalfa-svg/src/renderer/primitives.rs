@@ -38,6 +38,54 @@ pub fn emit_line(svg: &mut String, x1: f32, y1: f32, x2: f32, y2: f32, class: &s
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum BraceSide {
+    Left,
+    Right,
+}
+
+pub fn emit_brace(
+    svg: &mut String,
+    center_x: f32,
+    top: f32,
+    bottom: f32,
+    half_width: f32,
+    side: BraceSide,
+) -> Result<()> {
+    let height = (bottom - top).max(0.0);
+    let middle = top + height * 0.5;
+    let x = center_x;
+    let w = half_width;
+    let hook = (height * 0.08).min(w * 1.5).max(0.5);
+    let cusp = hook.min((height * 0.5 - hook).max(0.0));
+
+    let dir = match side {
+        BraceSide::Left => 1.0,
+        BraceSide::Right => -1.0,
+    };
+
+    let tip = x + dir * w;
+    let cusp_x = x - dir * w;
+    let top_hook = top + hook;
+    let upper_cusp = middle - cusp;
+    let lower_cusp = middle + cusp;
+    let bottom_hook = bottom - hook;
+
+    let path = format!(
+        "M {tip:.2} {top:.2} \
+         Q {x:.2} {top:.2} {x:.2} {top_hook:.2} \
+         L {x:.2} {upper_cusp:.2} \
+         Q {x:.2} {middle:.2} {cusp_x:.2} {middle:.2} \
+         Q {x:.2} {middle:.2} {x:.2} {lower_cusp:.2} \
+         L {x:.2} {bottom_hook:.2} \
+         Q {x:.2} {bottom:.2} {tip:.2} {bottom:.2}"
+    );
+
+    writeln!(svg, r#"<path d="{path}" class="brace"/>"#)?;
+
+    Ok(())
+}
+
 pub fn emit_segno(svg: &mut String, x: f32, baseline: f32, fonts: &Fonts) -> Result<()> {
     let line_height = fonts.label.mark.line_height();
     let height = line_height * SEGNO_HEIGHT_SCALE;

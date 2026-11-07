@@ -34,6 +34,7 @@ pub fn resolve<'a>(
     data: &'a FinalOutput,
     fonts: &Fonts,
     options: &RenderOptions,
+    content_width: f32,
 ) -> Result<ResolvedScore<'a>> {
     let header = build_header(data);
 
@@ -62,12 +63,7 @@ pub fn resolve<'a>(
 
     let grid_pulse_width = max_columns.max(1) as f32 * (col_width + lead_width);
 
-    let systems = build_systems(
-        &pulses,
-        &dynamic_spans,
-        grid_pulse_width,
-        options.printable_width(),
-    );
+    let systems = build_systems(&pulses, &dynamic_spans, grid_pulse_width, content_width);
 
     Ok(ResolvedScore {
         header,
@@ -818,7 +814,14 @@ fn build_systems<'a>(
         let measure_time = pulses[measure[0]].time;
         let measure_width = measure.len() as f32 * pulse_width;
         let time_changed = time.is_some_and(|current| current != measure_time);
-        let overflow = !indices.is_empty() && width + measure_width > max_width;
+
+        let overflow_limit = if first_system_in_group {
+            max_width
+        } else {
+            (max_width - pickup_offset as f32 * pulse_width).max(0.0)
+        };
+
+        let overflow = !indices.is_empty() && width + measure_width > overflow_limit;
 
         if time_changed {
             if !indices.is_empty() {

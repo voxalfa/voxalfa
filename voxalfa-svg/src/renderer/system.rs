@@ -19,7 +19,7 @@ use super::{
     constants::*,
     geometry::{baseline, prolonged_leading, pulse_offsets, pulse_usable_width},
     layout::{SystemLayout, SystemRowKind},
-    primitives::{emit_line, emit_segno, emit_text, emit_touch},
+    primitives::{BraceSide, emit_brace, emit_line, emit_segno, emit_text, emit_touch},
 };
 
 fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
@@ -46,6 +46,7 @@ pub fn emit_system(
         .unwrap_or(0.0);
 
     let origin_x = options.page_margin.left
+        + placement.brace_padding_left
         + placement.body_offset
         + placement.system.pulse_offset as f32 * pulse_width;
 
@@ -58,7 +59,9 @@ pub struct SystemPlacement<'a> {
     pub system: &'a System<'a>,
     pub layout: &'a SystemLayout,
     pub body_offset: f32,
+    pub brace_padding_left: f32,
     pub y: f32,
+    pub is_last_system: bool,
 }
 
 struct SystemRender<'a> {
@@ -71,6 +74,7 @@ struct SystemRender<'a> {
     origin_x: f32,
     lead: f32,
     y: f32,
+    is_last_system: bool,
     options: &'a RenderOptions,
 }
 
@@ -102,6 +106,7 @@ impl<'a> SystemRender<'a> {
             origin_x,
             lead,
             y: placement.y,
+            is_last_system: placement.is_last_system,
             options,
         }
     }
@@ -112,6 +117,9 @@ impl<'a> SystemRender<'a> {
         let y = self.y;
 
         let mut block_top: Option<f32> = None;
+        let mut voice_groups: Vec<VoiceGroupSpan> = Vec::new();
+        let mut current_group: Option<VoiceGroupSpan> = None;
+        let mut group_closed = false;
 
         for volta in &layout.voltas {
             let start_x = self.origin_x + volta.start_x;
@@ -230,6 +238,26 @@ impl<'a> SystemRender<'a> {
                             Some(y + row.y + self.fonts.text.note.size() * BARLINE_BLOCK_INSET);
                     }
 
+                    if group_closed {
+                        if let Some(group) = current_group.take() {
+                            voice_groups.push(group);
+                        }
+
+                        group_closed = false;
+                    }
+
+                    match current_group.as_mut() {
+                        Some(group) => {
+                            group.bottom = y + row.y + row.height;
+                        }
+                        None => {
+                            current_group = Some(VoiceGroupSpan {
+                                top: y + row.y,
+                                bottom: y + row.y + row.height,
+                            });
+                        }
+                    }
+
                     let voice_baseline = baseline(y + row.y, row.height, &self.fonts.text.note);
 
                     self.emit_voice_row(voice, voice_baseline)?;
@@ -238,6 +266,10 @@ impl<'a> SystemRender<'a> {
                     group_index,
                     verse_index,
                 } => {
+                    if current_group.is_some() {
+                        group_closed = true;
+                    }
+
                     let voice_bottom =
                         y + row.y - self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
 
@@ -258,6 +290,64 @@ impl<'a> SystemRender<'a> {
             let voice_bottom =
                 y + layout.height - self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
             self.emit_barlines(top, voice_bottom)?;
+        }
+
+        if let Some(group) = current_group.take() {
+            voice_groups.push(group);
+        }
+
+        let group_count = voice_groups.len();
+
+        for (index, group) in voice_groups.iter().enumerate() {
+            let is_last_group = index + 1 == group_count;
+            let close = !(self.is_last_system && is_last_group);
+
+            self.emit_voice_braces(group.top, group.bottom, close)?;
+        }
+
+        Ok(())
+    }
+
+    fn emit_voice_braces(&mut self, top: f32, bottom: f32, close: bool) -> Result<()> {
+        let system = self.system;
+        let inset = self.fonts.text.note.size() * BARLINE_BLOCK_INSET;
+        let top = top + inset;
+        let bottom = bottom - inset;
+
+        if bottom <= top {
+            return Ok(());
+        }
+
+        let line_left = self.origin_x;
+        let line_right = self.origin_x
+            + system
+                .pulses
+                .iter()
+                .map(|pulse| pulse.pulse_width)
+                .sum::<f32>();
+
+        let size = self.fonts.text.note.size();
+        let gap = size * BRACE_GAP;
+        let half_width = size * BRACE_HALF_WIDTH;
+
+        emit_brace(
+            self.svg,
+            line_left - gap - half_width,
+            top,
+            bottom,
+            half_width,
+            BraceSide::Left,
+        )?;
+
+        if close {
+            emit_brace(
+                self.svg,
+                line_right + half_width,
+                top,
+                bottom,
+                half_width,
+                BraceSide::Right,
+            )?;
         }
 
         Ok(())
@@ -533,6 +623,11 @@ impl<'a> SystemRender<'a> {
 
         Ok(())
     }
+}
+
+struct VoiceGroupSpan {
+    top: f32,
+    bottom: f32,
 }
 
 struct UnderlineState {

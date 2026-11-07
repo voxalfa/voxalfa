@@ -110,6 +110,14 @@ fn emit_symbol_styles(svg: &mut String, fonts: &Fonts) -> Result<()> {
       stroke-linecap: square;
     }}
 
+    .brace {{
+      fill: none;
+      stroke: #222222;
+      stroke-width: {brace};
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }}
+
     .medium-accent {{
       stroke: #333333;
       stroke-width: {accent};
@@ -142,6 +150,7 @@ fn emit_symbol_styles(svg: &mut String, fonts: &Fonts) -> Result<()> {
   </style>
 </defs>"#,
         barline = fonts.text.note.size() * BARLINE_STROKE_WIDTH,
+        brace = fonts.text.note.size() * BARLINE_STROKE_WIDTH,
         accent = fonts.text.note.size() * ACCENT_STROKE_WIDTH,
         underline = fonts.text.note.size() * UNDERLINE_STROKE_WIDTH,
     )?;
