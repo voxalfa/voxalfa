@@ -2,7 +2,7 @@ use async_lsp::lsp_types::{CompletionItem, CompletionItemKind, Documentation, In
 use tree_sitter::{Node, Point};
 use voxalfa_core::{
     data_types::{TimeSignature, Voice},
-    ts_utils::generated::node_types,
+    ts_utils::node_types,
 };
 
 use crate::{builtin::*, parameters::*, state::Document};

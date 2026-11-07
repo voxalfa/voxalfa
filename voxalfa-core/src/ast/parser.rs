@@ -24,7 +24,7 @@ use crate::{
     },
     ts_utils::{
         context::TSContext,
-        generated::node_types,
+        node_types,
         parsing::ParseNode,
         range::{Range, RangeUtil},
         types::AssignmentData,

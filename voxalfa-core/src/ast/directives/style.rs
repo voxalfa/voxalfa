@@ -3,7 +3,7 @@ use tree_sitter::Node;
 use crate::{
     ast::{parser::Parser, symbols::ScopeId},
     diagnostics::types::DiagnosticKind,
-    ts_utils::generated::node_types,
+    ts_utils::node_types,
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]

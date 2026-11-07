@@ -11,7 +11,7 @@ use crate::{
         Voice,
     },
     diagnostics::types::DiagnosticKind,
-    ts_utils::{generated::node_types, primitives::ToPrimitve},
+    ts_utils::{node_types, primitives::ToPrimitve},
 };
 
 pub trait ParseNode: Sized {

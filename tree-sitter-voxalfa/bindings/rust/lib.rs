@@ -20,6 +20,9 @@
 
 use tree_sitter_language::LanguageFn;
 
+// Node type constants generated from `src/parser.c` by the build script.
+include!(concat!(env!("OUT_DIR"), "/node_types.rs"));
+
 extern "C" {
     fn tree_sitter_voxalfa() -> *const ();
 }
