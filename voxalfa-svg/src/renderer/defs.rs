@@ -61,7 +61,7 @@ fn emit_font_rules(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> 
     let mono = "monospace";
     let symbols = "'Noto Sans Symbols', sans-serif";
 
-    let rules: [(&str, &FontMetrics, &str, &ElementStyle); 18] = [
+    let rules = [
         (".note-text", &text.note, mono, &ts.note),
         (".divider-text", &text.divider, sans, &ts.divider),
         (".octave-text", &text.octave, mono, &ts.octave),
@@ -75,6 +75,7 @@ fn emit_font_rules(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> 
         (".key-label", &label.key, symbols, &ls.key),
         (".jump-label", &label.jump, sans, &ls.jump),
         (".tempo-label", &label.tempo, "serif", &ls.tempo),
+        (".bpm-label", &label.bpm, "serif", &ls.bpm),
         (".mark-label", &label.mark, "serif", &ls.mark),
         (".dynamic-label", &label.dynamic, "serif", &ls.dynamic),
         (".time-label", &label.time, sans, &ls.time),

@@ -29,6 +29,8 @@ pub fn division_symbol(cursor: u32, total: u32) -> &'static str {
         ","
     } else if quad == total.saturating_mul(3) {
         ".,"
+    } else if total == 3 && cursor > 0 {
+        "‘"
     } else if double.is_multiple_of(total) {
         "."
     } else if quad.is_multiple_of(total) {

@@ -84,7 +84,32 @@ fn renders_header_in_requested_layout() {
     assert!(svg.contains(r#"text-anchor="end" class="composer-text">Bob</text>"#));
     assert!(svg.contains(r#"text-anchor="start" class="key-text">Do est C</text>"#));
     assert!(svg.contains(r#"text-anchor="start" class="time-text">4/4</text>"#));
+    assert!(svg.contains(r#"text-anchor="start" class="bpm-label">M 100</text>"#));
     assert!(svg.contains(r#"text-anchor="middle" class="meter-text">8.8.8.8</text>"#));
+}
+
+#[test]
+fn renders_header_tempo_label() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+[#] title="Header tempo"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={allegro} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert!(svg.contains(r#"text-anchor="start" class="tempo-label">allegro</text>"#));
 }
 
 #[test]
@@ -258,7 +283,10 @@ fn renders_key_tempo_and_dynamics_labels() {
 
     assert!(svg.contains(r#"class="key-label">Do is D</text>"#));
     assert!(svg.contains(r#"class="tempo-label">allegro</text>"#));
-    assert!(svg.contains(r#"class="tempo-label">120</text>"#));
+    assert!(svg.contains(r#"class="bpm-label">M 120</text>"#));
+    assert!(svg.contains(
+        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: normal;"
+    ));
     assert!(svg.contains(r#"class="dynamic-label">p</text>"#));
     assert!(svg.contains(r#"class="dynamic-label">mf</text>"#));
     assert!(!svg.contains(r#"class="dynamic-label">cre</text>"#));
@@ -512,6 +540,7 @@ fn applies_font_weight_and_style_directives() {
 ;; @version 0.1.0-alpha
 ;; @title-text font-weight={"normal"}
 ;; @tempo-label font-style={"normal"}
+;; @bpm-label font-style={"italic"}
 
 [#] title="Font styles"
 [#] verses={1}
@@ -533,6 +562,9 @@ fn applies_font_weight_and_style_directives() {
     ));
     assert!(svg.contains(
         ".tempo-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: normal;"
+    ));
+    assert!(svg.contains(
+        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: italic;"
     ));
     assert!(svg.contains(
         ".mark-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: italic;"

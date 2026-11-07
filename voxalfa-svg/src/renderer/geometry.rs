@@ -68,6 +68,7 @@ pub fn pulse_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 
 
                 if start > 0.0 {
                     let extent = note_extent(&column.note, fonts, lead);
+
                     let available = pulse.pulse_width
                         - extent
                         - fonts.text.note.size() * NOTE_BARLINE_CLEARANCE;
@@ -100,6 +101,7 @@ fn note_extent(note: &NoteKind, fonts: &Fonts, lead: f32) -> f32 {
         NoteKind::Note(_) => {
             let (text, octave) = note_text(note);
             let base = fonts.text.note.width(&text);
+
             let octave = octave
                 .map(|octave| {
                     fonts.text.octave.width(&octave.abs().to_string()) / 2.0

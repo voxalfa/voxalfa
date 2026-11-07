@@ -14,8 +14,8 @@ pub struct HeaderView {
     pub description: Option<String>,
     pub key: Option<String>,
     pub time: Option<String>,
-    #[allow(unused)]
     pub tempo: Option<String>,
+    pub is_bpm: bool,
     pub meter: Option<String>,
 }
 
@@ -49,7 +49,7 @@ pub enum MarkerKind {
     TimeSignature,
     Key,
     Tempo,
-    TempoNumber,
+    Bpm,
     Dynamic,
     Touch,
     Jump,

@@ -14,7 +14,7 @@ pub fn marker_priority(kind: MarkerKind) -> usize {
     match kind {
         MarkerKind::Key => 0,
         MarkerKind::TimeSignature => 1,
-        MarkerKind::Tempo | MarkerKind::TempoNumber => 2,
+        MarkerKind::Tempo | MarkerKind::Bpm => 2,
         MarkerKind::Jump => 3,
         MarkerKind::Mark => 4,
         MarkerKind::Dynamic => 5,
@@ -37,7 +37,8 @@ pub fn marker_font(kind: MarkerKind, fonts: &Fonts) -> &FontMetrics {
     match kind {
         MarkerKind::Key => &fonts.label.key,
         MarkerKind::Jump => &fonts.label.jump,
-        MarkerKind::TempoNumber | MarkerKind::Tempo => &fonts.label.tempo,
+        MarkerKind::Tempo => &fonts.label.tempo,
+        MarkerKind::Bpm => &fonts.label.bpm,
         MarkerKind::TimeSignature => &fonts.label.time,
         MarkerKind::Touch => &fonts.touch,
         MarkerKind::Mark => &fonts.label.mark,

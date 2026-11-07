@@ -212,14 +212,16 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         }
 
         if let Some(tempo) = section.params.tempo.as_ref().map(|tempo| tempo.value) {
-            let kind = match tempo {
-                ExtendedTempo::Static(StaticTempo::Custom(_)) => MarkerKind::TempoNumber,
-                _ => MarkerKind::Tempo,
+            let (kind, label) = match tempo {
+                ExtendedTempo::Static(StaticTempo::Custom(t)) => {
+                    (MarkerKind::Bpm, format!("M {t}"))
+                }
+                _ => (MarkerKind::Tempo, tempo.to_string()),
             };
 
             pulse.markers.push(FlatMarker {
                 kind,
-                glyph: MarkerGlyph::Text(tempo.to_string()),
+                glyph: MarkerGlyph::Text(label),
                 unit: 0.0,
             });
         }
@@ -641,10 +643,15 @@ fn build_header(data: &FinalOutput) -> HeaderView {
         .get_params(|p| &p.time)
         .map(|time| format!("{}/{}", time.top, time.bottom));
 
-    let tempo = data
-        .header
-        .get_params(|p| &p.tempo)
-        .map(|tempo| tempo.to_string());
+    let tempo_param = data.header.get_params(|p| &p.tempo);
+    let is_bpm = tempo_param.is_some_and(|tempo| matches!(tempo, StaticTempo::Custom(_)));
+    let tempo = tempo_param.map(|tempo| {
+        if matches!(tempo, StaticTempo::Custom(_)) {
+            format!("M {tempo}")
+        } else {
+            tempo.to_string()
+        }
+    });
 
     let meter = data.header.get_metadata(|m| &m.meter).map(|meter| {
         meter
@@ -663,6 +670,7 @@ fn build_header(data: &FinalOutput) -> HeaderView {
         key,
         time,
         tempo,
+        is_bpm,
         meter,
     }
 }

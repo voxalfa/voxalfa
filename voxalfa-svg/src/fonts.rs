@@ -211,6 +211,7 @@ impl FaceRole {
             "author-text" | "composer-text" | "time-text" | "meter-text" | "page-number-text"
             | "time-label" => Self::TEXT,
             "mark-label" | "tempo-label" => Self::SERIF_I,
+            "bpm-label" => Self::SERIF,
             "dynamic-label" => Self::SERIF_BI,
             _ => return None,
         };
@@ -372,6 +373,7 @@ pub struct LabelFonts {
     pub mark: FontMetrics,
     pub dynamic: FontMetrics,
     pub tempo: FontMetrics,
+    pub bpm: FontMetrics,
     pub time: FontMetrics,
     pub volta: FontMetrics,
 }
@@ -417,7 +419,7 @@ impl TextFonts {
             author: builder.metric(FaceRole::TEXT, opts.name_font_size, &styles.author)?,
             composer: builder.metric(FaceRole::TEXT, opts.name_font_size, &styles.composer)?,
             key: builder.metric(FaceRole::TEXT_B, opts.marker_font_size, &styles.key)?,
-            time: builder.metric(FaceRole::TEXT, meta, &styles.time)?,
+            time: builder.metric(FaceRole::TEXT, opts.marker_font_size, &styles.time)?,
             meter: builder.metric(FaceRole::TEXT, meta, &styles.meter)?,
             page_number: builder.metric(
                 FaceRole::TEXT,
@@ -448,6 +450,7 @@ impl LabelFonts {
                 &styles.dynamic,
             )?,
             tempo: builder.metric(FaceRole::SERIF_I, marker, &styles.tempo)?,
+            bpm: builder.metric(FaceRole::SERIF, marker, &styles.bpm)?,
             time: builder.metric(FaceRole::TEXT, marker, &styles.time)?,
             volta: builder.metric(FaceRole::TEXT_B, marker, &styles.volta)?,
         })

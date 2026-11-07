@@ -33,7 +33,8 @@ fn marker_style(kind: MarkerKind, options: &RenderOptions) -> Option<&ElementSty
     match kind {
         MarkerKind::Key => Some(&options.elements.label.key),
         MarkerKind::Jump => Some(&options.elements.label.jump),
-        MarkerKind::Tempo | MarkerKind::TempoNumber => Some(&options.elements.label.tempo),
+        MarkerKind::Tempo => Some(&options.elements.label.tempo),
+        MarkerKind::Bpm => Some(&options.elements.label.bpm),
         MarkerKind::Mark => Some(&options.elements.label.mark),
         MarkerKind::Dynamic => Some(&options.elements.label.dynamic),
         MarkerKind::TimeSignature => Some(&options.elements.label.time),
@@ -540,7 +541,7 @@ fn layout_markers(
 
             let anchor = match marker.kind {
                 MarkerKind::TimeSignature => TextAnchor::Middle,
-                MarkerKind::Key | MarkerKind::Tempo | MarkerKind::TempoNumber => TextAnchor::Start,
+                MarkerKind::Key | MarkerKind::Tempo | MarkerKind::Bpm => TextAnchor::Start,
                 MarkerKind::Dynamic | MarkerKind::Touch => TextAnchor::Middle,
                 MarkerKind::Jump => TextAnchor::End,
                 MarkerKind::Mark if marker.unit >= 0.5 => TextAnchor::End,

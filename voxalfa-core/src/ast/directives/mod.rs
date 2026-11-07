@@ -30,6 +30,7 @@ pub const STYLE_ELEMENTS: &[&str] = &[
     "key-label",
     "time-label",
     "tempo-label",
+    "bpm-label",
     "jump-label",
     "mark-label",
     "dynamic-label",
