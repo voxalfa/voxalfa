@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build - ${{ matrix.platform.os }} (${{ matrix.platform.target }})
+    name: Build - ${{ matrix.binary.name }} - ${{ matrix.platform.os }} (${{ matrix.platform.target }})
     runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
@@ -18,20 +18,21 @@ jobs:
         platform:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            bin_name: voxalfa
-            asset_name: voxalfa-linux-x86_64
+            asset_suffix: linux-x86_64
           - os: macos-latest
             target: x86_64-apple-darwin
-            bin_name: voxalfa
-            asset_name: voxalfa-macos-x86_64
+            asset_suffix: macos-x86_64
           - os: macos-latest
             target: aarch64-apple-darwin
-            bin_name: voxalfa
-            asset_name: voxalfa-macos-arm64
+            asset_suffix: macos-arm64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            bin_name: voxalfa.exe
-            asset_name: voxalfa-windows-x86_64.exe
+            asset_suffix: windows-x86_64
+        binary:
+          - package: voxalfa-cli
+            name: voxalfa
+          - package: voxalfa-lsp
+            name: voxalfa-ls
 
     steps:
       - name: Checkout code
@@ -43,18 +44,21 @@ jobs:
           targets: ${{ matrix.platform.target }}
 
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.platform.target }} -p voxalfa-cli
+        run: cargo build --release --target ${{ matrix.platform.target }} -p ${{ matrix.binary.package }}
 
       - name: Rename binary for release
         shell: bash
         run: |
           mkdir dist
-          cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin_name }}" "dist/${{ matrix.platform.asset_name }}"
+          ext=""
+          if [ "${{ runner.os }}" = "Windows" ]; then ext=".exe"; fi
+          cp "target/${{ matrix.platform.target }}/release/${{ matrix.binary.name }}${ext}" \
+             "dist/${{ matrix.binary.name }}-${{ matrix.platform.asset_suffix }}${ext}"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.platform.asset_name }}
+          name: binary-${{ matrix.binary.name }}-${{ matrix.platform.asset_suffix }}
           path: dist/*
           retention-days: 1
 
