@@ -1,0 +1,7 @@
+[package]
+name = "voxalfa-build-info"
+version = "0.1.0"
+edition = "2024"
+
+[build-dependencies]
+vergen-gitcl = { version = "10.0.3", features = ["build"] }

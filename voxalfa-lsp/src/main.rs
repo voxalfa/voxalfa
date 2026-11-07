@@ -18,6 +18,7 @@ use async_lsp::{
     concurrency::ConcurrencyLayer, lsp_types::*, panic::CatchUnwindLayer, server::LifecycleLayer,
     tracing::TracingLayer,
 };
+use clap::Parser;
 use futures::future::BoxFuture;
 use ropey::Rope;
 use tower::ServiceBuilder;
@@ -37,6 +38,17 @@ use crate::{
 };
 
 pub const SERVER_NAME: &str = "voxalfa-ls";
+
+#[derive(Parser)]
+#[clap(
+    about,
+    version = voxalfa_build_info::VERSION,
+    long_version = voxalfa_build_info::long_version()
+)]
+pub struct Cli {
+    #[arg(short, long, default_value_t = Level::INFO)]
+    log_level: Level,
+}
 
 type Response<T, E> = BoxFuture<'static, std::result::Result<T, E>>;
 
@@ -71,7 +83,7 @@ impl LanguageServer for ServerState {
             },
             server_info: Some(ServerInfo {
                 name: SERVER_NAME.to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string().into(),
+                version: voxalfa_build_info::VERSION.to_string().into(),
             }),
         };
 
@@ -288,6 +300,7 @@ impl LanguageServer for ServerState {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cli = Cli::parse();
     let validator = Validator::init()?;
 
     let (server, _) = MainLoop::new_server(|client| {
@@ -301,7 +314,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
+        .with_max_level(cli.log_level)
         .with_ansi(false)
         .with_writer(std::io::stderr)
         .init();

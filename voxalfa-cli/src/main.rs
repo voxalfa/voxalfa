@@ -9,7 +9,11 @@ use clap::Parser;
 use crate::{commands::*, reporter::CliReporter};
 
 #[derive(Parser)]
-#[clap(about, version)]
+#[clap(
+    about,
+    version = voxalfa_build_info::VERSION,
+    long_version = voxalfa_build_info::long_version()
+)]
 pub struct Cli {
     #[command(subcommand)]
     command: CliCommand,

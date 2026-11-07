@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "voxalfa-build-info",
   "voxalfa-cli",
   "voxalfa-core",
   "voxalfa-lsp",
@@ -13,9 +14,11 @@ members = [
 ]
 
 [workspace.dependencies]
+clap = { version = "4.6.2", features = ["derive"] }
 insta = "1.48.0"
 thiserror = "2.0.18"
 tree-sitter-voxalfa = { path = "./tree-sitter-voxalfa" }
+voxalfa-build-info = { path = "./voxalfa-build-info" }
 voxalfa-midi = { path = "./voxalfa-midi" }
 voxalfa-formatter = { path = "./voxalfa-formatter" }
 voxalfa-core = { path = "./voxalfa-core" }
