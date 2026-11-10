@@ -1,8 +1,7 @@
 use voxalfa_core::{
     ast::solfa::PulseAccent,
     data_types::{
-        Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature, Touch,
-        Voice,
+        Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature, Voice,
     },
     ir::{
         PulseView, SectionIr, SubSectionIr,
@@ -20,9 +19,10 @@ use crate::{
     fonts::Fonts,
     locale::Locale,
     model::{
-        DynamicSpanKind, FlatDynamicSpan, FlatMarker, FlatPulse, FlatSubPulse, FlatVolta,
-        HeaderView, LyricToken, MarkerGlyph, MarkerKind, ResolvedScore, System, SystemDynamicSpan,
-        SystemLyricGroup, SystemLyricToken, SystemMarker, SystemPulse, SystemSubPulse, SystemVolta,
+        DynamicSpanKind, FlatDynamicSpan, FlatMarker, FlatVolta, HeaderView, LyricLine, LyricToken,
+        MarkerGlyph, MarkerKind, PulseStack, PulseStackItem, ResolvedScore, ShiftedLyrics, System,
+        SystemDynamicSpan, SystemLyricGroup, SystemLyricToken, SystemMarker, SystemPulse,
+        SystemSubPulse, SystemVolta,
     },
     options::RenderOptions,
     visitor::SvgVisitor,
@@ -50,19 +50,18 @@ pub fn resolve<'a>(
 
     let lyrics_builder = LyricsBuilder::new(&fonts.text.lyric);
     let (ref_col, lyrics_map) = lyrics_builder.build_map::<SvgVisitor>(data, max_factor);
-    let (col_width, lead_width) = compute_widths(fonts, options, ref_col.width);
+    let (lead_width, col_width) = compute_widths(fonts, options, ref_col.width);
 
     let pulse_resolver = PulseResolver::new(data, &locale, lyrics_map, default_time);
     let (pulses, dynamic_spans) = pulse_resolver.resolve();
 
-    let max_columns = pulses
+    let max_sacle_factor = pulses
         .iter()
-        .map(|pulse| pulse.max_columns)
-        .max()
-        .unwrap_or(1);
+        .map(|pulse| pulse.scale_factor)
+        .max_by(|a, b| a.total_cmp(b))
+        .unwrap_or(1.0);
 
-    let grid_pulse_width = max_columns.max(1) as f32 * (col_width + lead_width);
-
+    let grid_pulse_width = max_sacle_factor as f32 * (col_width + lead_width);
     let systems = build_systems(&pulses, &dynamic_spans, grid_pulse_width, content_width);
 
     Ok(ResolvedScore {
@@ -76,7 +75,7 @@ struct PulseResolver<'a, 'd> {
     data: &'a FinalOutput,
     locale: &'d Locale,
     lyrics_map: LyricsMap<f32>,
-    pulses: Vec<FlatPulse<'a>>,
+    pulses: Vec<PulseStack<'a>>,
     dynamic_spans: Vec<FlatDynamicSpan>,
     current_time: TimeSignature,
 }
@@ -88,7 +87,7 @@ struct SectionContext<'a> {
     time: TimeSignature,
     time_changed: bool,
     volta: Option<FlatVolta>,
-    lyrics: Vec<Vec<Vec<LyricToken>>>,
+    lyrics: Vec<Vec<LyricLine>>,
 }
 
 impl<'a, 'b> PulseResolver<'a, 'b> {
@@ -108,7 +107,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         }
     }
 
-    fn resolve(mut self) -> (Vec<FlatPulse<'a>>, Vec<FlatDynamicSpan>) {
+    fn resolve(mut self) -> (Vec<PulseStack<'a>>, Vec<FlatDynamicSpan>) {
         for (section_id, section) in self.data.body.sections.iter().enumerate() {
             self.resolve_section(section_id, section);
         }
@@ -122,15 +121,17 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         let declared_time = section.params.time.as_ref().map(|time| time.value);
         let time_changed = declared_time.is_some_and(|time| time != self.current_time);
 
+        let volta = build_volta(section);
+        let lyrics = build_section_lyrics(section, &mut self.lyrics_map);
+
         if let Some(time) = declared_time {
             self.current_time = time;
         }
 
         let pulse_count = section
             .items
-            .iter()
+            .first()
             .map(|sub| sub.views.len())
-            .max()
             .unwrap_or(0);
 
         if pulse_count == 0 {
@@ -140,8 +141,8 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         let context = SectionContext {
             start: self.pulses.len(),
             time: self.current_time,
-            volta: build_volta(section),
-            lyrics: build_section_lyrics(section, &mut self.lyrics_map),
+            volta,
+            lyrics,
             section,
             time_changed,
             pulse_count,
@@ -199,7 +200,8 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             pulse.markers.push(FlatMarker {
                 kind: MarkerKind::TimeSignature,
                 glyph: MarkerGlyph::Text(format!("{}/{}", time.top, time.bottom)),
-                unit: 0.0,
+                index: 0.0,
+                voice: None,
             });
         }
 
@@ -207,7 +209,8 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             pulse.markers.push(FlatMarker {
                 kind: MarkerKind::Key,
                 glyph: MarkerGlyph::Text(self.locale.key_label(&key_text(key))),
-                unit: 0.0,
+                index: 0.0,
+                voice: None,
             });
         }
 
@@ -222,7 +225,8 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             pulse.markers.push(FlatMarker {
                 kind,
                 glyph: MarkerGlyph::Text(label),
-                unit: 0.0,
+                index: 0.0,
+                voice: None,
             });
         }
     }
@@ -249,7 +253,12 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             return;
         };
 
-        let positions = note_positions(views);
+        let positions = make_indexed_notes(views);
+
+        let voice = match sub.solfa.as_slice() {
+            [line] => Some(line.voice),
+            _ => None,
+        };
 
         for timed in &dynamics.value {
             let event = &timed.value;
@@ -260,11 +269,11 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                     continue;
                 };
 
-                let Some((start_pulse, start_unit)) = event_unit(&positions, event.start) else {
+                let Some((start_pulse, start_unit)) = resolve_event(&positions, event.start) else {
                     continue;
                 };
 
-                let Some((end_pulse, end_unit)) = event_unit(&positions, end) else {
+                let Some((end_pulse, end_unit)) = resolve_event(&positions, end) else {
                     continue;
                 };
 
@@ -283,11 +292,9 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                 continue;
             }
 
-            let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
+            let Some((pulse_id, unit)) = resolve_event(&positions, event.start) else {
                 continue;
             };
-
-            let text = dynamic.to_string();
 
             let Some(pulse) = self.pulses.get_mut(section_start + pulse_id) else {
                 continue;
@@ -295,8 +302,9 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
 
             pulse.markers.push(FlatMarker {
                 kind: MarkerKind::Dynamic,
-                glyph: MarkerGlyph::Text(text),
-                unit,
+                glyph: MarkerGlyph::Text(dynamic.to_string()),
+                index: unit,
+                voice,
             });
         }
     }
@@ -308,15 +316,9 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         if let Some(jump) = &section.params.jump {
             self.pulses[last].markers.push(FlatMarker {
                 kind: MarkerKind::Jump,
-                glyph: MarkerGlyph::Text(jump_label(
-                    jump.value,
-                    section
-                        .params
-                        .repeat
-                        .as_ref()
-                        .map(|repeat| repeat.value as u8),
-                )),
-                unit: 1.0,
+                glyph: MarkerGlyph::Text(jump_label(jump.value, section.get_repeat())),
+                index: 1.0,
+                voice: None,
             });
         }
 
@@ -331,7 +333,8 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             self.pulses[pulse].markers.push(FlatMarker {
                 kind: MarkerKind::Mark,
                 glyph,
-                unit,
+                index: unit,
+                voice: None,
             });
         }
     }
@@ -350,32 +353,28 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
     }
 
     fn add_touch_markers(&mut self, section_start: usize, section: &SectionIr) {
-        let Some(touches) = &section.params.touches else {
-            return;
-        };
-        let Some(sub) = section.items.first() else {
+        let touches = section.params.touches.as_ref();
+        let views = section.items.first().map(|sub| &sub.views);
+
+        let Some((touches, views)) = touches.zip(views) else {
             return;
         };
 
-        let positions = note_positions(&sub.views);
+        let positions = make_indexed_notes(views);
 
         for timed in &touches.value {
             let event = &timed.value;
-            let Some((pulse_id, unit)) = event_unit(&positions, event.start) else {
-                continue;
-            };
 
-            let glyph = match event.value {
-                Touch::Fermata => MarkerGlyph::Fermata,
-                Touch::Staccato => MarkerGlyph::Staccato,
-                Touch::Marcato => MarkerGlyph::Marcato,
+            let Some((pulse_id, index)) = resolve_event(&positions, event.start) else {
+                continue;
             };
 
             if let Some(pulse) = self.pulses.get_mut(section_start + pulse_id) {
                 pulse.markers.push(FlatMarker {
                     kind: MarkerKind::Touch,
-                    glyph,
-                    unit,
+                    glyph: MarkerGlyph::Touch(event.value),
+                    index,
+                    voice: None,
                 });
             }
         }
@@ -396,22 +395,22 @@ fn build_volta(section: &SectionIr) -> Option<FlatVolta> {
 fn build_section_lyrics(
     section: &SectionIr,
     lyrics_map: &mut LyricsMap<f32>,
-) -> Vec<Vec<Vec<LyricToken>>> {
+) -> Vec<Vec<LyricLine>> {
     section
         .items
         .iter()
         .map(|sub| {
             sub.lyrics
                 .iter()
-                .map(|line| build_lyric_tokens(&sub.views, line, lyrics_map))
+                .map(|line| build_lyrics_line(&sub.views, line, lyrics_map))
                 .collect()
         })
         .collect()
 }
 
-fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> FlatPulse<'a> {
-    let mut subsections = Vec::new();
-    let mut max_columns = 1;
+fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> PulseStack<'a> {
+    let mut stack = Vec::new();
+    let mut max_scale_factor = 1.0f32;
     let mut accent = PulseAccent::Strong;
 
     for (sub_id, sub) in context.section.items.iter().enumerate() {
@@ -419,7 +418,13 @@ fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> FlatPulse<'
             continue;
         };
 
-        max_columns = max_columns.max(view.durations.len());
+        let scale_factor = match (view.factor, view.durations.len()) {
+            (f, d) if f as usize == d => f as f32,
+            (4, 2) => 2.35, // FIXME: Find a true bounded scaling solution
+            _ => 1.0,
+        };
+
+        max_scale_factor = max_scale_factor.max(scale_factor);
 
         let voices = sub
             .solfa
@@ -431,128 +436,101 @@ fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> FlatPulse<'
             accent = first.accent;
         }
 
-        for (_, pulse) in &voices {
-            max_columns = max_columns.max(pulse.columns.len().max(1));
-        }
-
-        let mut lyric_voices = Vec::new();
-
-        for line in &sub.solfa {
-            if !lyric_voices.contains(&line.voice) {
-                lyric_voices.push(line.voice);
-            }
-        }
-
         let lyrics = context
             .lyrics
             .get(sub_id)
             .map(|verses| build_pulse_lyrics(verses, pulse_id, context.start))
             .unwrap_or_default();
 
-        subsections.push(FlatSubPulse {
-            voices,
-            lyric_voices,
+        stack.push(PulseStackItem {
+            lyric_voices: sub.solfa.iter().map(|s| s.voice).collect(),
             lyrics,
+            voices,
         });
     }
 
-    FlatPulse {
+    PulseStack {
         time: context.time,
-        accent,
         measure_start: false,
         section_end: false,
         pulse_offset: 0,
-        subsections,
         markers: Vec::new(),
         volta: context.volta.clone(),
-        max_columns,
+        scale_factor: max_scale_factor,
+        accent,
+        stack,
     }
 }
 
 fn build_pulse_lyrics(
-    verses: &[Vec<LyricToken>],
+    verses: &[LyricLine],
     pulse_id: usize,
     section_start: usize,
-) -> Vec<Vec<LyricToken>> {
+) -> Vec<ShiftedLyrics> {
     verses
         .iter()
         .map(|verse| {
-            verse
+            let tokens = verse
+                .tokens
                 .iter()
                 .filter(|token| token.start_pulse == pulse_id)
-                .map(|token| {
-                    let mut token = token.clone();
-                    token.start_pulse += section_start;
-                    token.end_pulse += section_start;
-                    token
-                })
-                .collect()
+                .map(|token| token.apply_offset(section_start))
+                .collect();
+
+            ShiftedLyrics { tokens }
         })
         .collect()
 }
 
 #[derive(Clone, Copy)]
-struct NotePosition {
+struct IndexedNote {
     pulse: usize,
-    start: f32,
-    end: f32,
-    unit_start: f32,
-    unit_end: f32,
+    rel_index: f32,
+    abs_index: f32,
+    duration: f32,
 }
 
-fn note_positions(views: &[PulseView]) -> Vec<NotePosition> {
+fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
     let mut positions = Vec::new();
-    let mut relative = 0.0;
+    let mut abs_offset = 0.0;
 
     for (pulse_id, view) in views.iter().enumerate() {
         let total = view
             .durations
             .iter()
             .map(|&duration| duration as u32)
-            .sum::<u32>()
-            .max(1);
+            .sum::<u32>();
 
-        let mut cursor = 0;
+        let mut rel_offset = 0;
 
         for &duration in &view.durations {
-            let start = relative;
-            let end = relative + duration as f32 / view.factor as f32;
-            let unit_start = cursor as f32 / total as f32;
+            let duration = duration as f32 / view.factor as f32;
 
-            cursor += duration as u32;
-
-            positions.push(NotePosition {
+            positions.push(IndexedNote {
                 pulse: pulse_id,
-                start,
-                end,
-                unit_start,
-                unit_end: cursor as f32 / total as f32,
+                abs_index: abs_offset,
+                rel_index: rel_offset as f32 / total as f32,
+                duration: duration as f32 / view.factor as f32,
             });
 
-            relative = end;
+            rel_offset += duration as u32;
+            abs_offset += duration;
         }
     }
 
     positions
 }
 
-fn event_unit(positions: &[NotePosition], target: f32) -> Option<(usize, f32)> {
-    let position = positions
-        .iter()
-        .find(|position| (position.start - target).abs() < FLOAT_ERROR)
-        .or_else(|| {
-            positions
-                .iter()
-                .find(|position| (position.end - target).abs() < FLOAT_ERROR)
-        })?;
-
-    let unit = if (position.start - target).abs() < FLOAT_ERROR {
-        position.unit_start
-    } else {
-        position.unit_end
-    };
-
-    Some((position.pulse, unit))
+fn resolve_event(positions: &[IndexedNote], target: f32) -> Option<(usize, f32)> {
+    positions.iter().find_map(|note| {
+        if (note.abs_index - target).abs() < FLOAT_ERROR {
+            Some((note.pulse, note.rel_index))
+        } else if (note.abs_index + note.duration - target).abs() < FLOAT_ERROR {
+            Some((note.pulse, note.rel_index + note.duration))
+        } else {
+            None
+        }
+    })
 }
 
 fn combined_views(sections: &[SectionIr], section_id: usize, sub_id: usize) -> Vec<PulseView> {
@@ -593,7 +571,7 @@ fn key_text(key: Key) -> String {
     text
 }
 
-fn jump_label(jump: Jump, repeat: Option<u8>) -> String {
+fn jump_label(jump: Jump, repeat: Option<usize>) -> String {
     let label = match jump {
         Jump::DS => "D.S.",
         Jump::DC => "D.C.",
@@ -645,6 +623,7 @@ fn build_header(data: &FinalOutput) -> HeaderView {
 
     let tempo_param = data.header.get_params(|p| &p.tempo);
     let is_bpm = tempo_param.is_some_and(|tempo| matches!(tempo, StaticTempo::Custom(_)));
+
     let tempo = tempo_param.map(|tempo| {
         if matches!(tempo, StaticTempo::Custom(_)) {
             format!("M {tempo}")
@@ -675,15 +654,15 @@ fn build_header(data: &FinalOutput) -> HeaderView {
     }
 }
 
-fn build_lyric_tokens(
+fn build_lyrics_line(
     views: &[PulseView],
     line: &LyricLineIr,
     lyrics_map: &mut LyricsMap<f32>,
-) -> Vec<LyricToken> {
+) -> LyricLine {
     let mut tokens = Vec::new();
 
     if views.is_empty() {
-        return tokens;
+        return LyricLine { tokens };
     }
 
     let mut pulse = 0;
@@ -741,7 +720,7 @@ fn build_lyric_tokens(
         });
     }
 
-    tokens
+    LyricLine { tokens }
 }
 
 fn column_has_underline(column: &LyricColumnIR) -> bool {
@@ -755,16 +734,10 @@ fn column_has_underline(column: &LyricColumnIR) -> bool {
 fn slot_unit(view: &PulseView, slot: usize) -> f32 {
     let total: u32 = view.durations.iter().map(|&duration| duration as u32).sum();
 
-    if total == 0 {
-        return 0.0;
-    }
-
-    let clamped = slot.min(view.durations.len());
-
     let elapsed: u32 = view
         .durations
         .iter()
-        .take(clamped)
+        .take(slot)
         .map(|&duration| duration as u32)
         .sum();
 
@@ -780,17 +753,13 @@ fn compute_widths(fonts: &Fonts, options: &RenderOptions, lyric_width: f32) -> (
         .max(fonts.text.note.width(":"))
         .max(4.0);
 
-    let col_width = column_width(lyric_width, options);
+    let col_width = lyric_width.max(options.min_col_width) + options.col_padding;
 
-    (col_width, lead_width)
-}
-
-fn column_width(lyric_width: f32, options: &RenderOptions) -> f32 {
-    lyric_width.max(options.min_col_width) + options.col_padding
+    (lead_width, col_width)
 }
 
 fn build_systems<'a>(
-    pulses: &[FlatPulse<'a>],
+    pulses: &[PulseStack<'a>],
     dynamic_spans: &[FlatDynamicSpan],
     pulse_width: f32,
     max_width: f32,
@@ -898,7 +867,7 @@ fn build_systems<'a>(
 }
 
 fn make_system<'a>(
-    pulses: &[FlatPulse<'a>],
+    pulses: &[PulseStack<'a>],
     spans: &[FlatDynamicSpan],
     indices: Vec<PulseId>,
     pulse_width: f32,
@@ -920,14 +889,14 @@ fn make_system<'a>(
 }
 
 struct SystemLayout<'a, 'b> {
-    pulses: &'b [FlatPulse<'a>],
+    pulses: &'b [PulseStack<'a>],
     indices: &'b [usize],
     start: usize,
     end: usize,
 }
 
 impl<'a, 'p> SystemLayout<'a, 'p> {
-    fn new(pulses: &'p [FlatPulse<'a>], indices: &'p [usize]) -> Self {
+    fn new(pulses: &'p [PulseStack<'a>], indices: &'p [usize]) -> Self {
         let start = indices[0];
 
         Self {
@@ -989,7 +958,7 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
                     section_end: pulse.section_end,
                     pulse_width,
                     subsections: pulse
-                        .subsections
+                        .stack
                         .iter()
                         .map(|sub| SystemSubPulse {
                             voices: sub.voices.clone(),
@@ -1010,9 +979,10 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
                     .iter()
                     .map(move |marker| SystemMarker {
                         pulse,
-                        unit: marker.unit,
+                        unit: marker.index,
                         kind: marker.kind,
                         glyph: marker.glyph.clone(),
+                        voice: marker.voice,
                     })
             })
             .collect()
@@ -1067,7 +1037,7 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
         let mut max_verses = 0;
 
         for &global in self.indices {
-            for sub in &self.pulses[global].subsections {
+            for sub in &self.pulses[global].stack {
                 max_verses = max_verses.max(sub.lyrics.len());
 
                 for &voice in &sub.lyric_voices {
@@ -1095,9 +1065,9 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
         for (local, &global) in self.indices.iter().enumerate() {
             let pulse = &self.pulses[global];
 
-            for sub in &pulse.subsections {
+            for sub in &pulse.stack {
                 for (verse, tokens) in sub.lyrics.iter().enumerate() {
-                    for token in tokens {
+                    for token in &tokens.tokens {
                         if token.start_pulse != global || token.text.is_empty() {
                             continue;
                         }

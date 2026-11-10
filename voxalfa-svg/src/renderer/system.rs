@@ -161,7 +161,7 @@ impl<'a> SystemRender<'a> {
                     marker.anchor.as_str(),
                 )?,
                 MarkerGlyph::Segno => emit_segno(self.svg, x, baseline, self.fonts)?,
-                MarkerGlyph::Fermata | MarkerGlyph::Staccato | MarkerGlyph::Marcato => {
+                MarkerGlyph::Touch(_) => {
                     emit_touch(self.svg, &marker.glyph, x, baseline, self.fonts)?
                 }
             }
@@ -323,7 +323,6 @@ impl<'a> SystemRender<'a> {
                 let gap = self.fonts.text.note.size() * DOUBLE_BARLINE_GAP;
 
                 emit_line(self.svg, end_x - gap, top, end_x - gap, bottom, "barline")?;
-
                 emit_line(self.svg, end_x, top, end_x, bottom, "barline")?;
             }
         }

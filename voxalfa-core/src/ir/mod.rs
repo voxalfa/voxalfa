@@ -40,6 +40,10 @@ impl SectionIr {
         })
     }
 
+    pub fn get_repeat(&self) -> Option<usize> {
+        self.params.repeat.as_ref().map(|r| r.value)
+    }
+
     pub fn start_events(&self) -> Vec<Event> {
         let mut result = Vec::new();
         let params = &self.params;

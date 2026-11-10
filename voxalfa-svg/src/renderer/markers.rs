@@ -1,3 +1,5 @@
+use voxalfa_core::data_types::Touch;
+
 use crate::{
     fonts::{FontMetrics, Fonts},
     model::{MarkerGlyph, MarkerKind},
@@ -26,9 +28,9 @@ pub fn touch_width(glyph: &MarkerGlyph, fonts: &Fonts) -> f32 {
     let size = fonts.touch.size() * TOUCH_SYMBOL_SCALE;
 
     match glyph {
-        MarkerGlyph::Fermata => size * FERMATA_WIDTH_SCALE,
-        MarkerGlyph::Staccato => size * STACCATO_WIDTH_SCALE,
-        MarkerGlyph::Marcato => size * MARCATO_WIDTH_SCALE,
+        MarkerGlyph::Touch(Touch::Fermata) => size * FERMATA_WIDTH_SCALE,
+        MarkerGlyph::Touch(Touch::Staccato) => size * STACCATO_WIDTH_SCALE,
+        MarkerGlyph::Touch(Touch::Marcato) => size * MARCATO_WIDTH_SCALE,
         _ => 0.0,
     }
 }

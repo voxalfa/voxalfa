@@ -55,6 +55,7 @@ pub fn render_pages(
     let pages = paginate(&system_layouts, header.height, options);
     let page_count = pages.len().max(1);
     let max_pulses_per_line = max_pulses_per_line(&score.systems, content_width);
+
     let max_measure_pulses = score
         .systems
         .iter()

@@ -134,8 +134,7 @@ pub fn layout_system(
 
     jumps.append(&mut markers);
 
-    let markers = jumps;
-
+    let mut markers = jumps;
     let mut lyric_rows: Vec<Vec<(usize, usize)>> = vec![Vec::new(); system.voices.len()];
 
     for (group_index, group) in system.lyric_groups.iter().enumerate() {
@@ -166,13 +165,22 @@ pub fn layout_system(
     let lyric_height =
         options.lyric_row_height * lyric_scale + lyric_style.top() + lyric_style.bottom();
 
+    let dynamic_height = fonts.label.dynamic.line_height()
+        + options.elements.label.dynamic.top()
+        + options.elements.label.dynamic.bottom()
+        + fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
+
     let mut specs = Vec::new();
     let mut kinds = Vec::new();
 
     for (voice_index, voice) in system.voices.iter().enumerate() {
+        let has_dynamic = markers
+            .iter()
+            .any(|marker| marker.kind == MarkerKind::Dynamic && marker.voice == Some(*voice));
+
         specs.push(RowSpec {
             height: voice_height,
-            gap_before: 0.0,
+            gap_before: if has_dynamic { dynamic_height } else { 0.0 },
         });
 
         kinds.push(SystemRowKind::Voice(*voice));
@@ -199,7 +207,28 @@ pub fn layout_system(
             height: specs[index].height,
             kind,
         })
-        .collect();
+        .collect::<Vec<_>>();
+
+    // Dynamics that belong to a specific voice sit just above that voice's
+    // row instead of in the global marker area above the first voice.
+    for marker in &mut markers {
+        if marker.kind != MarkerKind::Dynamic {
+            continue;
+        }
+
+        let Some(voice) = marker.voice else {
+            continue;
+        };
+
+        let Some(row) = rows
+            .iter()
+            .find(|row| matches!(row.kind, SystemRowKind::Voice(current) if current == voice))
+        else {
+            continue;
+        };
+
+        marker.y = row.y - fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
+    }
 
     SystemLayout {
         rows,
@@ -237,12 +266,11 @@ fn layout_jumps(
         .filter(|marker| marker.kind == MarkerKind::Jump)
     {
         let font = marker_font(marker.kind, fonts);
+
         let width = match &marker.glyph {
             MarkerGlyph::Text(text) => font.width(text),
             MarkerGlyph::Segno => segno_width(fonts),
-            MarkerGlyph::Fermata | MarkerGlyph::Staccato | MarkerGlyph::Marcato => {
-                touch_width(&marker.glyph, fonts)
-            }
+            MarkerGlyph::Touch(_) => touch_width(&marker.glyph, fonts),
         };
 
         let style = &options.elements.label.jump;
@@ -256,6 +284,7 @@ fn layout_jumps(
             anchor,
             x: anchor_x(x, anchor, style),
             y: style.top() + font.ascent(),
+            voice: marker.voice,
         });
     }
 
@@ -524,9 +553,7 @@ fn layout_markers(
             let width = match &marker.glyph {
                 MarkerGlyph::Text(text) => font.width(text),
                 MarkerGlyph::Segno => segno_width(fonts),
-                MarkerGlyph::Fermata | MarkerGlyph::Staccato | MarkerGlyph::Marcato => {
-                    touch_width(&marker.glyph, fonts)
-                }
+                MarkerGlyph::Touch(_) => touch_width(&marker.glyph, fonts),
             };
 
             let fallback_x = xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead;
@@ -561,6 +588,7 @@ fn layout_markers(
                 x,
                 y: 0.0,
                 anchor,
+                voice: marker.voice,
             };
 
             rows[start_row + offset].push(placed);
@@ -626,6 +654,7 @@ pub struct SystemLayout {
     pub height: f32,
 }
 
+#[derive(Debug)]
 pub struct PlacedDynamicSpan {
     pub kind: DynamicSpanKind,
     pub start_x: f32,
@@ -636,6 +665,7 @@ pub struct PlacedDynamicSpan {
     pub label_width: f32,
 }
 
+#[derive(Debug)]
 pub struct PlacedVolta {
     pub start_x: f32,
     pub end_x: f32,
@@ -645,7 +675,7 @@ pub struct PlacedVolta {
     pub line_y: f32,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PlacedMarker {
     pub kind: MarkerKind,
     pub glyph: MarkerGlyph,
@@ -653,14 +683,17 @@ pub struct PlacedMarker {
     pub anchor: TextAnchor,
     pub x: f32,
     pub y: f32,
+    pub voice: Option<Voice>,
 }
 
+#[derive(Debug)]
 pub struct SystemRow {
     pub y: f32,
     pub height: f32,
     pub kind: SystemRowKind,
 }
 
+#[derive(Debug)]
 pub enum SystemRowKind {
     Voice(Voice),
     Lyric {

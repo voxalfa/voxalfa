@@ -24,6 +24,7 @@ pub const DYNAMIC_SPAN_INSET: f32 = 1.0;
 pub const DYNAMIC_HAIRPIN_HEIGHT: f32 = 0.5;
 pub const DYNAMIC_DASH_GAP: f32 = 0.3;
 pub const DYNAMIC_SPAN_BOTTOM_GAP: f32 = 0.2;
+pub const DYNAMIC_VOICE_GAP: f32 = 0.35;
 
 pub const BARLINE_STROKE_WIDTH: f32 = 0.1;
 pub const BARLINE_BLOCK_INSET: f32 = 0.5;
@@ -41,7 +42,7 @@ pub const UNDERLINE_STROKE_WIDTH: f32 = 0.08;
 pub const BOTTOM_OCTAVE_UNDERLINE_GAP: f32 = 0.14;
 pub const SOLFA_UNDERLINE_OFFSET: f32 = 0.21;
 pub const LYRIC_UNDERLINE_OFFSET: f32 = 0.1;
-pub const MIN_UNDERLINE_WIDTH: f32 = 0.08;
+pub const MIN_UNDERLINE_WIDTH: f32 = 0.1;
 pub const PROLONGED_LEADING_MIN: f32 = 0.21;
 pub const NOTE_BARLINE_CLEARANCE: f32 = 0.25;
 pub const GRID_RIGHT_PADDING: f32 = 0.17;

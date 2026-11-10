@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use voxalfa_core::data_types::Touch;
+
 use crate::{
     error::Result,
     fonts::Fonts,
@@ -112,7 +114,7 @@ pub fn emit_touch(
     let bottom = baseline - 1.0;
 
     match glyph {
-        MarkerGlyph::Staccato => {
+        MarkerGlyph::Touch(Touch::Staccato) => {
             let width = size * 0.32;
             let scale = width / STACCATO_SIZE;
             let left = x - width / 2.0;
@@ -123,7 +125,7 @@ pub fn emit_touch(
                 r##"<g class="touch-fill touch-staccato" transform="translate({left:.2} {top:.2}) scale({scale:.4})"><path d="{STACCATO_PATH}"/></g>"##,
             )?;
         }
-        MarkerGlyph::Marcato => {
+        MarkerGlyph::Touch(Touch::Marcato) => {
             let width = size * MARCATO_WIDTH_SCALE;
             let height = width * MARCATO_HEIGHT / MARCATO_WIDTH;
             let scale = width / MARCATO_WIDTH;
@@ -135,7 +137,7 @@ pub fn emit_touch(
                 r##"<g class="touch-fill touch-marcato" transform="translate({left:.2} {top:.2}) scale({scale:.4})"><path d="{MARCATO_PATH}"/></g>"##,
             )?;
         }
-        MarkerGlyph::Fermata => {
+        MarkerGlyph::Touch(Touch::Fermata) => {
             let width = size * 1.7;
             let height = width * FERMATA_HEIGHT / FERMATA_WIDTH;
             let scale = width / FERMATA_WIDTH;

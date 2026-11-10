@@ -117,6 +117,5 @@ fn note_extent(note: &NoteKind, fonts: &Fonts, lead: f32) -> f32 {
 }
 
 pub fn baseline(row_y: f32, row_height: f32, font: &FontMetrics) -> f32 {
-    let content = font.ascent() + font.descent();
-    row_y + (row_height - content) / 2.0 + font.ascent()
+    row_y + (row_height - font.line_height()) / 2.0 + font.ascent()
 }
