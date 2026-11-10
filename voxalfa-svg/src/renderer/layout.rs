@@ -21,7 +21,7 @@ use super::{
 const MARKER_SAME_NOTE_EPSILON: f32 = 0.001;
 
 pub fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
-    pulse.subsections.iter().find_map(|sub| {
+    pulse.stack.iter().find_map(|sub| {
         sub.voices
             .iter()
             .find(|(current, _)| *current == voice)

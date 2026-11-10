@@ -99,6 +99,12 @@ impl LyricToken {
     }
 }
 
+#[derive(Debug)]
+pub struct Measure {
+    pub start: usize,
+    pub end: usize,
+}
+
 pub struct System<'a> {
     pub pulses: Vec<SystemPulse<'a>>,
     pub time: TimeSignature,
@@ -143,6 +149,17 @@ pub struct SystemVolta {
     pub label: Option<String>,
 }
 
+impl SystemVolta {
+    pub fn new(start: usize, end: usize, volta: FlatVolta) -> Self {
+        SystemVolta {
+            start,
+            end,
+            number: volta.number,
+            label: volta.label,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SystemMarker {
     pub pulse: usize,
@@ -157,10 +174,10 @@ pub struct SystemPulse<'a> {
     pub measure_start: bool,
     pub section_end: bool,
     pub pulse_width: f32,
-    pub subsections: Vec<SystemSubPulse<'a>>,
+    pub stack: Vec<SystemPulseStackItem<'a>>,
 }
 
-pub struct SystemSubPulse<'a> {
+pub struct SystemPulseStackItem<'a> {
     pub voices: Vec<(Voice, &'a PulseIr)>,
 }
 
@@ -177,6 +194,23 @@ pub struct SystemLyricToken {
     pub end_unit: f32,
     pub text: String,
     pub underline: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SystemVoiceLyrics {
+    pub verses: Vec<Vec<SystemLyricToken>>,
+}
+
+impl SystemVoiceLyrics {
+    pub fn new(verse_count: usize) -> Self {
+        Self {
+            verses: vec![Vec::new(); verse_count],
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.verses.iter().all(Vec::is_empty)
+    }
 }
 
 pub struct ResolvedScore<'a> {

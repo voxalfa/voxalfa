@@ -23,7 +23,7 @@ use super::{
 };
 
 fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
-    pulse.subsections.iter().find_map(|sub| {
+    pulse.stack.iter().find_map(|sub| {
         sub.voices
             .iter()
             .find(|(current, _)| *current == voice)

@@ -18,12 +18,7 @@ use crate::{
     error::{Error, Result},
     fonts::Fonts,
     locale::Locale,
-    model::{
-        DynamicSpanKind, FlatDynamicSpan, FlatMarker, FlatVolta, HeaderView, LyricLine, LyricToken,
-        MarkerGlyph, MarkerKind, PulseStack, PulseStackItem, ResolvedScore, ShiftedLyrics, System,
-        SystemDynamicSpan, SystemLyricGroup, SystemLyricToken, SystemMarker, SystemPulse,
-        SystemSubPulse, SystemVolta,
-    },
+    model::*,
     options::RenderOptions,
     visitor::SvgVisitor,
 };
@@ -61,7 +56,7 @@ pub fn resolve<'a>(
         .max_by(|a, b| a.total_cmp(b))
         .unwrap_or(1.0);
 
-    let grid_pulse_width = max_sacle_factor as f32 * (col_width + lead_width);
+    let grid_pulse_width = max_sacle_factor * (col_width + lead_width);
     let systems = build_systems(&pulses, &dynamic_spans, grid_pulse_width, content_width);
 
     Ok(ResolvedScore {
@@ -510,7 +505,7 @@ fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
                 pulse: pulse_id,
                 abs_index: abs_offset,
                 rel_index: rel_offset as f32 / total as f32,
-                duration: duration as f32 / view.factor as f32,
+                duration: duration / view.factor as f32,
             });
 
             rel_offset += duration as u32;
@@ -764,100 +759,87 @@ fn build_systems<'a>(
     pulse_width: f32,
     max_width: f32,
 ) -> Vec<System<'a>> {
-    let mut measures: Vec<Vec<PulseId>> = Vec::new();
-    let mut current: Vec<PulseId> = Vec::new();
+    let mut measures: Vec<Measure> = Vec::new();
+    let mut start = 0;
 
     for (index, pulse) in pulses.iter().enumerate() {
-        if !current.is_empty() && (pulse.measure_start || pulse.time != pulses[current[0]].time) {
-            measures.push(std::mem::take(&mut current));
+        if pulse.measure_start || pulse.time != pulses[start].time {
+            measures.push(Measure { start, end: index });
+            start = index;
         }
-
-        current.push(index);
     }
 
-    if !current.is_empty() {
-        measures.push(current);
+    if start < pulses.len() {
+        measures.push(Measure {
+            start,
+            end: pulses.len(),
+        });
     }
 
-    // Pack whole measures into systems. Every measure has the same pulse
-    // width, so its width is simply `pulse_count * pulse_width`.
     let mut systems = Vec::new();
-    let mut indices = Vec::new();
+    let mut sys_measures = Vec::new();
     let mut width = 0.0;
     let mut time: Option<TimeSignature> = None;
-    let mut first_system_in_group = true;
+    let mut first_system = true;
     let mut pickup_offset = 0;
 
     for measure in measures {
-        let measure_time = pulses[measure[0]].time;
-        let measure_width = measure.len() as f32 * pulse_width;
+        let measure_time = pulses[measure.start].time;
+        let pulse_offset = pulses[measure.start].pulse_offset;
+
+        let measure_width = (measure.end - measure.start) as f32 * pulse_width;
         let time_changed = time.is_some_and(|current| current != measure_time);
 
-        let overflow_limit = if first_system_in_group {
+        let overflow_limit = if first_system {
             max_width
         } else {
             (max_width - pickup_offset as f32 * pulse_width).max(0.0)
         };
 
-        let overflow = !indices.is_empty() && width + measure_width > overflow_limit;
+        let overflow = !sys_measures.is_empty() && width + measure_width > overflow_limit;
+        let offset = if first_system { 0 } else { pickup_offset };
 
         if time_changed {
-            if !indices.is_empty() {
-                let offset = if first_system_in_group {
-                    0
-                } else {
-                    pickup_offset
-                };
-
+            if !sys_measures.is_empty() {
                 systems.push(make_system(
                     pulses,
                     dynamic_spans,
-                    std::mem::take(&mut indices),
+                    std::mem::take(&mut sys_measures),
                     pulse_width,
                     offset,
                 ));
             }
 
-            first_system_in_group = true;
-            pickup_offset = pulses[measure[0]].pulse_offset;
+            first_system = true;
+            pickup_offset = pulse_offset;
             width = 0.0;
         } else if overflow {
-            let offset = if first_system_in_group {
-                0
-            } else {
-                pickup_offset
-            };
-
             systems.push(make_system(
                 pulses,
                 dynamic_spans,
-                std::mem::take(&mut indices),
+                std::mem::take(&mut sys_measures),
                 pulse_width,
                 offset,
             ));
 
-            first_system_in_group = false;
+            first_system = false;
             width = 0.0;
         } else if time.is_none() {
-            pickup_offset = pulses[measure[0]].pulse_offset;
+            pickup_offset = pulse_offset;
         }
 
         time = Some(measure_time);
-        indices.extend(measure);
+        sys_measures.push(measure);
         width += measure_width;
     }
 
-    if !indices.is_empty() {
-        let offset = if first_system_in_group {
-            0
-        } else {
-            pickup_offset
-        };
+    if !sys_measures.is_empty() {
+        let offset = if first_system { 0 } else { pickup_offset };
 
         systems.push(make_system(
             pulses,
             dynamic_spans,
-            indices,
+            sys_measures,
             pulse_width,
             offset,
         ));
@@ -869,111 +851,100 @@ fn build_systems<'a>(
 fn make_system<'a>(
     pulses: &[PulseStack<'a>],
     spans: &[FlatDynamicSpan],
-    indices: Vec<PulseId>,
+    measures: Vec<Measure>,
     pulse_width: f32,
     grid_offset: usize,
 ) -> System<'a> {
-    let layout = SystemLayout::new(pulses, &indices);
+    let time = pulses[measures[0].start].time;
+    let layout = SystemLayout::new(pulses, measures);
     let (voices, lyric_groups) = layout.lyrics();
 
     System {
         pulses: layout.system_pulses(pulse_width),
-        time: pulses[indices[0]].time,
-        voices,
         lyric_groups,
         markers: layout.markers(),
         dynamic_spans: layout.dynamic_spans(spans),
         voltas: layout.voltas(),
         pulse_offset: grid_offset,
+        voices,
+        time,
     }
 }
 
 struct SystemLayout<'a, 'b> {
     pulses: &'b [PulseStack<'a>],
-    indices: &'b [usize],
+    measures: Vec<Measure>,
+    length: usize,
     start: usize,
     end: usize,
 }
 
-impl<'a, 'p> SystemLayout<'a, 'p> {
-    fn new(pulses: &'p [PulseStack<'a>], indices: &'p [usize]) -> Self {
-        let start = indices[0];
+impl<'a, 'b> SystemLayout<'a, 'b> {
+    fn new(pulses: &'b [PulseStack<'a>], measures: Vec<Measure>) -> Self {
+        let start = measures[0].start;
+        let end = measures.last().map(|l| l.end).unwrap_or(start);
+        let length = end - start;
 
         Self {
+            measures,
             pulses,
-            indices,
+            length,
+            end,
             start,
-            end: start + indices.len(),
         }
     }
 
     fn len(&self) -> usize {
-        self.indices.len()
+        self.length
+    }
+
+    fn pulses(&self) -> impl Iterator<Item = PulseId> {
+        self.measures.iter().flat_map(|m| m.start..m.end)
     }
 
     fn dynamic_spans(&self, spans: &[FlatDynamicSpan]) -> Vec<SystemDynamicSpan> {
         spans
             .iter()
             .filter(|span| span.end_pulse >= self.start && span.start_pulse < self.end)
-            .map(|span| {
-                let start = span.start_pulse.saturating_sub(self.start);
-
-                let start_unit = if span.start_pulse < self.start {
-                    0.0
-                } else {
-                    span.start_unit
-                };
-
-                let end = (span.end_pulse - self.start).min(self.len() - 1);
-
-                let end_unit = if span.end_pulse >= self.end {
-                    1.0
-                } else {
-                    span.end_unit
-                };
-
-                let fits = span.start_pulse >= self.start && span.end_pulse < self.end;
-
-                SystemDynamicSpan {
-                    kind: span.kind,
-                    start,
-                    start_unit,
-                    end,
-                    end_unit,
-                    fits,
-                }
+            .map(|span| SystemDynamicSpan {
+                kind: span.kind,
+                start: span.start_pulse.saturating_sub(self.start),
+                start_unit: span.start_unit,
+                end: (span.end_pulse - self.start).min(self.len() - 1),
+                end_unit: span.end_unit,
+                fits: span.start_pulse >= self.start && span.end_pulse < self.end,
             })
             .collect()
     }
 
     fn system_pulses(&self, pulse_width: f32) -> Vec<SystemPulse<'a>> {
-        self.indices
-            .iter()
-            .map(|&index| {
+        self.pulses()
+            .map(|index| {
                 let pulse = &self.pulses[index];
+
+                let stack = pulse
+                    .stack
+                    .iter()
+                    .map(|sub| SystemPulseStackItem {
+                        voices: sub.voices.clone(),
+                    })
+                    .collect();
 
                 SystemPulse {
                     accent: pulse.accent,
                     measure_start: pulse.measure_start,
                     section_end: pulse.section_end,
                     pulse_width,
-                    subsections: pulse
-                        .stack
-                        .iter()
-                        .map(|sub| SystemSubPulse {
-                            voices: sub.voices.clone(),
-                        })
-                        .collect(),
+                    stack,
                 }
             })
             .collect()
     }
 
     fn markers(&self) -> Vec<SystemMarker> {
-        self.indices
-            .iter()
+        self.pulses()
             .enumerate()
-            .flat_map(|(pulse, &global)| {
+            .flat_map(|(pulse, global)| {
                 self.pulses[global]
                     .markers
                     .iter()
@@ -992,10 +963,10 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
         let mut voltas = Vec::new();
         let mut current: Option<(usize, FlatVolta)> = None;
 
-        for (local, &global) in self.indices.iter().enumerate() {
+        for (local, global) in self.pulses().enumerate() {
             let Some(volta) = &self.pulses[global].volta else {
                 if let Some((start, volta)) = current.take() {
-                    voltas.push(volta_span(start, local, volta));
+                    voltas.push(SystemVolta::new(start, local, volta));
                 }
 
                 continue;
@@ -1008,36 +979,35 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
             }
 
             if let Some((start, active)) = current.take() {
-                voltas.push(volta_span(start, local, active));
+                voltas.push(SystemVolta::new(start, local, active));
             }
 
             current = Some((local, volta.clone()));
         }
 
         if let Some((start, volta)) = current {
-            voltas.push(volta_span(start, self.len(), volta));
+            voltas.push(SystemVolta::new(start, self.len(), volta));
         }
 
         voltas
     }
 
+    // Two section with different voice set might share the same line
+    // so we must merge lyrics for visual consistency
     fn lyrics(&self) -> (Vec<Voice>, Vec<SystemLyricGroup>) {
-        let (voices, max_verses) = self.voices();
+        let (voices, max_verses) = self.resolve_lyrics_params();
         let voice_lyrics = self.collect_lyrics(&voices, max_verses);
         let groups = merge_lyric_groups(&voices, &voice_lyrics);
 
         (voices, groups)
     }
 
-    /// Voice order is the order of first appearance across all sub-sections.
-    /// The same voice may be declared by different sub-sections, but it still
-    /// owns exactly one row in the system.
-    fn voices(&self) -> (Vec<Voice>, usize) {
+    fn resolve_lyrics_params(&self) -> (Vec<Voice>, usize) {
         let mut voices = Vec::new();
         let mut max_verses = 0;
 
-        for &global in self.indices {
-            for sub in &self.pulses[global].stack {
+        for pulse_id in self.pulses() {
+            for sub in &self.pulses[pulse_id].stack {
                 max_verses = max_verses.max(sub.lyrics.len());
 
                 for &voice in &sub.lyric_voices {
@@ -1055,48 +1025,24 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
     /// a sub-section belongs to every voice of that sub-section, so a shared
     /// line is copied onto each voice. Voices that end up with identical lines
     /// are merged again when the rows are emitted.
-    fn collect_lyrics(
-        &self,
-        voices: &[Voice],
-        max_verses: usize,
-    ) -> Vec<Vec<Vec<SystemLyricToken>>> {
-        let mut voice_lyrics = vec![vec![Vec::new(); max_verses]; voices.len()];
+    fn collect_lyrics(&self, voices: &[Voice], max_verses: usize) -> Vec<SystemVoiceLyrics> {
+        let mut voice_lyrics = vec![SystemVoiceLyrics::new(max_verses); voices.len()];
 
-        for (local, &global) in self.indices.iter().enumerate() {
-            let pulse = &self.pulses[global];
+        for (rel_id, abs_id) in self.pulses().enumerate() {
+            for sub in &self.pulses[abs_id].stack {
+                let lyrics = sub.lyrics.iter().enumerate().flat_map(|(verse, line)| {
+                    line.tokens
+                        .iter()
+                        .filter(|token| token.start_pulse == abs_id && !token.text.is_empty())
+                        .map(move |token| (verse, token))
+                });
 
-            for sub in &pulse.stack {
-                for (verse, tokens) in sub.lyrics.iter().enumerate() {
-                    for token in &tokens.tokens {
-                        if token.start_pulse != global || token.text.is_empty() {
-                            continue;
-                        }
+                for (verse, token) in lyrics {
+                    let system_token = self.make_system_lyric_token(rel_id, token);
 
-                        let end = token
-                            .end_pulse
-                            .saturating_sub(self.start)
-                            .min(self.len() - 1);
-
-                        let end_unit = if token.end_pulse >= self.end {
-                            1.0
-                        } else {
-                            token.end_unit
-                        };
-
-                        let system_token = SystemLyricToken {
-                            start: local,
-                            start_unit: token.start_unit,
-                            end,
-                            end_unit,
-                            text: token.text.clone(),
-                            underline: token.underline,
-                        };
-
-                        for &voice in &sub.lyric_voices {
-                            if let Some(voice_index) = voices.iter().position(|item| *item == voice)
-                            {
-                                voice_lyrics[voice_index][verse].push(system_token.clone());
-                            }
+                    for &voice in &sub.lyric_voices {
+                        if let Some(index) = voices.iter().position(|item| *item == voice) {
+                            voice_lyrics[index].verses[verse].push(system_token.clone());
                         }
                     }
                 }
@@ -1105,14 +1051,27 @@ impl<'a, 'p> SystemLayout<'a, 'p> {
 
         voice_lyrics
     }
-}
 
-fn volta_span(start: usize, end: usize, volta: FlatVolta) -> SystemVolta {
-    SystemVolta {
-        start,
-        end,
-        number: volta.number,
-        label: volta.label,
+    fn make_system_lyric_token(&self, rel_id: usize, token: &LyricToken) -> SystemLyricToken {
+        let end = token
+            .end_pulse
+            .saturating_sub(self.start)
+            .min(self.len() - 1);
+
+        let end_unit = if token.end_pulse >= self.end {
+            1.0
+        } else {
+            token.end_unit
+        };
+
+        SystemLyricToken {
+            start: rel_id,
+            start_unit: token.start_unit,
+            end,
+            end_unit,
+            text: token.text.clone(),
+            underline: token.underline,
+        }
     }
 }
 
@@ -1120,10 +1079,10 @@ fn volta_span(start: usize, end: usize, volta: FlatVolta) -> SystemVolta {
 /// resulting group is emitted once, after the last voice it contains.
 fn merge_lyric_groups(
     voices: &[Voice],
-    voice_lyrics: &[Vec<Vec<SystemLyricToken>>],
+    voice_lyrics: &[SystemVoiceLyrics],
 ) -> Vec<SystemLyricGroup> {
     let mut groups = Vec::new();
-    let mut start = 0usize;
+    let mut start = 0;
 
     while start < voices.len() {
         let mut end = start + 1;
@@ -1132,10 +1091,12 @@ fn merge_lyric_groups(
             end += 1;
         }
 
-        if voice_lyrics[start].iter().any(|tokens| !tokens.is_empty()) {
+        let lyrics = &voice_lyrics[start];
+
+        if !lyrics.is_empty() {
             groups.push(SystemLyricGroup {
                 voices: voices[start..end].to_vec(),
-                verses: voice_lyrics[start].clone(),
+                verses: lyrics.verses.clone(),
             });
         }
 

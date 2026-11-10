@@ -53,7 +53,7 @@ pub fn segno_width(fonts: &Fonts) -> f32 {
 pub fn pulse_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 {
     let mut usable = (pulse.pulse_width - octave_width(fonts)).max(0.0);
 
-    for sub in &pulse.subsections {
+    for sub in &pulse.stack {
         for (_, voice_pulse) in &sub.voices {
             let total = voice_pulse
                 .columns
