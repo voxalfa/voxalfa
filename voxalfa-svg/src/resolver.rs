@@ -45,18 +45,21 @@ pub fn resolve<'a>(
 
     let lyrics_builder = LyricsBuilder::new(&fonts.text.lyric);
     let (ref_col, lyrics_map) = lyrics_builder.build_map::<SvgVisitor>(data, max_factor);
-    let (lead_width, col_width) = compute_widths(fonts, options, ref_col.width);
+    let lead_width = compute_lead_width(fonts);
 
     let pulse_resolver = PulseResolver::new(data, &locale, lyrics_map, default_time);
     let (pulses, dynamic_spans) = pulse_resolver.resolve();
 
-    let max_sacle_factor = pulses
+    let max_columns = pulses
         .iter()
-        .map(|pulse| pulse.scale_factor)
-        .max_by(|a, b| a.total_cmp(b))
-        .unwrap_or(1.0);
+        .map(|pulse| pulse.max_column)
+        .max()
+        .unwrap_or(1) as f32;
 
-    let grid_pulse_width = max_sacle_factor * (col_width + lead_width);
+    let lyrics_width = max_factor as f32 * ref_col.width + max_columns * lead_width;
+    let notes_width = max_columns * (options.min_col_width + options.col_padding + lead_width);
+
+    let grid_pulse_width = lyrics_width.max(notes_width);
     let systems = build_systems(&pulses, &dynamic_spans, grid_pulse_width, content_width);
 
     Ok(ResolvedScore {
@@ -405,21 +408,15 @@ fn build_section_lyrics(
 
 fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> PulseStack<'a> {
     let mut stack = Vec::new();
-    let mut max_scale_factor = 1.0f32;
     let mut accent = PulseAccent::Strong;
+    let mut max_column = 1;
 
     for (sub_id, sub) in context.section.items.iter().enumerate() {
         let Some(view) = sub.views.get(pulse_id) else {
             continue;
         };
 
-        let scale_factor = match (view.factor, view.durations.len()) {
-            (f, d) if f as usize == d => f as f32,
-            (4, 2) => 2.35, // FIXME: Find a true bounded scaling solution
-            _ => 1.0,
-        };
-
-        max_scale_factor = max_scale_factor.max(scale_factor);
+        max_column = max_column.max(view.durations.len());
 
         let voices = sub
             .solfa
@@ -451,7 +448,7 @@ fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> PulseStack<
         pulse_offset: 0,
         markers: Vec::new(),
         volta: context.volta.clone(),
-        scale_factor: max_scale_factor,
+        max_column,
         accent,
         stack,
     }
@@ -739,18 +736,14 @@ fn slot_unit(view: &PulseView, slot: usize) -> f32 {
     elapsed as f32 / total as f32
 }
 
-fn compute_widths(fonts: &Fonts, options: &RenderOptions, lyric_width: f32) -> (f32, f32) {
-    let lead_width = fonts
+fn compute_lead_width(fonts: &Fonts) -> f32 {
+    fonts
         .text
         .note
         .width(".,")
         .max(fonts.text.note.width("!"))
         .max(fonts.text.note.width(":"))
-        .max(4.0);
-
-    let col_width = lyric_width.max(options.min_col_width) + options.col_padding;
-
-    (lead_width, col_width)
+        .max(4.0)
 }
 
 fn build_systems<'a>(

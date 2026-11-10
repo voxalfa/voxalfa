@@ -28,7 +28,7 @@ pub struct PulseStack<'a> {
     pub stack: Vec<PulseStackItem<'a>>,
     pub markers: Vec<FlatMarker>,
     pub volta: Option<FlatVolta>,
-    pub scale_factor: f32,
+    pub max_column: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
