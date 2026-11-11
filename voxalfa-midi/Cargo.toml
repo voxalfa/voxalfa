@@ -1,7 +1,11 @@
 [package]
 name = "voxalfa-midi"
-version = "0.1.0"
-edition = "2024"
+description = "The Voxalfa MIDI generator library"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 voxalfa-core = { workspace = true }

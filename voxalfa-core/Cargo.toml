@@ -1,7 +1,11 @@
 [package]
 name = "voxalfa-core"
-version = "0.1.0-alpha"
-edition = "2024"
+description = "The Voxalfa language core utilites and validation library"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
 semver = "1.0.28"

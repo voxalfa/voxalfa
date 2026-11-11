@@ -1922,7 +1922,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "voxalfa-build-info"
-version = "0.1.0"
+version = "0.1.0-alpha"
 dependencies = [
  "vergen-gitcl",
 ]
@@ -1966,7 +1966,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-lsp"
-version = "0.1.0"
+version = "0.1.0-alpha"
 dependencies = [
  "async-lsp",
  "clap",
@@ -1985,7 +1985,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-midi"
-version = "0.1.0"
+version = "0.1.0-alpha"
 dependencies = [
  "insta",
  "midly",
@@ -1995,7 +1995,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-pdf"
-version = "0.1.0"
+version = "0.1.0-alpha"
 dependencies = [
  "fontdb",
  "krilla",
@@ -2008,7 +2008,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-svg"
-version = "0.1.0"
+version = "0.1.0-alpha"
 dependencies = [
  "base64 0.23.1",
  "skrifa 0.45.1",
@@ -2018,7 +2018,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-wasm"
-version = "0.1.0"
+version = "0.1.0-alpha"
 dependencies = [
  "voxalfa-core",
  "voxalfa-midi",

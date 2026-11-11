@@ -89,7 +89,7 @@ pub fn render_pages(
                 let overflow = system.pulses.len() + measure_pulses > max_pulses_per_line;
 
                 if overflow {
-                    let width = system_width(&system);
+                    let width = system_width(system);
                     current_offset = (content_width - width) / 2.0;
                 }
 

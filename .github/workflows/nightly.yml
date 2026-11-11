@@ -9,9 +9,24 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build - ${{ matrix.binary.name }} - ${{ matrix.platform.os }} (${{ matrix.platform.target }})
+  create-release:
+    name: Create Nightly Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "Nightly Release"
+          body: "Automated nightly build from commit ${{ github.sha }}."
+          prerelease: true
+
+  upload-assets:
+    name: Build and Upload - ${{ matrix.binary.name }} - ${{ matrix.platform.target }}
+    needs: create-release
     runs-on: ${{ matrix.platform.os }}
+    env:
+      NIGHTLY_BUILD: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -38,47 +53,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Build, archive and upload binary
+        uses: taiki-e/upload-rust-binary-action@v1
         with:
-          targets: ${{ matrix.platform.target }}
-
-      - name: Build binary
-        run: cargo build --release --target ${{ matrix.platform.target }} -p ${{ matrix.binary.package }}
-
-      - name: Rename binary for release
-        shell: bash
-        run: |
-          mkdir dist
-          ext=""
-          if [ "${{ runner.os }}" = "Windows" ]; then ext=".exe"; fi
-          cp "target/${{ matrix.platform.target }}/release/${{ matrix.binary.name }}${ext}" \
-             "dist/${{ matrix.binary.name }}-${{ matrix.platform.asset_suffix }}${ext}"
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-${{ matrix.binary.name }}-${{ matrix.platform.asset_suffix }}
-          path: dist/*
-          retention-days: 1
-
-  publish-nightly:
-    name: Publish Nightly Release
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all built binaries
-        uses: actions/download-artifact@v4
-        with:
-          pattern: binary-*
-          merge-multiple: true
-
-      - name: Publish Nightly Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: nightly
-          name: "Nightly Release"
-          body: "Automated nightly build from commit ${{ github.sha }}."
-          prerelease: true
-          files: |
-            voxalfa-*
+          bin: ${{ matrix.binary.name }}
+          package: ${{ matrix.binary.package }}
+          target: ${{ matrix.platform.target }}
+          archive: ${{ matrix.binary.name }}-${{ matrix.platform.asset_suffix }}
+          zip: windows
+          checksum: sha256
+          locked: true
+          ref: refs/tags/nightly

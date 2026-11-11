@@ -1,7 +1,10 @@
 [package]
 name = "voxalfa-cli"
-version = "0.1.0-alpha"
-edition = "2024"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 description = "A command line interface for the core voxalfa functions."
 
 [[bin]]

@@ -1,7 +1,11 @@
 [package]
 name = "voxalfa-pdf"
-version = "0.1.0"
-edition = "2024"
+description = "The Voxalfa PDF generator library using SVG"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [features]
 default = ["fs"]

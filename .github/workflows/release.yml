@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the leading 'v'."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ github.event_name == 'push' && github.ref_name || format('v{0}', inputs.version) }}
+      prerelease: ${{ contains(github.event_name == 'push' && github.ref_name || inputs.version, '-') }}
+    steps:
+      - name: Create or update GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || format('v{0}', inputs.version) }}
+          name: ${{ github.event_name == 'push' && github.ref_name || format('v{0}', inputs.version) }}
+          prerelease: ${{ contains(github.event_name == 'push' && github.ref_name || inputs.version, '-') }}
+          generate_release_notes: true
+
+  upload-assets:
+    name: Build and Upload - ${{ matrix.binary.name }} - ${{ matrix.platform.target }}
+    needs: create-release
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset_suffix: linux-x86_64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            asset_suffix: macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset_suffix: macos-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset_suffix: windows-x86_64
+        binary:
+          - package: voxalfa-cli
+            name: voxalfa
+          - package: voxalfa-lsp
+            name: voxalfa-ls
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build, archive and upload binary
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: ${{ matrix.binary.name }}
+          package: ${{ matrix.binary.package }}
+          target: ${{ matrix.platform.target }}
+          archive: ${{ matrix.binary.name }}-${{ matrix.platform.asset_suffix }}
+          zip: windows
+          checksum: sha256
+          locked: true
+          ref: refs/tags/${{ needs.create-release.outputs.tag }}

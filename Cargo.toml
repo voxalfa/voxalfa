@@ -13,14 +13,22 @@ members = [
   "tree-sitter-voxalfa",
 ]
 
+[workspace.package]
+version = "0.1.0-alpha"
+edition = "2024"
+authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/voxalfa/voxalfa"
+
 [workspace.dependencies]
 clap = { version = "4.6.2", features = ["derive"] }
+voxalfa-build-info = { version = "0.1.0-alpha", path = "./voxalfa-build-info" }
 insta = "1.48.0"
 thiserror = "2.0.18"
-tree-sitter-voxalfa = { path = "./tree-sitter-voxalfa" }
-voxalfa-build-info = { path = "./voxalfa-build-info" }
-voxalfa-midi = { path = "./voxalfa-midi" }
-voxalfa-formatter = { path = "./voxalfa-formatter" }
-voxalfa-core = { path = "./voxalfa-core" }
-voxalfa-pdf = { path = "./voxalfa-pdf" }
-voxalfa-svg = { path = "./voxalfa-svg" }
+tree-sitter-voxalfa = { version = "0.1.0-alpha", path = "./tree-sitter-voxalfa" }
+vergen-gitcl = "10.0.3"
+voxalfa-midi = { version = "0.1.0-alpha", path = "./voxalfa-midi" }
+voxalfa-formatter = { version = "0.1.0-alpha", path = "./voxalfa-formatter" }
+voxalfa-core = { version = "0.1.0-alpha", path = "./voxalfa-core" }
+voxalfa-pdf = { version = "0.1.0-alpha", path = "./voxalfa-pdf" }
+voxalfa-svg = { version = "0.1.0-alpha", path = "./voxalfa-svg" }

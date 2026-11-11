@@ -1,14 +1,13 @@
 [package]
 name = "tree-sitter-voxalfa"
 description = "Voxalfa tree-sitter parser"
-version = "0.1.0-alpha"
-authors = ["LIOKA Ranarison Fiderana <luckasranarison@gmail.com>"]
-license = "Apache-2.0"
-readme = "README.md"
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 keywords = ["incremental", "parsing", "tree-sitter", "voxalfa"]
 categories = ["parser-implementations", "parsing", "text-editors"]
-repository = "https://github.com/voxalfa/voxalfa"
-edition = "2021"
+repository = { workspace = true }
+edition = { workspace = true }
 autoexamples = false
 
 build = "bindings/rust/build.rs"
