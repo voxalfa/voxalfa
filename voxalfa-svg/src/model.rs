@@ -139,6 +139,7 @@ pub struct SystemDynamicSpan {
     pub end: usize,
     pub end_unit: f32,
     pub fits: bool,
+    pub continued: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

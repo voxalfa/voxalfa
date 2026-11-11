@@ -26,7 +26,7 @@ pub const STYLE_ELEMENTS: &[&str] = &[
     "octave-text",
     "lyrics-text",
     "divider-text",
-    "page-number-text",
+    "footer-text",
     "key-label",
     "time-label",
     "tempo-label",

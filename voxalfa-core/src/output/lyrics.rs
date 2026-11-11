@@ -73,7 +73,7 @@ impl<M: StringMetric> LyricsBuilder<M> {
         max_factor: u8,
     ) -> (ReferenceColumn<M::Output>, LyricsMap<M::Output>)
     where
-        <M as StringMetric>::Output: std::fmt::Debug,
+        <M as StringMetric>::Output: std::fmt::Debug + PartialEq,
     {
         let tree = &output.symbols;
         let sub_sections = output.body.sections.iter().flat_map(|s| &s.items);
@@ -99,10 +99,20 @@ impl<M: StringMetric> LyricsBuilder<M> {
 
                     let width = M::Output::get_average_width(rendered.width, ratio);
 
-                    if width >= self.ref_col.width {
-                        let (_, factor) = view_columns[col_index];
+                    let (_, factor) = view_columns[col_index];
+
+                    let previous_duration = view_columns
+                        .get(col_index.saturating_sub(1))
+                        .map(|(duration, _)| **duration);
+
+                    let exact_match =
+                        span == 1 && factor == max_factor && previous_duration != Some(3);
+
+                    if width > self.ref_col.width {
                         self.ref_col.width = width;
-                        self.ref_col.extact_match = span == 1 && factor > 1;
+                        self.ref_col.extact_match = exact_match;
+                    } else if width == self.ref_col.width && exact_match {
+                        self.ref_col.extact_match = true;
                     }
 
                     self.map.insert(column.sid, rendered);

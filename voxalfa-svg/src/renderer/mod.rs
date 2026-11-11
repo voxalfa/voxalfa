@@ -10,7 +10,7 @@ mod text;
 
 use std::fmt::Write;
 
-use voxalfa_core::output::FinalOutput;
+use voxalfa_core::{data_types::TimeSignature, output::FinalOutput};
 
 use crate::{
     error::Result,
@@ -56,33 +56,11 @@ pub fn render_pages(
     let page_count = pages.len().max(1);
     let max_pulses_per_line = max_pulses_per_line(&score.systems, content_width);
 
-    let max_measure_pulses = score
-        .systems
-        .iter()
-        .map(|system| system.time.top as usize)
-        .max()
-        .unwrap_or(1);
-
     let mut result = Vec::with_capacity(pages.len());
+    let mut current_offset = 0.0;
+    let mut currente_time: Option<TimeSignature> = None;
 
     for (page_id, page) in pages.iter().enumerate() {
-        let full_line_width = page
-            .systems
-            .iter()
-            .filter(|placed| {
-                is_full_line(
-                    &score.systems[placed.index],
-                    max_measure_pulses,
-                    max_pulses_per_line,
-                )
-            })
-            .map(|placed| system_width(&score.systems[placed.index]))
-            .reduce(f32::max);
-
-        let full_line_offset = full_line_width
-            .map(|width| ((content_width - width) / 2.0).max(0.0))
-            .unwrap_or(0.0);
-
         let mut svg = String::with_capacity(INITIAL_SVG_CAPACITY);
 
         writeln!(
@@ -105,12 +83,26 @@ pub fn render_pages(
 
         for placed in &page.systems {
             let system = &score.systems[placed.index];
+            let measure_pulses = system.time.top as usize;
+
+            if currente_time != Some(system.time) {
+                let overflow = system.pulses.len() + measure_pulses > max_pulses_per_line;
+
+                if overflow {
+                    let width = system_width(&system);
+                    current_offset = (content_width - width) / 2.0;
+                }
+
+                currente_time = Some(system.time);
+            }
+
+            let system = &score.systems[placed.index];
 
             let placement = SystemPlacement {
                 system,
                 layout: &system_layouts[placed.index],
                 y: placed.y,
-                body_offset: full_line_offset,
+                body_offset: current_offset,
                 brace_padding_left: brace_padding.0,
                 is_last_system: placed.index + 1 == score.systems.len(),
             };
@@ -119,16 +111,15 @@ pub fn render_pages(
         }
 
         if page_count > 1 {
-            let style = &options.elements.text.page_number;
+            let style = &options.elements.text.footer;
             let x = options.page.width / 2.0 + (style.left() - style.right()) / 2.0;
             let y = options.page.height - options.page_margin.bottom / 2.0 - style.bottom()
                 + style.top();
 
             writeln!(
                 svg,
-                r#"<text x="{x:.2}" y="{y:.2}" text-anchor="middle" class="page-number-text">{} / {}</text>"#,
+                r#"<text x="{x:.2}" y="{y:.2}" text-anchor="middle" class="footer-text">{}</text>"#,
                 page_id + 1,
-                page_count,
             )?;
         }
 
@@ -156,14 +147,6 @@ fn max_pulses_per_line(systems: &[System<'_>], printable_width: f32) -> usize {
     } else {
         (printable_width / pulse_width).floor() as usize
     }
-}
-
-fn is_full_line(
-    system: &System<'_>,
-    max_measure_pulses: usize,
-    max_pulses_per_line: usize,
-) -> bool {
-    max_pulses_per_line > 0 && system.pulses.len() + max_measure_pulses > max_pulses_per_line
 }
 
 fn paginate(layouts: &[SystemLayout], header_height: f32, options: &RenderOptions) -> Vec<Page> {

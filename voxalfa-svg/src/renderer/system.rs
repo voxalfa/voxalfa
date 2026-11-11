@@ -171,7 +171,16 @@ impl<'a> SystemRender<'a> {
             let start_x = self.origin_x + span.start_x;
             let end_x = self.origin_x + span.end_x;
 
-            if let Some(label) = &span.label {
+            if span.continuation {
+                emit_line(
+                    self.svg,
+                    start_x,
+                    y + span.center_y,
+                    end_x,
+                    y + span.center_y,
+                    "dynamic-dash",
+                )?;
+            } else if let Some(label) = &span.label {
                 emit_text(
                     self.svg,
                     start_x,

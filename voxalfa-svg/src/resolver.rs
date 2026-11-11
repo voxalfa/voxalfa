@@ -56,7 +56,13 @@ pub fn resolve<'a>(
         .max()
         .unwrap_or(1) as f32;
 
-    let lyrics_width = max_factor as f32 * ref_col.width + max_columns * lead_width;
+    let lyrics_extra = if ref_col.extact_match {
+        options.extra_padding
+    } else {
+        0.0
+    };
+
+    let lyrics_width = max_factor as f32 * ref_col.width + max_columns * lead_width + lyrics_extra;
     let notes_width = max_columns * (options.min_col_width + options.col_padding + lead_width);
 
     let grid_pulse_width = lyrics_width.max(notes_width);
@@ -215,9 +221,9 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         if let Some(tempo) = section.params.tempo.as_ref().map(|tempo| tempo.value) {
             let (kind, label) = match tempo {
                 ExtendedTempo::Static(StaticTempo::Custom(t)) => {
-                    (MarkerKind::Bpm, format!("M {t}"))
+                    (MarkerKind::Bpm, format!("M. {t}."))
                 }
-                _ => (MarkerKind::Tempo, tempo.to_string()),
+                _ => (MarkerKind::Tempo, format!("{tempo}.")),
             };
 
             pulse.markers.push(FlatMarker {
@@ -618,9 +624,9 @@ fn build_header(data: &FinalOutput) -> HeaderView {
 
     let tempo = tempo_param.map(|tempo| {
         if matches!(tempo, StaticTempo::Custom(_)) {
-            format!("M {tempo}")
+            format!("M. {tempo}.")
         } else {
-            tempo.to_string()
+            format!("{tempo}.")
         }
     });
 
@@ -906,6 +912,7 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
                 end: (span.end_pulse - self.start).min(self.len() - 1),
                 end_unit: span.end_unit,
                 fits: span.start_pulse >= self.start && span.end_pulse < self.end,
+                continued: span.start_pulse < self.start,
             })
             .collect()
     }

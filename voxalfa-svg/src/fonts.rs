@@ -27,7 +27,7 @@ pub const SERIF_FAMILY: &str = "Noto Serif";
 
 const SYMBOL_FONT_SCALE: f32 = 0.85;
 const DYNAMIC_FONT_SCALE: f32 = 0.9;
-const PAGE_NUMBER_FONT_SCALE: f32 = 0.9;
+const FOOTER_FONT_SCALE: f32 = 0.7;
 
 #[derive(Debug, Clone)]
 pub struct FontFace {
@@ -208,7 +208,7 @@ impl FaceRole {
             "note-text" | "octave-text" | "divider-text" => Self::SOLFA,
             "lyrics-text" => Self::LYRIC,
             "title-text" | "key-text" | "key-label" | "jump-label" | "volta-label" => Self::TEXT_B,
-            "author-text" | "composer-text" | "time-text" | "meter-text" | "page-number-text"
+            "author-text" | "composer-text" | "time-text" | "meter-text" | "footer-text"
             | "time-label" => Self::TEXT,
             "mark-label" | "tempo-label" => Self::SERIF_I,
             "bpm-label" => Self::SERIF,
@@ -363,7 +363,7 @@ pub struct TextFonts {
     pub key: FontMetrics,
     pub time: FontMetrics,
     pub meter: FontMetrics,
-    pub page_number: FontMetrics,
+    pub footer: FontMetrics,
     pub divider: FontMetrics,
 }
 
@@ -421,11 +421,7 @@ impl TextFonts {
             key: builder.metric(FaceRole::TEXT_B, opts.marker_font_size, &styles.key)?,
             time: builder.metric(FaceRole::TEXT, opts.marker_font_size, &styles.time)?,
             meter: builder.metric(FaceRole::TEXT, meta, &styles.meter)?,
-            page_number: builder.metric(
-                FaceRole::TEXT,
-                meta * PAGE_NUMBER_FONT_SCALE,
-                &styles.page_number,
-            )?,
+            footer: builder.metric(FaceRole::TEXT, meta * FOOTER_FONT_SCALE, &styles.footer)?,
             divider: builder.metric(
                 FaceRole::SOLFA,
                 opts.solfa_font_size * SYMBOL_FONT_SCALE,

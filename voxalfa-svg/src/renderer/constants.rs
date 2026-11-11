@@ -1,24 +1,24 @@
-pub const TITLE_LINE_HEIGHT_FACTOR: f32 = 1.08;
-pub const HEADER_GROUP_GAP: f32 = 0.34;
+pub const TITLE_LINE_HEIGHT_FACTOR: f32 = 1.0;
+pub const HEADER_GROUP_GAP: f32 = 0.5;
 pub const HEADER_BOTTOM_PADDING: f32 = 0.45;
-pub const HEADER_TITLE_BOTTOM_GAP: f32 = 0.6;
+pub const HEADER_TITLE_BOTTOM_GAP: f32 = 0.7;
 pub const HEADER_KEY_RIGHT_MARGIN: f32 = 2.5;
 pub const HEADER_TIME_RIGHT_MARGIN: f32 = 2.5;
 pub const HEADER_RIGHT_INSET: f32 = 0.9;
-pub const MARKER_BOTTOM_GAP: f32 = 0.36;
+pub const MARKER_BOTTOM_GAP: f32 = 0.35;
 pub const MARKER_HORIZONTAL_GAP: f32 = 0.55;
 
 pub const VOLTA_TOP_GAP: f32 = 0.55;
-pub const VOLTA_TEXT_GAP: f32 = 0.18;
-pub const VOLTA_BOTTOM_GAP: f32 = 0.36;
+pub const VOLTA_TEXT_GAP: f32 = 0.2;
+pub const VOLTA_BOTTOM_GAP: f32 = 0.35;
 pub const VOLTA_END_TICK: f32 = 0.45;
-pub const VOLTA_TEXT_INSET: f32 = 0.18;
+pub const VOLTA_TEXT_INSET: f32 = 0.20;
 
 pub const TOUCH_SYMBOL_SCALE: f32 = 0.75;
 pub const FERMATA_WIDTH_SCALE: f32 = 1.7;
-pub const STACCATO_WIDTH_SCALE: f32 = 0.32;
+pub const STACCATO_WIDTH_SCALE: f32 = 0.30;
 pub const MARCATO_WIDTH_SCALE: f32 = 0.85;
-pub const ACCENT_STROKE_WIDTH: f32 = 0.08;
+pub const ACCENT_STROKE_WIDTH: f32 = 0.1;
 
 pub const DYNAMIC_SPAN_INSET: f32 = 1.0;
 pub const DYNAMIC_HAIRPIN_HEIGHT: f32 = 0.5;
@@ -36,13 +36,13 @@ pub const BRACE_MARGIN: f32 = 0.05;
 pub const BRACE_PADDING_LEFT: f32 = 2.0 * BRACE_HALF_WIDTH + BRACE_GAP + BRACE_MARGIN;
 pub const BRACE_PADDING_RIGHT: f32 = 2.0 * BRACE_HALF_WIDTH + BRACE_MARGIN;
 
-pub const OCTAVE_GAP: f32 = 0.17;
+pub const OCTAVE_GAP: f32 = 0.2;
 pub const TOP_OCTAVE_OFFSET_FACTOR: f32 = 0.45;
-pub const UNDERLINE_STROKE_WIDTH: f32 = 0.08;
-pub const BOTTOM_OCTAVE_UNDERLINE_GAP: f32 = 0.14;
-pub const SOLFA_UNDERLINE_OFFSET: f32 = 0.21;
+pub const UNDERLINE_STROKE_WIDTH: f32 = 0.1;
+pub const BOTTOM_OCTAVE_UNDERLINE_GAP: f32 = 0.15;
+pub const SOLFA_UNDERLINE_OFFSET: f32 = 0.2;
 pub const LYRIC_UNDERLINE_OFFSET: f32 = 0.1;
 pub const MIN_UNDERLINE_WIDTH: f32 = 0.1;
-pub const PROLONGED_LEADING_MIN: f32 = 0.21;
+pub const PROLONGED_LEADING_MIN: f32 = 0.2;
 pub const NOTE_BARLINE_CLEARANCE: f32 = 0.25;
-pub const GRID_RIGHT_PADDING: f32 = 0.17;
+pub const GRID_RIGHT_PADDING: f32 = 0.2;

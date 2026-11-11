@@ -80,12 +80,7 @@ fn emit_font_rules(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> 
         (".dynamic-label", &label.dynamic, "serif", &ls.dynamic),
         (".time-label", &label.time, sans, &ls.time),
         (".volta-label", &label.volta, sans, &ls.volta),
-        (
-            ".page-number-text",
-            &text.page_number,
-            sans,
-            &ts.page_number,
-        ),
+        (".footer-text", &text.footer, sans, &ts.footer),
     ];
 
     for (selector, font, fallback, style) in rules {

@@ -420,6 +420,18 @@ fn layout_dynamic_spans(
                 baseline,
                 label: None,
                 label_width: 0.0,
+                continuation: false,
+            });
+        } else if span.continued {
+            spans.push(PlacedDynamicSpan {
+                kind: span.kind,
+                start_x,
+                end_x,
+                center_y,
+                baseline,
+                label: None,
+                label_width: 0.0,
+                continuation: true,
             });
         } else {
             let label = match span.kind {
@@ -435,6 +447,7 @@ fn layout_dynamic_spans(
                 baseline,
                 label: Some(label.to_string()),
                 label_width: fonts.label.dynamic.width(label),
+                continuation: false,
             });
         }
     }
@@ -663,6 +676,7 @@ pub struct PlacedDynamicSpan {
     pub baseline: f32,
     pub label: Option<String>,
     pub label_width: f32,
+    pub continuation: bool,
 }
 
 #[derive(Debug)]

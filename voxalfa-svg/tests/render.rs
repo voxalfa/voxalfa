@@ -84,7 +84,7 @@ fn renders_header_in_requested_layout() {
     assert!(svg.contains(r#"text-anchor="end" class="composer-text">Bob</text>"#));
     assert!(svg.contains(r#"text-anchor="start" class="key-text">Do est C</text>"#));
     assert!(svg.contains(r#"text-anchor="start" class="time-text">4/4</text>"#));
-    assert!(svg.contains(r#"text-anchor="start" class="bpm-label">M 100</text>"#));
+    assert!(svg.contains(r#"text-anchor="start" class="bpm-label">M. 100.</text>"#));
     assert!(svg.contains(r#"text-anchor="middle" class="meter-text">8.8.8.8</text>"#));
 }
 
@@ -109,7 +109,7 @@ fn renders_header_tempo_label() {
 
     let svg = render(&output).unwrap();
 
-    assert!(svg.contains(r#"text-anchor="start" class="tempo-label">allegro</text>"#));
+    assert!(svg.contains(r#"text-anchor="start" class="tempo-label">allegro.</text>"#));
 }
 
 #[test]
@@ -250,6 +250,40 @@ fn renders_dynamic_hairpin_across_merged_sections() {
 }
 
 #[test]
+fn continues_hairpin_dash_without_repeating_label_across_systems() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+;; @page width={200} | height={1000}
+
+[#] title="Split hairpin"
+
+[$] key={C} | time={3,4} | tempo={100} | voices={S}
+
+---
+
+[$] dynamics={cre:0..6}
+
+[S] |d :- .d :d ||
+
+<<
+
+[S] |m :- .m :m ||
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert_eq!(
+        svg.matches(r#"class="dynamic-label">cresc.</text>"#)
+            .count(),
+        1
+    );
+    assert_eq!(svg.matches(r#"class="dynamic-dash""#).count(), 2);
+}
+
+#[test]
 fn renders_key_tempo_and_dynamics_labels() {
     let output = analyze(
         r#"
@@ -282,10 +316,10 @@ fn renders_key_tempo_and_dynamics_labels() {
     let svg = render(&output).unwrap();
 
     assert!(svg.contains(r#"class="key-label">Do is D</text>"#));
-    assert!(svg.contains(r#"class="tempo-label">allegro</text>"#));
-    assert!(svg.contains(r#"class="bpm-label">M 120</text>"#));
+    assert!(svg.contains(r#"class="tempo-label">allegro.</text>"#));
+    assert!(svg.contains(r#"class="bpm-label">M. 120.</text>"#));
     assert!(svg.contains(
-        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: normal;"
+        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 13.00px;\n      font-weight: 400;\n      font-style: normal;"
     ));
     assert!(svg.contains(r#"class="dynamic-label">p</text>"#));
     assert!(svg.contains(r#"class="dynamic-label">mf</text>"#));
@@ -468,7 +502,7 @@ fn applies_element_color_directives() {
     assert!(svg.contains(".title-text {"));
     assert!(svg.contains("      fill: #ff0000;"));
     assert!(svg.contains("      fill: rebeccapurple;"));
-    assert!(svg.contains(".page-number-text {"));
+    assert!(svg.contains(".footer-text {"));
     assert!(svg.contains("      fill: black;"));
     assert!(svg.contains(".note-text {"));
     assert!(svg.contains(
@@ -501,16 +535,16 @@ fn applies_font_weight_and_style_directives() {
     let svg = render(&output).unwrap();
 
     assert!(svg.contains(
-        ".title-text {\n      font-family: 'Noto Sans', sans-serif;\n      font-size: 16.00px;\n      font-weight: 400;\n      font-style: normal;"
+        ".title-text {\n      font-family: 'Noto Sans', sans-serif;\n      font-size: 18.00px;\n      font-weight: 400;\n      font-style: normal;"
     ));
     assert!(svg.contains(
-        ".tempo-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: normal;"
+        ".tempo-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 13.00px;\n      font-weight: 400;\n      font-style: normal;"
     ));
     assert!(svg.contains(
-        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: italic;"
+        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 13.00px;\n      font-weight: 400;\n      font-style: italic;"
     ));
     assert!(svg.contains(
-        ".mark-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: italic;"
+        ".mark-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 13.00px;\n      font-weight: 400;\n      font-style: italic;"
     ));
     assert!(svg.contains(
         ".note-text {\n      font-family: 'Fira Sans', monospace;\n      font-size: 12.00px;\n      font-weight: 700;\n      font-style: normal;"
@@ -668,6 +702,54 @@ fn keeps_braces_inside_the_printable_width() {
             );
         }
     }
+}
+
+#[test]
+fn renders_footer_as_page_number_only() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+;; @page width={200} | height={200} | margin-x={30} | margin-y={30}
+;; @footer-text font-size={30}
+
+[#] title="Footer"
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+--
+
+[S] |d :r !m :f ||
+
+--
+
+[S] |d :r !m :f ||
+
+--
+
+[S] |d :r !m :f ||
+
+--
+
+[S] |d :r !m :f ||
+
+--
+
+[S] |d :r !m :f ||
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert!(svg.contains(".footer-text {"));
+    assert!(svg.contains("font-size: 30.00px"));
+    assert!(svg.contains(r#"class="footer-text">1</text>"#));
+    assert!(svg.contains(r#"class="footer-text">2</text>"#));
+    assert!(!svg.contains(r#"class="footer-text">1 /"#));
 }
 
 #[test]
