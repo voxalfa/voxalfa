@@ -18,16 +18,7 @@ use super::{
     primitives::TextAnchor,
 };
 
-const MARKER_SAME_NOTE_EPSILON: f32 = 0.001;
-
-pub fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
-    pulse.stack.iter().find_map(|sub| {
-        sub.voices
-            .iter()
-            .find(|(current, _)| *current == voice)
-            .map(|(_, voice_pulse)| *voice_pulse)
-    })
-}
+const FLOAT_ERROR: f32 = 0.001;
 
 fn marker_style(kind: MarkerKind, options: &RenderOptions) -> Option<&ElementStyle> {
     match kind {
@@ -80,6 +71,7 @@ pub fn layout_system(
     options: &RenderOptions,
 ) -> SystemLayout {
     let has_voltas = !system.voltas.is_empty();
+    let elements = &options.elements;
 
     let (mut jumps, jump_height) = if has_voltas {
         layout_jumps(system, fonts, lead, options)
@@ -92,7 +84,7 @@ pub fn layout_system(
 
     let dynamic_center = markers
         .iter()
-        .find(|marker| marker.kind == MarkerKind::Dynamic)
+        .find(|marker| marker.kind == MarkerKind::Dynamic && marker.voice.is_none())
         .map(|marker| {
             marker.y - (fonts.label.dynamic.ascent() - fonts.label.dynamic.descent()) / 2.0
         });
@@ -156,8 +148,8 @@ pub fn layout_system(
 
     let note_scale = fonts.text.note.size() / options.solfa_font_size.max(1.0);
     let lyric_scale = fonts.text.lyric.size() / options.lyric_font_size.max(1.0);
-    let note_style = &options.elements.text.note;
-    let lyric_style = &options.elements.text.lyrics;
+    let note_style = &elements.text.note;
+    let lyric_style = &elements.text.lyrics;
 
     let voice_height =
         options.voice_row_height * note_scale + note_style.top() + note_style.bottom();
@@ -209,8 +201,6 @@ pub fn layout_system(
         })
         .collect::<Vec<_>>();
 
-    // Dynamics that belong to a specific voice sit just above that voice's
-    // row instead of in the global marker area above the first voice.
     for marker in &mut markers {
         if marker.kind != MarkerKind::Dynamic {
             continue;
@@ -230,17 +220,27 @@ pub fn layout_system(
         marker.y = row.y - fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
     }
 
+    let staff_top = rows
+        .iter()
+        .find(|row| matches!(row.kind, SystemRowKind::Voice(_)))
+        .map(|row| row.y)
+        .unwrap_or(f32::INFINITY);
+
+    place_voltas(&mut voltas, &mut markers, fonts, options, staff_top);
+
+    let height = column.height
+        + marker_height
+        + volta_height
+        + jump_offset
+        + volta_top
+        + dynamic_span_height;
+
     SystemLayout {
         rows,
         markers,
         dynamic_spans,
         voltas,
-        height: column.height
-            + marker_height
-            + volta_height
-            + jump_offset
-            + volta_top
-            + dynamic_span_height,
+        height,
     }
 }
 
@@ -330,6 +330,7 @@ fn layout_voltas(
 
         let start_x = xs[volta.start] + lead;
         let end_x = xs[volta.end - 1] + system.pulses[volta.end - 1].pulse_width;
+        let text_x = start_x + style.left() + fonts.label.volta.size() * VOLTA_TEXT_INSET;
 
         let text = match &volta.label {
             Some(label) => format!("{}. {label}", volta.number),
@@ -340,9 +341,10 @@ fn layout_voltas(
             start_x,
             end_x,
             text,
-            text_x: start_x + style.left() + fonts.label.volta.size() * VOLTA_TEXT_INSET,
+            text_x,
             text_y,
             line_y,
+            open_end: volta.open_end,
         });
     }
 
@@ -356,6 +358,74 @@ fn layout_voltas(
         + style.bottom();
 
     (voltas, height)
+}
+
+fn marker_bounds(marker: &PlacedMarker) -> (f32, f32) {
+    match marker.anchor {
+        TextAnchor::Start => (marker.x, marker.x + marker.width),
+        TextAnchor::Middle => (marker.x - marker.width / 2.0, marker.x + marker.width / 2.0),
+        TextAnchor::End => (marker.x - marker.width, marker.x),
+    }
+}
+
+fn place_voltas(
+    voltas: &mut [PlacedVolta],
+    markers: &mut [PlacedMarker],
+    fonts: &Fonts,
+    options: &RenderOptions,
+    staff_top: f32,
+) {
+    if voltas.is_empty() {
+        return;
+    }
+
+    let size = fonts.label.volta.size();
+    let gap = size * MARKER_HORIZONTAL_GAP;
+    let tick = size * VOLTA_END_TICK;
+    let base_gap = size * (VOLTA_STAFF_GAP + VOLTA_END_TICK + VOLTA_BOTTOM_GAP)
+        + options.elements.label.volta.bottom();
+    let base_line = staff_top - base_gap;
+
+    for volta in voltas.iter_mut() {
+        let mut line_y = base_line;
+
+        for marker in markers
+            .iter()
+            .filter(|marker| marker.kind != MarkerKind::Jump)
+        {
+            let (left, right) = marker_bounds(marker);
+
+            if volta.end_x + gap <= left || volta.start_x - gap >= right {
+                continue;
+            }
+
+            let font = marker_font(marker.kind, fonts);
+            let marker_top = marker.y - font.ascent();
+
+            line_y = line_y.min(marker_top - gap - tick);
+        }
+
+        let delta = line_y - volta.line_y;
+        volta.line_y = line_y;
+        volta.text_y += delta;
+    }
+
+    for marker in markers
+        .iter_mut()
+        .filter(|marker| marker.kind == MarkerKind::Jump)
+    {
+        let (_, right) = marker_bounds(marker);
+
+        let Some(volta) = voltas.iter().min_by(|lhs, rhs| {
+            (right - lhs.end_x)
+                .abs()
+                .total_cmp(&(right - rhs.end_x).abs())
+        }) else {
+            continue;
+        };
+
+        marker.y = volta.text_y;
+    }
 }
 
 fn layout_dynamic_spans(
@@ -455,6 +525,15 @@ fn layout_dynamic_spans(
     (spans, height)
 }
 
+fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
+    pulse.stack.iter().find_map(|sub| {
+        sub.voices
+            .iter()
+            .find(|(current, _)| *current == voice)
+            .map(|(_, voice_pulse)| *voice_pulse)
+    })
+}
+
 // markers sharing a note are stacked vertically following the order priority
 fn layout_markers(
     system: &System,
@@ -501,9 +580,8 @@ fn layout_markers(
                 let end = cursor as f32 / total as f32;
                 let is_last = index + 1 == voice_pulse.columns.len();
 
-                if unit + MARKER_SAME_NOTE_EPSILON >= start
-                    && (unit < end - MARKER_SAME_NOTE_EPSILON
-                        || (is_last && unit <= end + MARKER_SAME_NOTE_EPSILON))
+                if unit + FLOAT_ERROR >= start
+                    && (unit < end - FLOAT_ERROR || (is_last && unit <= end + FLOAT_ERROR))
                 {
                     if matches!(column.note, NoteKind::EmptyNote) {
                         break;
@@ -524,11 +602,11 @@ fn layout_markers(
         None
     };
 
-    let mut ordered = system
+    let (voice_dynamics, mut ordered): (Vec<_>, Vec<_>) = system
         .markers
         .iter()
         .filter(|marker| !separate_jumps || marker.kind != MarkerKind::Jump)
-        .collect::<Vec<_>>();
+        .partition(|marker| marker.kind == MarkerKind::Dynamic && marker.voice.is_some());
 
     ordered.sort_by(|lhs, rhs| {
         lhs.pulse
@@ -542,9 +620,7 @@ fn layout_markers(
         if let Some(group) = groups.last_mut() {
             let first = group[0];
 
-            if first.pulse == marker.pulse
-                && (first.unit - marker.unit).abs() < MARKER_SAME_NOTE_EPSILON
-            {
+            if first.pulse == marker.pulse && (first.unit - marker.unit).abs() < FLOAT_ERROR {
                 group.push(marker);
                 continue;
             }
@@ -552,6 +628,51 @@ fn layout_markers(
 
         groups.push(vec![marker]);
     }
+
+    let place_marker = |marker: &SystemMarker| {
+        let font = marker_font(marker.kind, fonts);
+
+        let width = match &marker.glyph {
+            MarkerGlyph::Text(text) => font.width(text),
+            MarkerGlyph::Segno => segno_width(fonts),
+            MarkerGlyph::Touch(_) => touch_width(&marker.glyph, fonts),
+        };
+
+        let fallback_x = xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead;
+
+        let x = match marker.kind {
+            MarkerKind::Dynamic | MarkerKind::Touch => {
+                note_center(marker.pulse, marker.unit).unwrap_or(fallback_x)
+            }
+            MarkerKind::Mark if matches!(&marker.glyph, MarkerGlyph::Segno) => {
+                note_center(marker.pulse, marker.unit).unwrap_or(fallback_x)
+            }
+            _ => fallback_x,
+        };
+
+        let anchor = match marker.kind {
+            MarkerKind::TimeSignature => TextAnchor::Middle,
+            MarkerKind::Key | MarkerKind::Tempo | MarkerKind::Bpm => TextAnchor::Start,
+            MarkerKind::Dynamic | MarkerKind::Touch => TextAnchor::Middle,
+            MarkerKind::Jump => TextAnchor::End,
+            MarkerKind::Mark if marker.unit >= 0.5 => TextAnchor::End,
+            MarkerKind::Mark => TextAnchor::Middle,
+        };
+
+        let x = marker_style(marker.kind, options)
+            .map(|style| anchor_x(x, anchor, style))
+            .unwrap_or(x);
+
+        PlacedMarker {
+            kind: marker.kind,
+            glyph: marker.glyph.clone(),
+            width,
+            x,
+            y: 0.0,
+            anchor,
+            voice: marker.voice,
+        }
+    };
 
     let row_count = groups.iter().map(Vec::len).max().unwrap_or(0);
     let mut rows: Vec<Vec<PlacedMarker>> = vec![Vec::new(); row_count];
@@ -561,50 +682,7 @@ fn layout_markers(
         let start_row = row_count - group.len();
 
         for (offset, marker) in group.into_iter().enumerate() {
-            let font = marker_font(marker.kind, fonts);
-
-            let width = match &marker.glyph {
-                MarkerGlyph::Text(text) => font.width(text),
-                MarkerGlyph::Segno => segno_width(fonts),
-                MarkerGlyph::Touch(_) => touch_width(&marker.glyph, fonts),
-            };
-
-            let fallback_x = xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead;
-
-            let x = match marker.kind {
-                MarkerKind::Dynamic | MarkerKind::Touch => {
-                    note_center(marker.pulse, marker.unit).unwrap_or(fallback_x)
-                }
-                MarkerKind::Mark if matches!(&marker.glyph, MarkerGlyph::Segno) => {
-                    note_center(marker.pulse, marker.unit).unwrap_or(fallback_x)
-                }
-                _ => fallback_x,
-            };
-
-            let anchor = match marker.kind {
-                MarkerKind::TimeSignature => TextAnchor::Middle,
-                MarkerKind::Key | MarkerKind::Tempo | MarkerKind::Bpm => TextAnchor::Start,
-                MarkerKind::Dynamic | MarkerKind::Touch => TextAnchor::Middle,
-                MarkerKind::Jump => TextAnchor::End,
-                MarkerKind::Mark if marker.unit >= 0.5 => TextAnchor::End,
-                MarkerKind::Mark => TextAnchor::Middle,
-            };
-
-            let x = marker_style(marker.kind, options)
-                .map(|style| anchor_x(x, anchor, style))
-                .unwrap_or(x);
-
-            let placed = PlacedMarker {
-                kind: marker.kind,
-                glyph: marker.glyph.clone(),
-                width,
-                x,
-                y: 0.0,
-                anchor,
-                voice: marker.voice,
-            };
-
-            rows[start_row + offset].push(placed);
+            rows[start_row + offset].push(place_marker(marker));
         }
     }
 
@@ -613,6 +691,7 @@ fn layout_markers(
             .iter()
             .map(|marker| marker_font(marker.kind, fonts).size())
             .fold(0.0, f32::max);
+
         let gap_font = row
             .iter()
             .map(|marker| marker_font(marker.kind, fonts))
@@ -649,12 +728,21 @@ fn layout_markers(
         top += row_height;
     }
 
-    if top == 0.0 {
+    if top == 0.0 && voice_dynamics.is_empty() {
         return (Vec::new(), 0.0);
     }
 
-    let markers = rows.into_iter().flatten().collect();
-    let height = top + fonts.label.key.size() * MARKER_BOTTOM_GAP;
+    let markers = voice_dynamics
+        .into_iter()
+        .map(place_marker)
+        .chain(rows.into_iter().flatten())
+        .collect();
+
+    let height = if top == 0.0 {
+        0.0
+    } else {
+        top + fonts.label.key.size() * MARKER_BOTTOM_GAP
+    };
 
     (markers, height)
 }
@@ -687,6 +775,7 @@ pub struct PlacedVolta {
     pub text_x: f32,
     pub text_y: f32,
     pub line_y: f32,
+    pub open_end: bool,
 }
 
 #[derive(Debug, Clone)]

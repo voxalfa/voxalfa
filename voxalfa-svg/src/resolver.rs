@@ -258,11 +258,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         };
 
         let positions = make_indexed_notes(views);
-
-        let voice = match sub.solfa.as_slice() {
-            [line] => Some(line.voice),
-            _ => None,
-        };
+        let voice = sub.solfa.first().map(|line| line.voice);
 
         for timed in &dynamics.value {
             let event = &timed.value;
@@ -493,13 +489,7 @@ fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
     let mut abs_offset = 0.0;
 
     for (pulse_id, view) in views.iter().enumerate() {
-        let total = view
-            .durations
-            .iter()
-            .map(|&duration| duration as u32)
-            .sum::<u32>();
-
-        let mut rel_offset = 0;
+        let mut rel_offset = 0.0;
 
         for &duration in &view.durations {
             let duration = duration as f32 / view.factor as f32;
@@ -507,11 +497,11 @@ fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
             positions.push(IndexedNote {
                 pulse: pulse_id,
                 abs_index: abs_offset,
-                rel_index: rel_offset as f32 / total as f32,
-                duration: duration / view.factor as f32,
+                rel_index: rel_offset,
+                duration,
             });
 
-            rel_offset += duration as u32;
+            rel_offset += duration;
             abs_offset += duration;
         }
     }
@@ -520,15 +510,17 @@ fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
 }
 
 fn resolve_event(positions: &[IndexedNote], target: f32) -> Option<(usize, f32)> {
-    positions.iter().find_map(|note| {
-        if (note.abs_index - target).abs() < FLOAT_ERROR {
-            Some((note.pulse, note.rel_index))
-        } else if (note.abs_index + note.duration - target).abs() < FLOAT_ERROR {
-            Some((note.pulse, note.rel_index + note.duration))
-        } else {
-            None
-        }
-    })
+    positions
+        .iter()
+        .find_map(|note| {
+            ((note.abs_index - target).abs() < FLOAT_ERROR).then_some((note.pulse, note.rel_index))
+        })
+        .or_else(|| {
+            positions.iter().find_map(|note| {
+                ((note.abs_index + note.duration - target).abs() < FLOAT_ERROR)
+                    .then_some((note.pulse, note.rel_index + note.duration))
+            })
+        })
 }
 
 fn combined_views(sections: &[SectionIr], section_id: usize, sub_id: usize) -> Vec<PulseView> {
@@ -987,6 +979,20 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
 
         if let Some((start, volta)) = current {
             voltas.push(SystemVolta::new(start, self.len(), volta));
+        }
+
+        if let Some(last) = voltas.last_mut() {
+            let continues = self
+                .pulses
+                .get(self.end)
+                .and_then(|pulse| pulse.volta.as_ref())
+                .is_some_and(|volta| volta.number == last.number && volta.label == last.label);
+
+            let last_of_piece = self.pulses[self.end..]
+                .iter()
+                .all(|pulse| pulse.volta.is_none());
+
+            last.open_end = continues || last_of_piece;
         }
 
         voltas

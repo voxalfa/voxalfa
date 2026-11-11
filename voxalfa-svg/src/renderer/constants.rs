@@ -9,13 +9,14 @@ pub const MARKER_BOTTOM_GAP: f32 = 0.35;
 pub const MARKER_HORIZONTAL_GAP: f32 = 0.55;
 
 pub const VOLTA_TOP_GAP: f32 = 0.55;
+pub const VOLTA_STAFF_GAP: f32 = 0.3;
 pub const VOLTA_TEXT_GAP: f32 = 0.2;
 pub const VOLTA_BOTTOM_GAP: f32 = 0.35;
 pub const VOLTA_END_TICK: f32 = 0.45;
 pub const VOLTA_TEXT_INSET: f32 = 0.20;
 
 pub const TOUCH_SYMBOL_SCALE: f32 = 0.75;
-pub const FERMATA_WIDTH_SCALE: f32 = 1.7;
+pub const FERMATA_WIDTH_SCALE: f32 = 1.5;
 pub const STACCATO_WIDTH_SCALE: f32 = 0.30;
 pub const MARCATO_WIDTH_SCALE: f32 = 0.85;
 pub const ACCENT_STROKE_WIDTH: f32 = 0.1;

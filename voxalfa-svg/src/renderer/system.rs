@@ -126,7 +126,10 @@ impl<'a> SystemRender<'a> {
             let tick = self.fonts.label.volta.size() * VOLTA_END_TICK;
 
             emit_line(self.svg, start_x, line_y, start_x, line_y + tick, "volta")?;
-            emit_line(self.svg, end_x, line_y, end_x, line_y + tick, "volta")?;
+
+            if !volta.open_end {
+                emit_line(self.svg, end_x, line_y, end_x, line_y + tick, "volta")?;
+            }
 
             emit_text(
                 self.svg,

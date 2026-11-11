@@ -148,6 +148,7 @@ pub struct SystemVolta {
     pub end: usize,   // last pulse + 1
     pub number: usize,
     pub label: Option<String>,
+    pub open_end: bool,
 }
 
 impl SystemVolta {
@@ -157,6 +158,7 @@ impl SystemVolta {
             end,
             number: volta.number,
             label: volta.label,
+            open_end: false,
         }
     }
 }
