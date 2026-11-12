@@ -256,6 +256,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                 .operators
                 .get(lyric_id)
                 .is_some_and(|operator| operator.value == LyricOperatorKind::Concat)
+                && !text.ends_with('\'')
             {
                 text.push('-');
             }
