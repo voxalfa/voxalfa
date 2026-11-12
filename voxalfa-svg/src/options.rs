@@ -84,6 +84,7 @@ pub struct RenderOptions {
     pub name_font_size: f32,
     pub meta_font_size: f32,
     pub marker_font_size: f32,
+    pub footer_font_size: f32,
     pub encode_font: bool,
 
     pub page_margin: EdgeValues,
@@ -107,8 +108,9 @@ impl Default for RenderOptions {
             octave_font_size: 7.0,
             title_font_size: 18.0,
             name_font_size: 13.0,
-            meta_font_size: 16.0,
+            meta_font_size: 13.0,
             marker_font_size: 13.0,
+            footer_font_size: 11.0,
             encode_font: true,
             page_margin: EdgeValues::all(56.7),
             col_padding: 2.0,

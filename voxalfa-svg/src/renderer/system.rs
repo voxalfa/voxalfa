@@ -378,7 +378,13 @@ impl<'a> SystemRender<'a> {
 
             for (column_id, column) in voice_pulse.columns.iter().enumerate() {
                 let duration = column.duration as u32;
-                let start = cursor as f32 / total as f32;
+
+                let start = if cursor == 3 && total == 4 {
+                    0.70 // add more room for 1/4 cells
+                } else {
+                    cursor as f32 / total as f32
+                };
+
                 let cell_x = self.origin_x + self.xs[pulse_id] + start * usable_width;
 
                 let mut note_start = cell_x + self.lead;
@@ -555,11 +561,14 @@ impl<'a> SystemRender<'a> {
 
             let style = &self.options.elements.text.lyrics;
 
-            let x = origin_x
-                + self.xs[token.start]
-                + token.start_unit * start_width
-                + lead
-                + style.left();
+            let start_unit = if (token.start_unit - 0.75).abs() < f32::EPSILON {
+                0.70 // add more room for 1/4 cells
+            } else {
+                token.start_unit
+            };
+
+            let x =
+                origin_x + self.xs[token.start] + start_unit * start_width + lead + style.left();
 
             let end_x = (end_x - style.right()).max(x);
 

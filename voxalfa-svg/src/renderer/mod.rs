@@ -42,7 +42,7 @@ pub fn render_pages(
     let options = &options;
     let fonts = Fonts::with_faces(options, faces)?;
     let brace_padding = brace_padding(&fonts);
-    let content_width = (options.printable_width() - brace_padding.0 - brace_padding.1).max(1.0);
+    let content_width = options.printable_width() - brace_padding.0 - brace_padding.1;
     let score = resolver::resolve(data, &fonts, options, content_width)?;
     let header = layout_header(&score.header, &fonts, options);
 

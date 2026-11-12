@@ -36,9 +36,7 @@ impl<'a> HeaderRows<'a> {
     fn new(header: &'a HeaderView, fonts: &'a Fonts, options: &'a RenderOptions) -> Self {
         let left = options.page_margin.left;
         let center = left + options.printable_width() / 2.0;
-        let right = options.page.width
-            - options.page_margin.right
-            - fonts.text.meter.size() * HEADER_RIGHT_INSET;
+        let right = options.page.width - options.page_margin.right;
 
         Self {
             header,

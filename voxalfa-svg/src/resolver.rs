@@ -508,11 +508,15 @@ fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> PulseStack<
     let mut max_column = 1;
 
     for (sub_id, sub) in context.section.items.iter().enumerate() {
-        let Some(view) = sub.views.get(pulse_id) else {
-            continue;
-        };
+        let voice_columns = sub
+            .solfa
+            .iter()
+            .filter_map(|line| line.pulses.get(pulse_id))
+            .map(|pulse| pulse.columns.len())
+            .max()
+            .unwrap_or(0);
 
-        max_column = max_column.max(view.durations.len());
+        max_column = max_column.max(voice_columns);
 
         let voices = sub
             .solfa

@@ -4,7 +4,6 @@ pub const HEADER_BOTTOM_PADDING: f32 = 0.45;
 pub const HEADER_TITLE_BOTTOM_GAP: f32 = 0.7;
 pub const HEADER_KEY_RIGHT_MARGIN: f32 = 2.5;
 pub const HEADER_TIME_RIGHT_MARGIN: f32 = 2.5;
-pub const HEADER_RIGHT_INSET: f32 = 0.9;
 pub const MARKER_BOTTOM_GAP: f32 = 0.35;
 pub const MARKER_HORIZONTAL_GAP: f32 = 0.55;
 

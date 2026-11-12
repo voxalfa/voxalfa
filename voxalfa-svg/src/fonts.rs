@@ -27,7 +27,6 @@ pub const SERIF_FAMILY: &str = "Noto Serif";
 
 const SYMBOL_FONT_SCALE: f32 = 0.85;
 const DYNAMIC_FONT_SCALE: f32 = 0.9;
-const FOOTER_FONT_SCALE: f32 = 0.7;
 
 #[derive(Debug, Clone)]
 pub struct FontFace {
@@ -421,7 +420,7 @@ impl TextFonts {
             key: builder.metric(FaceRole::TEXT_B, opts.marker_font_size, &styles.key)?,
             time: builder.metric(FaceRole::TEXT, opts.marker_font_size, &styles.time)?,
             meter: builder.metric(FaceRole::TEXT, meta, &styles.meter)?,
-            footer: builder.metric(FaceRole::TEXT, meta * FOOTER_FONT_SCALE, &styles.footer)?,
+            footer: builder.metric(FaceRole::TEXT, opts.footer_font_size, &styles.footer)?,
             divider: builder.metric(
                 FaceRole::SOLFA,
                 opts.solfa_font_size * SYMBOL_FONT_SCALE,
