@@ -55,32 +55,31 @@ fn emit_font_faces(svg: &mut String, fonts: &Fonts, encode_font: bool) -> Result
 fn emit_font_rules(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> Result<()> {
     let text = &fonts.text;
     let label = &fonts.label;
-    let ts = &options.elements.text;
-    let ls = &options.elements.label;
+    let styles = &options.elements;
     let sans = "sans-serif";
     let mono = "monospace";
     let symbols = "'Noto Sans Symbols', sans-serif";
 
     let rules = [
-        (".note-text", &text.note, mono, &ts.note),
-        (".divider-text", &text.divider, sans, &ts.divider),
-        (".octave-text", &text.octave, mono, &ts.octave),
-        (".lyrics-text", &text.lyric, sans, &ts.lyrics),
-        (".title-text", &text.title, sans, &ts.title),
-        (".author-text", &text.author, sans, &ts.author),
-        (".composer-text", &text.composer, sans, &ts.composer),
-        (".key-text", &text.key, symbols, &ts.key),
-        (".time-text", &text.time, sans, &ts.time),
-        (".meter-text", &text.meter, sans, &ts.meter),
-        (".key-label", &label.key, symbols, &ls.key),
-        (".jump-label", &label.jump, sans, &ls.jump),
-        (".tempo-label", &label.tempo, "serif", &ls.tempo),
-        (".bpm-label", &label.bpm, "serif", &ls.bpm),
-        (".mark-label", &label.mark, "serif", &ls.mark),
-        (".dynamic-label", &label.dynamic, "serif", &ls.dynamic),
-        (".time-label", &label.time, sans, &ls.time),
-        (".volta-label", &label.volta, sans, &ls.volta),
-        (".footer-text", &text.footer, sans, &ts.footer),
+        (".note-text", &text.note, mono, &styles.note),
+        (".divider-text", &text.divider, sans, &styles.divider),
+        (".octave-text", &text.octave, mono, &styles.octave),
+        (".lyrics-text", &text.lyric, sans, &styles.lyrics),
+        (".title-text", &text.title, sans, &styles.title),
+        (".author-text", &text.author, sans, &styles.author),
+        (".composer-text", &text.composer, sans, &styles.composer),
+        (".key-text", &text.key, symbols, &styles.key),
+        (".time-text", &text.time, sans, &styles.time),
+        (".meter-text", &text.meter, sans, &styles.meter),
+        (".key-label", &label.key, symbols, &styles.key_label),
+        (".jump-label", &label.jump, sans, &styles.jump),
+        (".tempo-label", &label.tempo, "serif", &styles.tempo),
+        (".bpm-label", &label.bpm, "serif", &styles.bpm),
+        (".mark-label", &label.mark, "serif", &styles.mark),
+        (".dynamic-label", &label.dynamic, "serif", &styles.dynamic),
+        (".time-label", &label.time, sans, &styles.time_label),
+        (".volta-label", &label.volta, sans, &styles.volta),
+        (".footer-text", &text.footer, sans, &styles.footer),
     ];
 
     for (selector, font, fallback, style) in rules {

@@ -252,13 +252,15 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                 .map(|rendered| rendered.content.clone())
                 .unwrap_or_default();
 
-            if line
-                .operators
-                .get(lyric_id)
-                .is_some_and(|operator| operator.value == LyricOperatorKind::Concat)
-                && !text.ends_with('\'')
-            {
-                text.push('-');
+            if let Some(ch) = text.chars().last() {
+                let has_concat = line
+                    .operators
+                    .get(lyric_id)
+                    .is_some_and(|operator| operator.value == LyricOperatorKind::Concat);
+
+                if ch.is_alphabetic() && has_concat {
+                    text.push('-');
+                }
             }
 
             tokens.push(LyricToken {

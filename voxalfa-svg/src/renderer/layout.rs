@@ -22,13 +22,13 @@ const FLOAT_ERROR: f32 = 0.001;
 
 fn marker_style(kind: MarkerKind, options: &RenderOptions) -> Option<&ElementStyle> {
     match kind {
-        MarkerKind::Key => Some(&options.elements.label.key),
-        MarkerKind::Jump => Some(&options.elements.label.jump),
-        MarkerKind::Tempo => Some(&options.elements.label.tempo),
-        MarkerKind::Bpm => Some(&options.elements.label.bpm),
-        MarkerKind::Mark => Some(&options.elements.label.mark),
-        MarkerKind::Dynamic => Some(&options.elements.label.dynamic),
-        MarkerKind::TimeSignature => Some(&options.elements.label.time),
+        MarkerKind::Key => Some(&options.elements.key_label),
+        MarkerKind::Jump => Some(&options.elements.jump),
+        MarkerKind::Tempo => Some(&options.elements.tempo),
+        MarkerKind::Bpm => Some(&options.elements.bpm),
+        MarkerKind::Mark => Some(&options.elements.mark),
+        MarkerKind::Dynamic => Some(&options.elements.dynamic),
+        MarkerKind::TimeSignature => Some(&options.elements.time_label),
         MarkerKind::Touch => None,
     }
 }
@@ -148,8 +148,8 @@ pub fn layout_system(
 
     let note_scale = fonts.text.note.size() / options.solfa_font_size.max(1.0);
     let lyric_scale = fonts.text.lyric.size() / options.lyric_font_size.max(1.0);
-    let note_style = &elements.text.note;
-    let lyric_style = &elements.text.lyrics;
+    let note_style = &elements.note;
+    let lyric_style = &elements.lyrics;
 
     let voice_height =
         options.voice_row_height * note_scale + note_style.top() + note_style.bottom();
@@ -158,8 +158,8 @@ pub fn layout_system(
         options.lyric_row_height * lyric_scale + lyric_style.top() + lyric_style.bottom();
 
     let dynamic_height = fonts.label.dynamic.line_height()
-        + options.elements.label.dynamic.top()
-        + options.elements.label.dynamic.bottom()
+        + options.elements.dynamic.top()
+        + options.elements.dynamic.bottom()
         + fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
 
     let mut specs = Vec::new();
@@ -273,7 +273,7 @@ fn layout_jumps(
             MarkerGlyph::Touch(_) => touch_width(&marker.glyph, fonts),
         };
 
-        let style = &options.elements.label.jump;
+        let style = &options.elements.jump;
         let anchor = TextAnchor::End;
         let x = xs[marker.pulse] + marker.unit * usable_widths[marker.pulse] + lead;
 
@@ -294,7 +294,7 @@ fn layout_jumps(
 
     spread_markers(&mut jumps, fonts.label.jump.size() * MARKER_HORIZONTAL_GAP);
 
-    let style = &options.elements.label.jump;
+    let style = &options.elements.jump;
 
     let height = style.top()
         + fonts.label.jump.line_height()
@@ -314,7 +314,7 @@ fn layout_voltas(
         return (Vec::new(), 0.0);
     }
 
-    let style = &options.elements.label.volta;
+    let style = &options.elements.volta;
     let xs = pulse_offsets(system);
     let text_y = style.top() + fonts.label.volta.ascent();
 
@@ -383,7 +383,7 @@ fn place_voltas(
     let gap = size * MARKER_HORIZONTAL_GAP;
     let tick = size * VOLTA_END_TICK;
     let base_gap = size * (VOLTA_STAFF_GAP + VOLTA_END_TICK + VOLTA_BOTTOM_GAP)
-        + options.elements.label.volta.bottom();
+        + options.elements.volta.bottom();
     let base_line = staff_top - base_gap;
 
     for volta in voltas.iter_mut() {
@@ -440,7 +440,7 @@ fn layout_dynamic_spans(
         return (Vec::new(), 0.0);
     }
 
-    let style = &options.elements.label.dynamic;
+    let style = &options.elements.dynamic;
     let xs = pulse_offsets(system);
 
     let usable_widths = system

@@ -407,7 +407,7 @@ impl Fonts {
 
 impl TextFonts {
     fn new(opts: &RenderOptions, builder: &mut FontBuilder<'_>) -> Result<Self> {
-        let styles = &opts.elements.text;
+        let styles = &opts.elements;
         let meta = opts.meta_font_size;
 
         Ok(Self {
@@ -432,11 +432,11 @@ impl TextFonts {
 
 impl LabelFonts {
     fn new(options: &RenderOptions, builder: &mut FontBuilder<'_>) -> Result<Self> {
-        let styles = &options.elements.label;
+        let styles = &options.elements;
         let marker = options.marker_font_size;
 
         Ok(Self {
-            key: builder.metric(FaceRole::TEXT_B, marker, &styles.key)?,
+            key: builder.metric(FaceRole::TEXT_B, marker, &styles.key_label)?,
             jump: builder.metric(FaceRole::TEXT_B, marker, &styles.jump)?,
             mark: builder.metric(FaceRole::SERIF_I, marker, &styles.mark)?,
             dynamic: builder.metric(
@@ -446,7 +446,7 @@ impl LabelFonts {
             )?,
             tempo: builder.metric(FaceRole::SERIF_I, marker, &styles.tempo)?,
             bpm: builder.metric(FaceRole::SERIF, marker, &styles.bpm)?,
-            time: builder.metric(FaceRole::TEXT, marker, &styles.time)?,
+            time: builder.metric(FaceRole::TEXT, marker, &styles.time_label)?,
             volta: builder.metric(FaceRole::TEXT_B, marker, &styles.volta)?,
         })
     }

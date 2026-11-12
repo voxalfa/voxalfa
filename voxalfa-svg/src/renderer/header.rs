@@ -54,7 +54,7 @@ impl<'a> HeaderRows<'a> {
             return;
         };
 
-        let style = &self.options.elements.text.title;
+        let style = &self.options.elements.title;
         let width = (self.options.printable_width() - style.left() - style.right()).max(1.0);
 
         for line in wrap_text(title, width, &self.fonts.text.title) {
@@ -90,7 +90,7 @@ impl<'a> HeaderRows<'a> {
             self.right,
             TextAnchor::End,
             &self.fonts.text.composer,
-            &styles.text.composer,
+            &styles.composer,
             1.0,
         ));
 
@@ -101,7 +101,7 @@ impl<'a> HeaderRows<'a> {
                 self.left,
                 TextAnchor::Start,
                 &self.fonts.text.author,
-                &styles.text.author,
+                &styles.author,
                 1.0,
             ));
         }
@@ -140,7 +140,7 @@ impl<'a> HeaderRows<'a> {
                 self.right,
                 TextAnchor::End,
                 &self.fonts.text.author,
-                &styles.text.author,
+                &styles.author,
                 1.0,
             ));
         }
@@ -152,7 +152,7 @@ impl<'a> HeaderRows<'a> {
                 self.left,
                 TextAnchor::Start,
                 &self.fonts.text.key,
-                &styles.text.key,
+                &styles.key,
                 1.0,
             ));
         }
@@ -164,20 +164,16 @@ impl<'a> HeaderRows<'a> {
                 time_x,
                 TextAnchor::Start,
                 &self.fonts.text.time,
-                &styles.text.time,
+                &styles.time,
                 1.0,
             ));
         }
 
         if let Some(tempo) = &self.header.tempo {
             let (kind, font, style) = if self.header.is_bpm {
-                (HeaderKind::Bpm, &self.fonts.label.bpm, &styles.label.bpm)
+                (HeaderKind::Bpm, &self.fonts.label.bpm, &styles.bpm)
             } else {
-                (
-                    HeaderKind::Tempo,
-                    &self.fonts.label.tempo,
-                    &styles.label.tempo,
-                )
+                (HeaderKind::Tempo, &self.fonts.label.tempo, &styles.tempo)
             };
 
             texts.push(header_text(
@@ -198,7 +194,7 @@ impl<'a> HeaderRows<'a> {
                 self.center,
                 TextAnchor::Middle,
                 &self.fonts.text.meter,
-                &styles.text.meter,
+                &styles.meter,
                 1.0,
             ));
         }
@@ -217,9 +213,9 @@ impl<'a> HeaderRows<'a> {
 
         let time_x = key.map_or(self.left, |text| {
             self.left
-                + styles.text.key.left()
+                + styles.key.left()
                 + self.fonts.text.key.width(text)
-                + styles.text.key.right()
+                + styles.key.right()
                 + self.fonts.text.key.size() * HEADER_KEY_RIGHT_MARGIN
         });
 
@@ -288,7 +284,12 @@ impl<'a> HeaderRows<'a> {
     }
 }
 
-pub fn emit_header(svg: &mut String, header: &HeaderLayout, options: &RenderOptions) -> Result<()> {
+pub fn emit_header(
+    svg: &mut String,
+    header: &HeaderLayout,
+    options: &RenderOptions,
+    offset_y: f32,
+) -> Result<()> {
     for line in &header.lines {
         let class = match line.kind {
             HeaderKind::Title => "title-text",
@@ -304,7 +305,7 @@ pub fn emit_header(svg: &mut String, header: &HeaderLayout, options: &RenderOpti
         emit_text(
             svg,
             line.x,
-            options.page_margin.top + line.y,
+            options.page_margin.top + offset_y + line.y,
             &line.text,
             class,
             line.anchor.as_str(),

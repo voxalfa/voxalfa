@@ -78,7 +78,9 @@ pub fn render_pages(
         )?;
 
         if page_id == 0 {
-            emit_header(&mut svg, &header, options)?;
+            let header_offset =
+                options.header_layout.margin.top + options.header_layout.padding.top;
+            emit_header(&mut svg, &header, options, header_offset)?;
         }
 
         for placed in &page.systems {
@@ -111,7 +113,7 @@ pub fn render_pages(
         }
 
         if page_count > 1 {
-            let style = &options.elements.text.footer;
+            let style = &options.elements.footer;
             let x = options.page.width / 2.0 + (style.left() - style.right()) / 2.0;
             let y = options.page.height - options.page_margin.bottom / 2.0 - style.bottom()
                 + style.top();
@@ -151,29 +153,34 @@ fn max_pulses_per_line(systems: &[System<'_>], printable_width: f32) -> usize {
 
 fn paginate(layouts: &[SystemLayout], header_height: f32, options: &RenderOptions) -> Vec<Page> {
     let bottom = options.page.height - options.page_margin.bottom;
+    let header = &options.header_layout;
+    let system = &options.system_layout;
 
     let mut pages = vec![Page::default()];
     let mut y = options.page_margin.top;
 
-    y += header_height;
-
     if header_height > 0.0 {
-        y += options.header_gap;
+        y += header.margin.top + header.padding.top + header_height + header.padding.bottom;
+        y += header.margin.bottom;
     }
 
     for (index, layout) in layouts.iter().enumerate() {
-        if y + layout.height > bottom && !pages.last().unwrap().systems.is_empty() {
+        let mut top = y + system.margin.top;
+        let required = top + layout.height + system.margin.bottom;
+
+        if required > bottom && !pages.last().unwrap().systems.is_empty() {
             pages.push(Page::default());
             y = options.page_margin.top;
+            top = y + system.margin.top;
         }
 
         pages
             .last_mut()
             .unwrap()
             .systems
-            .push(PlacedSystem { index, y });
+            .push(PlacedSystem { index, y: top });
 
-        y += layout.height + options.system_gap;
+        y = top + layout.height + system.margin.bottom;
     }
 
     pages

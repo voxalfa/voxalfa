@@ -525,12 +525,12 @@ fn applies_per_element_font_directives() {
     options.apply_directives(&output.header.directives);
 
     assert_eq!(
-        options.elements.text.note.font_family.as_deref(),
+        options.elements.note.font_family.as_deref(),
         Some("Custom Note")
     );
-    assert_eq!(options.elements.text.note.font_size, Some(18.0));
-    assert_eq!(options.elements.text.lyrics.font_size, Some(9.0));
-    assert_eq!(options.elements.label.jump.font_size, Some(15.0));
+    assert_eq!(options.elements.note.font_size, Some(18.0));
+    assert_eq!(options.elements.lyrics.font_size, Some(9.0));
+    assert_eq!(options.elements.jump.font_size, Some(15.0));
 
     let svg = render_with(&output, options).unwrap();
 
@@ -565,12 +565,9 @@ fn applies_element_color_directives() {
     let mut options = RenderOptions::default();
     options.apply_directives(&output.header.directives);
 
+    assert_eq!(options.elements.title.color.as_deref(), Some("#ff0000"));
     assert_eq!(
-        options.elements.text.title.color.as_deref(),
-        Some("#ff0000")
-    );
-    assert_eq!(
-        options.elements.text.time.color.as_deref(),
+        options.elements.time.color.as_deref(),
         Some("rebeccapurple")
     );
 
@@ -694,10 +691,10 @@ fn applies_header_box_directives() {
     assert_eq!(options.page_margin.right, 30.0);
     assert_eq!(options.page_margin.top, 40.0);
     assert_eq!(options.page_margin.bottom, 40.0);
-    assert_eq!(options.elements.text.title.margin.top, 10.0);
-    assert_eq!(options.elements.text.title.padding.left, 4.0);
-    assert_eq!(options.elements.text.title.padding.right, 4.0);
-    assert_eq!(options.elements.text.author.margin.bottom, 3.0);
+    assert_eq!(options.elements.title.margin.top, 10.0);
+    assert_eq!(options.elements.title.padding.left, 4.0);
+    assert_eq!(options.elements.title.padding.right, 4.0);
+    assert_eq!(options.elements.author.margin.bottom, 3.0);
 
     let svg = render_with(&output, options).unwrap();
 
@@ -730,7 +727,7 @@ fn applies_font_stretch_directive() {
     options.apply_directives(&output.header.directives);
 
     assert_eq!(
-        options.elements.text.note.font_stretch,
+        options.elements.note.font_stretch,
         Some(voxalfa_core::ast::directives::FontStretch::Condensed)
     );
 

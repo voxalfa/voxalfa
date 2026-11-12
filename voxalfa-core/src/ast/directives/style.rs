@@ -70,7 +70,7 @@ impl FontStretch {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default)]
 pub struct ElementStyle {
     pub font_family: Option<String>,
     pub font_size: Option<f32>,
@@ -78,6 +78,12 @@ pub struct ElementStyle {
     pub font_stretch: Option<FontStretch>,
     pub italic: Option<bool>,
     pub color: Option<String>,
+    pub margin: EdgeValues,
+    pub padding: EdgeValues,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BlockStyle {
     pub margin: EdgeValues,
     pub padding: EdgeValues,
 }
@@ -171,6 +177,40 @@ pub fn parse_page_style(
             }
             _ => apply_margin_modifier(context, name, &assignment, scope_id, &mut style.margin)?,
         }
+    }
+
+    Some(style)
+}
+
+pub fn parse_block_style(
+    context: &mut Parser,
+    node: Node<'_>,
+    scope_id: ScopeId,
+    name: &str,
+) -> Option<BlockStyle> {
+    if node.kind_id() != node_types::STYLE_ASSIGNMENTS {
+        invalid_directive(context, node.range(), name, "expected style assignments");
+        return None;
+    }
+
+    let mut style = BlockStyle::default();
+    let mut cursor = node.walk();
+
+    for assignment in node.named_children(&mut cursor) {
+        if assignment.kind_id() != node_types::PARAMETER_ASSIGNMENT {
+            continue;
+        }
+
+        let assignment = assignment_parts(context, assignment)?;
+
+        apply_box_modifier(
+            context,
+            name,
+            &assignment,
+            scope_id,
+            &mut style.margin,
+            &mut style.padding,
+        )?;
     }
 
     Some(style)

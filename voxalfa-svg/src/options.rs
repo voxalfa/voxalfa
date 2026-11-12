@@ -11,67 +11,7 @@ impl PageSize {
     };
 }
 
-use voxalfa_core::ast::directives::{EdgeValues, ElementStyle, HeaderDirective};
-
-#[derive(Debug, Clone, Default)]
-pub struct ElementStyles {
-    pub text: TextStyles,
-    pub label: LabelStyles,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct TextStyles {
-    pub title: ElementStyle,
-    pub author: ElementStyle,
-    pub composer: ElementStyle,
-    pub key: ElementStyle,
-    pub time: ElementStyle,
-    pub meter: ElementStyle,
-    pub note: ElementStyle,
-    pub octave: ElementStyle,
-    pub lyrics: ElementStyle,
-    pub divider: ElementStyle,
-    pub footer: ElementStyle,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct LabelStyles {
-    pub key: ElementStyle,
-    pub time: ElementStyle,
-    pub tempo: ElementStyle,
-    pub bpm: ElementStyle,
-    pub jump: ElementStyle,
-    pub mark: ElementStyle,
-    pub dynamic: ElementStyle,
-    pub volta: ElementStyle,
-}
-
-impl ElementStyles {
-    fn get_mut(&mut self, name: &str) -> Option<&mut ElementStyle> {
-        match name {
-            "title-text" => Some(&mut self.text.title),
-            "author-text" => Some(&mut self.text.author),
-            "composer-text" => Some(&mut self.text.composer),
-            "key-text" => Some(&mut self.text.key),
-            "time-text" => Some(&mut self.text.time),
-            "meter-text" => Some(&mut self.text.meter),
-            "note-text" => Some(&mut self.text.note),
-            "octave-text" => Some(&mut self.text.octave),
-            "lyrics-text" => Some(&mut self.text.lyrics),
-            "divider-text" => Some(&mut self.text.divider),
-            "footer-text" => Some(&mut self.text.footer),
-            "key-label" => Some(&mut self.label.key),
-            "time-label" => Some(&mut self.label.time),
-            "tempo-label" => Some(&mut self.label.tempo),
-            "bpm-label" => Some(&mut self.label.bpm),
-            "jump-label" => Some(&mut self.label.jump),
-            "mark-label" => Some(&mut self.label.mark),
-            "dynamic-label" => Some(&mut self.label.dynamic),
-            "volta-label" => Some(&mut self.label.volta),
-            _ => None,
-        }
-    }
-}
+use voxalfa_core::ast::directives::{BlockStyle, EdgeValues, ElementStyle, HeaderDirective};
 
 #[derive(Debug, Clone)]
 pub struct RenderOptions {
@@ -93,10 +33,31 @@ pub struct RenderOptions {
     pub voice_row_height: f32,
     pub lyric_row_height: f32,
 
-    pub system_gap: f32,
-    pub header_gap: f32,
+    pub system_layout: BlockStyle,
+    pub header_layout: BlockStyle,
 
     pub elements: ElementStyles,
+}
+
+fn default_header_layout() -> BlockStyle {
+    BlockStyle {
+        margin: EdgeValues {
+            bottom: 20.0,
+            ..EdgeValues::default()
+        },
+        padding: EdgeValues::default(),
+    }
+}
+
+fn default_system_layout() -> BlockStyle {
+    BlockStyle {
+        margin: EdgeValues {
+            top: 0.0,
+            bottom: 10.0,
+            ..EdgeValues::default()
+        },
+        padding: EdgeValues::default(),
+    }
 }
 
 impl Default for RenderOptions {
@@ -109,7 +70,7 @@ impl Default for RenderOptions {
             title_font_size: 18.0,
             name_font_size: 13.0,
             meta_font_size: 13.0,
-            marker_font_size: 13.0,
+            marker_font_size: 12.0,
             footer_font_size: 11.0,
             encode_font: true,
             page_margin: EdgeValues::all(56.7),
@@ -117,8 +78,8 @@ impl Default for RenderOptions {
             min_col_width: 12.0,
             voice_row_height: 24.0,
             lyric_row_height: 20.0,
-            system_gap: 18.0,
-            header_gap: 20.0,
+            system_layout: default_system_layout(),
+            header_layout: default_header_layout(),
             elements: ElementStyles::default(),
         }
     }
@@ -153,5 +114,68 @@ impl RenderOptions {
                 *target = style.value.clone();
             }
         }
+
+        if let Some(header) = &directives.header {
+            self.header_layout = header.value;
+        }
+
+        if let Some(system) = &directives.system {
+            self.system_layout = system.value;
+        }
+    }
+}
+
+macro_rules! element_styles {
+    ($($name:literal => $field:ident),* $(,)?) => {
+        #[derive(Debug, Clone, Default)]
+        pub struct ElementStyles {
+            $(pub $field: ElementStyle,)*
+        }
+
+        impl ElementStyles {
+            pub const NAMES: &[&str] = &[$($name),*];
+
+            fn get_mut(&mut self, name: &str) -> Option<&mut ElementStyle> {
+                match name {
+                    $($name => Some(&mut self.$field),)*
+                    _ => None,
+                }
+            }
+        }
+    };
+}
+
+element_styles! {
+    "title-text" => title,
+    "author-text" => author,
+    "composer-text" => composer,
+    "key-text" => key,
+    "time-text" => time,
+    "meter-text" => meter,
+    "note-text" => note,
+    "octave-text" => octave,
+    "lyrics-text" => lyrics,
+    "divider-text" => divider,
+    "footer-text" => footer,
+    "key-label" => key_label,
+    "time-label" => time_label,
+    "tempo-label" => tempo,
+    "bpm-label" => bpm,
+    "jump-label" => jump,
+    "mark-label" => mark,
+    "dynamic-label" => dynamic,
+    "volta-label" => volta,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ElementStyles;
+
+    #[test]
+    fn test_element_style_integrity() {
+        assert_eq!(
+            ElementStyles::NAMES,
+            voxalfa_core::ast::directives::STYLE_ELEMENTS
+        );
     }
 }

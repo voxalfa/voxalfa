@@ -345,7 +345,7 @@ impl<'a> SystemRender<'a> {
     fn emit_voice_row(&mut self, voice: Voice, baseline: f32) -> Result<()> {
         let mut underline: Option<UnderlineState> = None;
         let mut last_note_end = self.origin_x;
-        let note_offset = self.options.elements.text.note.left();
+        let note_offset = self.options.elements.note.left();
 
         let underline_y = baseline
             + self.fonts.text.note.descent()
@@ -398,7 +398,7 @@ impl<'a> SystemRender<'a> {
                 }
 
                 if !symbol.is_empty() {
-                    let style = &self.options.elements.text.divider;
+                    let style = &self.options.elements.divider;
 
                     emit_text(
                         self.svg,
@@ -436,7 +436,7 @@ impl<'a> SystemRender<'a> {
                     )?;
 
                     if let Some(octave) = octave {
-                        let style = &self.options.elements.text.octave;
+                        let style = &self.options.elements.octave;
 
                         let octave_x = glyph_center
                             + glyph_width / 2.0
@@ -518,7 +518,7 @@ impl<'a> SystemRender<'a> {
                 )?;
             }
             PulseAccent::Weak => {
-                let style = &self.options.elements.text.divider;
+                let style = &self.options.elements.divider;
 
                 emit_text(
                     self.svg,
@@ -559,7 +559,7 @@ impl<'a> SystemRender<'a> {
                 .copied()
                 .unwrap_or(system.pulses[token.start].pulse_width);
 
-            let style = &self.options.elements.text.lyrics;
+            let style = &self.options.elements.lyrics;
 
             let start_unit = if (token.start_unit - 0.75).abs() < f32::EPSILON {
                 0.70 // add more room for 1/4 cells

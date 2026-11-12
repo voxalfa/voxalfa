@@ -1,6 +1,6 @@
 mod style;
 
-pub use style::{EdgeValues, ElementStyle, FontStretch, PageStyle};
+pub use style::{BlockStyle, EdgeValues, ElementStyle, FontStretch, PageStyle};
 
 use std::collections::BTreeMap;
 
@@ -13,7 +13,7 @@ use crate::{
     ts_utils::types::AssignmentData,
 };
 
-use style::{parse_element_style, parse_page_style};
+use style::{parse_block_style, parse_element_style, parse_page_style};
 
 pub const STYLE_ELEMENTS: &[&str] = &[
     "title-text",
@@ -37,10 +37,18 @@ pub const STYLE_ELEMENTS: &[&str] = &[
     "volta-label",
 ];
 
+#[derive(Debug, Clone, Copy)]
+enum BlockTarget {
+    Header,
+    System,
+}
+
 #[derive(Debug, Default)]
 pub struct HeaderDirective {
     pub version: Field<String>,
     pub page: Field<PageStyle>,
+    pub header: Field<BlockStyle>,
+    pub system: Field<BlockStyle>,
     pub elements: BTreeMap<String, SymbolRef<ElementStyle>>,
 }
 
@@ -49,6 +57,8 @@ impl FieldAssign for HeaderDirective {
         match data.key_name.as_str() {
             "version" => context.assign_field(data, &mut self.version),
             "page" => self.assign_page(data, context),
+            "header" => self.assign_block(data, context, BlockTarget::Header),
+            "system" => self.assign_block(data, context, BlockTarget::System),
             name if STYLE_ELEMENTS.contains(&name) => self.assign_element(data, context),
             _ => {
                 context.reporter.error(
@@ -70,6 +80,22 @@ impl HeaderDirective {
                 .add_symbol(SymbolKind::Token, data.value_range, data.scope_id);
 
             self.page = Some(SymbolRef { sid, value: style });
+        }
+    }
+
+    fn assign_block(&mut self, data: AssignmentData, context: &mut Parser, target: BlockTarget) {
+        let parsed = parse_block_style(context, data.value_node, data.scope_id, &data.key_name);
+
+        if let Some(style) = parsed {
+            let sid = context
+                .tree
+                .add_symbol(SymbolKind::Token, data.value_range, data.scope_id);
+            let value = SymbolRef { sid, value: style };
+
+            match target {
+                BlockTarget::Header => self.header = Some(value),
+                BlockTarget::System => self.system = Some(value),
+            }
         }
     }
 
