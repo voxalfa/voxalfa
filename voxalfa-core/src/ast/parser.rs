@@ -357,12 +357,22 @@ impl<'a> Parser<'a> {
         let content_node = node.child_by_field_name("content")?;
         let anchor_node = node.child_by_field_name("anchor");
 
-        let verse = self.parse_node(verse_node, scope_id)?;
+        let verse = if verse_node.kind_id() == node_types::VERSE_WILDCARD {
+            None
+        } else {
+            Some(self.parse_node(verse_node, scope_id)?)
+        };
+
         let expected_verse = section.lyrics.len() + 1;
         let tokens = self.resolve_lyric_tokens(content_node, scope_id);
         let anchor = self.resolve_lyric_anchor(anchor_node, &tokens);
 
-        if verse != expected_verse {
+        let has_wildcard = section.lyrics.iter().any(|line| line.verse.is_none());
+
+        if let Some(verse) = verse
+            && !has_wildcard
+            && verse != expected_verse
+        {
             self.reporter.warning(
                 verse_node.range(),
                 DiagnosticKind::MismatchedVerseIndex(expected_verse, verse),
@@ -371,7 +381,7 @@ impl<'a> Parser<'a> {
 
         Some(LyricLine {
             sid: scope_id,
-            verse: expected_verse,
+            verse,
             anchor,
             tokens,
         })

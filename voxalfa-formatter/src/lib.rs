@@ -259,7 +259,12 @@ impl<'a> Formatter<'a> {
         verse: usize,
         is_last_section: bool,
     ) {
-        let mut buffer = format!("[{verse}] ");
+        let mut buffer = if line.wildcard {
+            "[*] ".to_string()
+        } else {
+            format!("[{verse}] ")
+        };
+
         let mut view_id = 0;
         let mut view_offset = 0;
 

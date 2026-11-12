@@ -95,6 +95,27 @@ fn test_expr_reordering() {
 }
 
 #[test]
+fn test_wildcard_lyrics_formatting() {
+    let input = r#"
+[#] verses={2}
+
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+[*] do re_mi fa\@@
+
+--
+
+[S] |s :l !t :d+1 ||
+[*] so la ti do
+"#;
+
+    assert_formatted_snapshot("test_wildcard_lyrics_formatting", input);
+}
+
+#[test]
 fn test_comment_ranking() {
     let input = r#"
 ;; @version 0.1.0-alpha

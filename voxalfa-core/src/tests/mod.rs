@@ -280,6 +280,23 @@ fn test_verse_count_error() {
 }
 
 #[test]
+fn test_mixed_wildcard_and_numbered_lyrics_error() {
+    let source = r#"
+[#] verses={2}
+
+[$] time={4,4} | voices={S}
+---
+
+[S] |d :r !m :f ||
+[*] do re mi fa
+[1] so la ti do
+
+"#;
+
+    assert_diagnostic_snapshot("mixed_wildcard_and_numbered_lyrics_error", source);
+}
+
+#[test]
 fn test_undefined_verse_metdata_error() {
     let source = r#"
 [$] time={4,4} | voices={S}

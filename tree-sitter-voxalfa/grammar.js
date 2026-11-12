@@ -83,7 +83,7 @@ export default grammar({
 
     lyric_line: ($) =>
       seq(
-        seq("[", field("verse", $.integer), "]"),
+        seq("[", field("verse", choice($.integer, $.verse_wildcard)), "]"),
         field("content", $.lyric_content),
         field("anchor", optional($.lyric_anchor)),
       ),
@@ -125,6 +125,8 @@ export default grammar({
     string_content: () => /[^"\n]*/,
 
     inline_string: () => /[^\n=]+/,
+
+    verse_wildcard: () => "*",
 
     boolean: () => choice("true", "false"),
     integer: () => /\d+/,
@@ -241,10 +243,7 @@ export default grammar({
         "@",
         field("name", $.identifier),
         $._space,
-        field(
-          "value",
-          choice(prec(1, $.style_assignments), $.inline_string),
-        ),
+        field("value", choice(prec(1, $.style_assignments), $.inline_string)),
       ),
 
     style_assignments: ($) =>

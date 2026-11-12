@@ -23,6 +23,7 @@
 [
   "#"
   "$"
+  (verse_wildcard)
 ] @keyword
 
 [

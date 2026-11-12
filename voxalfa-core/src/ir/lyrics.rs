@@ -11,6 +11,7 @@ pub struct LyricLineIr {
     pub sid: ScopeId,
     pub columns: Vec<LyricColumnIR>,
     pub operators: Vec<LyricOperator>,
+    pub wildcard: bool,
     pub anchor: bool,
 }
 
@@ -19,6 +20,7 @@ impl LyricLineIr {
         Self {
             sid: line.sid,
             anchor: line.anchor.is_some(),
+            wildcard: line.verse.is_none(),
             ..Default::default()
         }
     }

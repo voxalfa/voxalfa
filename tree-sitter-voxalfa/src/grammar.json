@@ -395,8 +395,17 @@
               "type": "FIELD",
               "name": "verse",
               "content": {
-                "type": "SYMBOL",
-                "name": "integer"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "integer"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "verse_wildcard"
+                  }
+                ]
               }
             },
             {
@@ -658,6 +667,10 @@
     "inline_string": {
       "type": "PATTERN",
       "value": "[^\\n=]+"
+    },
+    "verse_wildcard": {
+      "type": "STRING",
+      "value": "*"
     },
     "boolean": {
       "type": "CHOICE",

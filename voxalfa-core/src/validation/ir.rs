@@ -101,10 +101,22 @@ impl<'a> IrValidator<'a> {
     fn validate_sub_section_ir(&mut self, sub_section: &SubSectionIr) {
         let range = self.tree.get_scope_range(sub_section.sid);
 
+        let wildcard = sub_section.lyrics.iter().find(|line| line.wildcard);
+        let numbered = sub_section.lyrics.iter().find(|line| !line.wildcard);
+
+        if let Some((wildcard, numbered)) = wildcard.zip(numbered) {
+            let range = self.tree.get_scope_range(wildcard.sid);
+            let context_range = self.tree.get_scope_range(numbered.sid);
+
+            self.reporter
+                .error(range, DiagnosticKind::MixedVerseWildcard(context_range));
+        }
+
         if let Some(verses) = &self.header.metadata.verses {
+            let has_wildcard = wildcard.is_some();
             let value = sub_section.lyrics.len();
 
-            if !sub_section.solfa.is_empty() && value != verses.value {
+            if !sub_section.solfa.is_empty() && !has_wildcard && value != verses.value {
                 let context_range = self.tree.get_symbol_range(verses.sid);
 
                 self.reporter.error(

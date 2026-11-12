@@ -55,6 +55,59 @@ fn renders_notes_and_lyrics() {
 }
 
 #[test]
+fn repeats_wildcard_lyrics_for_every_verse() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+[#] title="Wildcard lyrics"
+[#] verses={2}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[*] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert_eq!(svg.matches(r#"class="lyrics-text">do</text>"#).count(), 2);
+}
+
+#[test]
+fn repeats_per_voice_wildcard_lyrics_for_every_verse() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+[#] title="Per-voice wildcard"
+[#] verses={2}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S,A}
+
+---
+
+[S] |d :r !m :f ||
+[*] sun moon star sky
+
+++
+
+[A] |d :r !m :f ||
+[*] red green blue gold
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert_eq!(svg.matches(r#"class="lyrics-text">sun</text>"#).count(), 2);
+    assert_eq!(svg.matches(r#"class="lyrics-text">red</text>"#).count(), 2);
+}
+
+#[test]
 fn renders_header_in_requested_layout() {
     let output = analyze(
         r#"

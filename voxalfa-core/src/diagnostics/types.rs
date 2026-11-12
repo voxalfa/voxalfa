@@ -87,6 +87,8 @@ pub enum DiagnosticKind {
     UnknownDirective(String),
     #[error("invalid value for directive '@{0}': {1}")]
     InvalidDirective(String, String),
+    #[error("wildcard and numbered lyrics cannot be mixed")]
+    MixedVerseWildcard(Range),
 }
 
 impl DiagnosticKind {
@@ -127,6 +129,7 @@ impl DiagnosticKind {
             DiagnosticKind::UnmatchedTimestamp => "E032",
             DiagnosticKind::UnknownDirective(_) => "E033",
             DiagnosticKind::InvalidDirective(_, _) => "E034",
+            DiagnosticKind::MixedVerseWildcard(_) => "E035",
         }
     }
 
@@ -134,6 +137,9 @@ impl DiagnosticKind {
         match self {
             DiagnosticKind::KeyReassignment(name, _) => {
                 Some(format!("'{name}' has been reassigned here"))
+            }
+            DiagnosticKind::MixedVerseWildcard(_) => {
+                Some("wildcard lyrics defined here".to_string())
             }
             _ => None,
         }
@@ -192,6 +198,10 @@ impl DiagnosticKind {
             }],
             DiagnosticKind::InvalidSectionMerge(range) => vec![DiagnosticRelatedInfo {
                 message: "root section defined here".to_string(),
+                range: *range,
+            }],
+            DiagnosticKind::MixedVerseWildcard(range) => vec![DiagnosticRelatedInfo {
+                message: "numbered lyrics defined here".to_string(),
                 range: *range,
             }],
             _ => Vec::default(),

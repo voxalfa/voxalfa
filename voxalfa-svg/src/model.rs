@@ -70,7 +70,7 @@ pub struct PulseStackItem<'a> {
     pub lyrics: Vec<ShiftedLyrics>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LyricLine {
     pub tokens: Vec<LyricToken>,
 }
@@ -103,6 +103,12 @@ impl LyricToken {
 pub struct Measure {
     pub start: usize,
     pub end: usize,
+}
+
+pub struct PulseResolverData<'a> {
+    pub pulses: Vec<PulseStack<'a>>,
+    pub dynamic_spans: Vec<FlatDynamicSpan>,
+    pub verses: usize,
 }
 
 pub struct System<'a> {

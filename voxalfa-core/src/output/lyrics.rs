@@ -289,7 +289,12 @@ impl LyricsResolver {
     ) -> Option<LyricToken> {
         let section = &body.sections[context.section_id];
         let sub_section = &section.items[context.sub_section_id];
-        let line = sub_section.lyrics.get(verse)?;
+
+        // A wildcard line (e.g. `[*]`) applies to every verse.
+        let line = match sub_section.lyrics.first() {
+            Some(line) if line.wildcard => line,
+            _ => sub_section.lyrics.get(verse)?,
+        };
 
         let mut current_id = 0;
 

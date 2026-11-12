@@ -1,0 +1,39 @@
+---
+source: voxalfa-formatter/src/tests/utils.rs
+expression: output
+---
+FILE: test_wildcard_lyrics_formatting
+
+=== SOURCE ===
+
+[#] verses={2}
+
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+[*] do re_mi fa\@@
+
+--
+
+[S] |s :l !t :d+1 ||
+[*] so la ti do
+
+
+=== FORMATTED ===
+[#] verses={2}
+
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d   :r   !m   :f   ||
+
+[*] do   re_  mi   fa\  @@
+
+--
+
+[S] |s   :l   !t   :d+1 ||
+
+[*] so   la   ti   do

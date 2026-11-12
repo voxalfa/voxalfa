@@ -6,7 +6,7 @@ use crate::{
 #[derive(Debug)]
 pub struct LyricLine {
     pub sid: ScopeId,
-    pub verse: usize,
+    pub verse: Option<usize>,
     pub tokens: Vec<LyricToken>,
     pub anchor: Option<Range>,
 }

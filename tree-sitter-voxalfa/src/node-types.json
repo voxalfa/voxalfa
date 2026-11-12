@@ -283,6 +283,10 @@
           {
             "type": "integer",
             "named": true
+          },
+          {
+            "type": "verse_wildcard",
+            "named": true
           }
         ]
       }
@@ -912,6 +916,10 @@
   },
   {
     "type": "underline_marker",
+    "named": true
+  },
+  {
+    "type": "verse_wildcard",
     "named": true
   },
   {

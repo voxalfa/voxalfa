@@ -1,0 +1,22 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[#] verses={2}
+
+[$] time={4,4} | voices={S}
+---
+
+[S] |d :r !m :f ||
+[*] do re mi fa
+[1] so la ti do
+
+=== DIAGNOSTICS ===
+error[E035]: wildcard and numbered lyrics cannot be mixed
+  ┌─ mixed_wildcard_and_numbered_lyrics_error.vfa:8:1
+  │
+8 │ [*] do re mi fa
+  │ ^^^^^^^^^^^^^^^ wildcard lyrics defined here
+9 │ [1] so la ti do
+  │ --------------- numbered lyrics defined here
