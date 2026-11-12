@@ -1,5 +1,5 @@
 use voxalfa_core::{
-    ast::solfa::PulseAccent,
+    ast::{lyrics::LyricOperatorKind, solfa::PulseAccent},
     data_types::{
         Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature, Voice,
     },
@@ -57,8 +57,11 @@ pub fn resolve<'a>(
         .max()
         .unwrap_or(1) as f32;
 
-    let lyrics_extra = if ref_col.extact_match {
-        options.extra_padding
+    let hyphen_width = fonts.text.lyric.width("-");
+    let exact_gap = (ref_col.width - ref_col.exact_width).max(0.0);
+
+    let lyrics_extra = if exact_gap < hyphen_width {
+        hyphen_width - exact_gap
     } else {
         0.0
     };
@@ -206,7 +209,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         let mut pulse = 0;
         let mut slot = 0;
 
-        for column in &line.columns {
+        for (lyric_id, column) in line.columns.iter().enumerate() {
             if pulse >= views.len() {
                 break;
             }
@@ -243,11 +246,19 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                 (pulse, slot_unit(&views[pulse], slot))
             };
 
-            let text = self
+            let mut text = self
                 .lyrics_map
                 .get(&column.sid)
                 .map(|rendered| rendered.content.clone())
                 .unwrap_or_default();
+
+            if line
+                .operators
+                .get(lyric_id)
+                .is_some_and(|operator| operator.value == LyricOperatorKind::Concat)
+            {
+                text.push('-');
+            }
 
             tokens.push(LyricToken {
                 start_pulse,

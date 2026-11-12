@@ -49,6 +49,7 @@ pub struct RenderedLyric<W> {
 #[derive(Debug, Default)]
 pub struct ReferenceColumn<W> {
     pub width: W,
+    pub exact_width: W,
     pub extact_match: bool, // maps to an actual column width instead of an average width
 }
 
@@ -107,6 +108,10 @@ impl<M: StringMetric> LyricsBuilder<M> {
 
                     let exact_match =
                         span == 1 && factor == max_factor && previous_duration != Some(3);
+
+                    if exact_match && width > self.ref_col.exact_width {
+                        self.ref_col.exact_width = width;
+                    }
 
                     if width > self.ref_col.width {
                         self.ref_col.width = width;

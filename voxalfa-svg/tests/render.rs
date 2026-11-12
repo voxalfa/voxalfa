@@ -108,6 +108,30 @@ fn repeats_per_voice_wildcard_lyrics_for_every_verse() {
 }
 
 #[test]
+fn appends_hyphen_to_concatenated_lyrics() {
+    let output = analyze(
+        r#"
+;; @version 0.1.0-alpha
+
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m ||
+
+[1] har_ mo_ ny.
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert!(svg.contains(r#"class="lyrics-text">har-</text>"#));
+    assert!(svg.contains(r#"class="lyrics-text">mo-</text>"#));
+    assert!(svg.contains(r#"class="lyrics-text">ny.</text>"#));
+}
+#[test]
 fn renders_header_in_requested_layout() {
     let output = analyze(
         r#"
