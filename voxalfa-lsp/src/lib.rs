@@ -1,5 +1,7 @@
 pub mod server;
 pub mod services;
+
+#[cfg(target_arch = "wasm32")]
 pub mod wasm;
 
 mod actions;
