@@ -67,11 +67,6 @@ export default grammar({
         seq(seq("[", "$", "]"), sep1($._kv_separator, $.parameter_assignment)),
       ),
 
-    dynamics_line: ($) =>
-      prec.right(
-        seq(seq("[", "^", "]"), sep1($._kv_separator, $.parameter_assignment)),
-      ),
-
     solfa_line: ($) =>
       seq(
         "[",
@@ -223,15 +218,11 @@ export default grammar({
         "&bls", // \
         "&tld", // ~
         "&btk", // `
-        "&lch", // <
-        "&rch", // >
-        "&sls", // /
         "&lpr", // (
         "&rpr", // )
         "&atr", // @
         "&amp", // &
         "&scl", // ;
-        "&dot", // .
       ),
 
     _space: () => /[ \t]+/,
