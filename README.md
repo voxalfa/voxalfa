@@ -4,7 +4,7 @@
 
 # Voxalfa
 
-[Documentation](https://voxalfa.github.io/documentation) · [Download](https://github.com/voxalfa/voxalfa/releases) · [Roadmap](https://github.com/voxalfa/voxalfa/milestone/1) · [License](LICENSE)
+[Documentation](https://voxalfa.github.io/documentation) · [Playground](https://voxalfa.github.io/playground) · [Download](https://github.com/voxalfa/voxalfa/releases) · [Roadmap](https://github.com/voxalfa/voxalfa/milestone/1) · [License](LICENSE)
 
 [![Build/test](https://github.com/voxalfa/voxalfa/actions/workflows/ci.yml/badge.svg)](https://github.com/voxalfa/voxalfa/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/voxalfa/voxalfa?include_prereleases&style=flat)](https://github.com/voxalfa/voxalfa/releases) [![GitHub Repo stars](https://img.shields.io/github/stars/voxalfa/voxalfa?style=flat)](https://github.com/voxalfa/voxalfa/stargazers)
 
@@ -29,7 +29,7 @@ Voxalfa is a declarative, data-oriented language for composing and storing Tonic
 
 Prebuilt binaries for the CLI and the language server are available on the [releases page](https://github.com/voxalfa/voxalfa/releases) for Linux, macOS, and Windows.
 
-For an introduction to the language and how to use the CLI, head over to the [documentation](https://voxalfa.github.io/documentation).
+For an introduction to the language and how to use the CLI, head over to the [documentation](https://voxalfa.github.io/documentation). You can also try it right now in your [browser](https://voxalfa.github.io/playground).
 
 ## Roadmap
 
