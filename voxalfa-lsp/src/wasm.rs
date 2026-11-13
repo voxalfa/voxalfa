@@ -8,6 +8,7 @@ use tower::ServiceBuilder;
 use voxalfa_core::validation::Validator;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
+use web_sys::console;
 
 use crate::server::ServerState;
 
@@ -21,10 +22,11 @@ pub struct WasmTransport {
 #[wasm_bindgen]
 impl WasmTransport {
     #[wasm_bindgen(constructor)]
-    pub fn new(post: js_sys::Function) -> Result<Self, JsError> {
+    pub fn new(post_message: js_sys::Function) -> Result<Self, JsError> {
         console_error_panic_hook::set_once();
 
         let validator = Validator::init()?;
+        console::debug_1(&"Tree-sitter successfully loaded".into());
 
         let (server, _) = MainLoop::new_server(|client| {
             ServiceBuilder::new()
@@ -39,50 +41,81 @@ impl WasmTransport {
 
         spawn_local(async move {
             while let Some(message) = rx.next().await {
-                let _ = stdin_writer.write_all(message.as_bytes()).await;
+                let result = stdin_writer.write_all(message.as_bytes()).await;
+
+                if let Some(error) = result.err() {
+                    console::error_1(&error.to_string().into());
+                }
             }
         });
 
         spawn_local(async move {
-            let mut header = String::new();
+            let mut header_buffer = String::with_capacity(32);
 
             loop {
                 let mut reader = BufReader::new(&mut stdout_reader);
+                let result = read_payload(&mut reader, &mut header_buffer).await;
 
-                match reader.read_line(&mut header).await {
-                    Err(err) => panic!("Read error: {err}"),
-                    Ok(0) => continue,
+                match result {
+                    Ok(Some(json)) => {
+                        let _ = post_message.call1(&JsValue::NULL, &json);
+                    }
+                    Err(error) => console::error_1(&error.into()),
                     _ => {}
-                };
-
-                let Some(length) = header.strip_prefix("Content-Length: ") else {
-                    continue;
-                };
-
-                let parsed_length = length.trim_end().parse::<usize>().unwrap();
-                header.clear();
-
-                let _ = reader.read_line(&mut header).await;
-                assert_eq!(&header, "\r\n");
-                header.clear();
-
-                let mut buffer = vec![0; parsed_length];
-                let _ = reader.read_exact(&mut buffer).await;
-                let parsed = String::from_utf8(buffer).unwrap();
-
-                let _ = post.call1(&JsValue::NULL, &JsValue::from_str(&parsed));
+                }
             }
         });
 
         spawn_local(async move {
+            console::debug_1(&"Initializing language services".into());
             let _ = server.run_buffered(stdin, stdout).await;
         });
 
         Ok(Self { tx })
     }
 
-    pub fn process(&mut self, message: &str) {
-        let framed = format!("Content-Length: {}\r\n\r\n{message}", message.len());
-        self.tx.unbounded_send(framed).unwrap();
+    pub fn process(&mut self, message: &str) -> Result<(), JsError> {
+        let length = message.len();
+
+        if message.len() > BUFFER_SIZE {
+            return Err(JsError::new(&format!(
+                "Message size exceeds buffer size ({length} bytes)"
+            )));
+        }
+
+        self.tx.unbounded_send(format!(
+            // Header: Content-Length + Content-Type (optional)
+            "Content-Length: {length}\r\n\r\n{message}",
+        ))?;
+
+        Ok(())
     }
+}
+
+async fn read_payload(
+    mut reader: impl AsyncBufReadExt + Unpin,
+    header_buffer: &mut String,
+) -> Result<Option<JsValue>, JsError> {
+    let line_size = reader.read_line(header_buffer).await?;
+
+    if line_size == 0 {
+        return Ok(None);
+    }
+
+    let Some(length) = header_buffer.strip_prefix("Content-Length: ") else {
+        return Ok(None);
+    };
+
+    let parsed_length = length.trim_end().parse::<usize>()?;
+    header_buffer.clear();
+
+    reader.read_line(header_buffer).await?;
+    assert_eq!(header_buffer, "\r\n");
+    header_buffer.clear();
+
+    let mut buffer = vec![0; parsed_length];
+    reader.read_exact(&mut buffer).await?;
+    let parsed = String::from_utf8(buffer)?;
+
+    Ok(Some(parsed.into()))
 }
