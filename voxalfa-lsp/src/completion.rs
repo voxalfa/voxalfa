@@ -14,7 +14,7 @@ pub fn get_completion_context(
 ) -> Option<CompletionContext> {
     let root = doc.data.tree.as_ref().map(|t| t.root_node())?;
     let line_str = doc.source.split('\n').nth(line)?; // use split to keep trailing newlines
-    let target = resolve_node_at(doc, root, line, column)?;
+    let target = resolve_node_at(doc, root, line, column).unwrap_or(root);
 
     match target.kind_id() {
         node_types::HEADER | node_types::SOURCE_FILE => {
@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_initial_completion_context() {
-        let doc = document("\n");
+        let doc = document("");
         let context = get_completion_context(&doc, 0, 0);
 
         assert!(matches!(context, Some(CompletionContext::Header)));
@@ -436,20 +436,23 @@ mod tests {
         let doc = document("[#] title=\"test\"\n");
         let context = get_completion_context(&doc, 1, 0);
 
-        assert!(matches!(context, Some(CompletionContext::Header)),);
+        assert!(matches!(context, Some(CompletionContext::Header)));
     }
 
     #[test]
     fn test_params_completion_context() {
-        let doc = document("[$] \n");
+        let doc = document("[$]  ");
         let context = get_completion_context(&doc, 0, 4);
 
-        assert!(matches!(context, Some(CompletionContext::InitialParams)),);
+        assert!(
+            matches!(context, Some(CompletionContext::InitialParams)),
+            "{context:?}"
+        );
     }
 
     #[test]
     fn test_builtin_completion_context() {
-        let doc = document("[$] dynamics={}\n");
+        let doc = document("[$] dynamics={}");
         let context = get_completion_context(&doc, 0, 14);
 
         assert!(matches!(
@@ -460,8 +463,8 @@ mod tests {
 
     #[test]
     fn test_section_completion_context() {
-        let doc = document("[$] voices={S} time={3,4}\n\n---\n\n");
-        let context = get_completion_context(&doc, 4, 0);
+        let doc = document("[$] voices={S} time={3,4}\n\n---\n");
+        let context = get_completion_context(&doc, 3, 0);
 
         assert!(matches!(
             context,
@@ -474,6 +477,6 @@ mod tests {
         let doc = document("[#] title=\"test\"\n\n");
         let context = get_completion_context(&doc, 2, 0);
 
-        assert!(matches!(context, Some(CompletionContext::Header)),);
+        assert!(matches!(context, Some(CompletionContext::Header)));
     }
 }

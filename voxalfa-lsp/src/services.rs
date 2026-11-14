@@ -87,12 +87,8 @@ impl LanguageServer for ServerState {
         let uri = params.text_document.uri;
 
         if let Some(doc) = self.documents.get_mut(&uri)
-            && let Some(mut change) = params.content_changes.into_iter().last()
+            && let Some(change) = params.content_changes.into_iter().last()
         {
-            if !change.text.ends_with('\n') {
-                change.text.push('\n'); // append newline to avoid empty treesitter tree
-            }
-
             doc.data = self.validator.analyze(&change.text);
             doc.rope = Rope::from_str(&change.text); // FIXME: apply incremental updates
             doc.source = change.text;
