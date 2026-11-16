@@ -25,6 +25,7 @@ fn main() {
     let result = match cli.command {
         CliCommand::Format(params) => format::execute(params),
         CliCommand::Check(params) => check::execute(params),
+        CliCommand::Link(params) => link::execute(params),
         CliCommand::Midi(params) => midi::execute(params),
         CliCommand::Svg(params) => svg::execute(params),
         CliCommand::Pdf(params) => pdf::execute(params),

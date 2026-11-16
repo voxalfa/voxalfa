@@ -5,6 +5,7 @@ members = [
   "voxalfa-cli",
   "voxalfa-core",
   "voxalfa-lsp",
+  "voxalfa-linker",
   "voxalfa-midi",
   "voxalfa-formatter",
   "voxalfa-pdf",
@@ -29,6 +30,7 @@ tree-sitter-voxalfa = { version = "0.1.0-alpha", path = "./tree-sitter-voxalfa" 
 vergen-gitcl = "10.0.3"
 voxalfa-midi = { version = "0.1.0-alpha", path = "./voxalfa-midi" }
 voxalfa-formatter = { version = "0.1.0-alpha", path = "./voxalfa-formatter" }
+voxalfa-linker = { version = "0.1.0-alpha", path = "./voxalfa-linker" }
 voxalfa-core = { version = "0.1.0-alpha", path = "./voxalfa-core" }
 voxalfa-pdf = { version = "0.1.0-alpha", path = "./voxalfa-pdf" }
 voxalfa-svg = { version = "0.1.0-alpha", path = "./voxalfa-svg" }

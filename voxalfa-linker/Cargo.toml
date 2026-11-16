@@ -1,0 +1,13 @@
+[package]
+name = "voxalfa-linker"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Lyrics slot linking for Voxalfa partitions."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = { workspace = true }

@@ -1,5 +1,6 @@
 pub mod check;
 pub mod format;
+pub mod link;
 pub mod lyrics;
 pub mod midi;
 pub mod pdf;
@@ -8,8 +9,8 @@ pub mod svg;
 use clap::Subcommand;
 
 use crate::commands::{
-    check::CheckParams, format::FormatParams, lyrics::LyricsParams, midi::MidiParams,
-    pdf::PdfParams, svg::SvgParams,
+    check::CheckParams, format::FormatParams, link::LinkParams, lyrics::LyricsParams,
+    midi::MidiParams, pdf::PdfParams, svg::SvgParams,
 };
 
 #[derive(Subcommand)]
@@ -18,6 +19,8 @@ pub enum CliCommand {
     Format(FormatParams),
     /// Format the provided partition files
     Check(CheckParams),
+    /// Link tokenized lyrics to the annotated slots of a partition
+    Link(LinkParams),
     /// Convert partitions into MIDI files
     Midi(MidiParams),
     /// Convert partitions into SVG files

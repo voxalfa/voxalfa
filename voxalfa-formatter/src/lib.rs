@@ -16,7 +16,7 @@ use voxalfa_core::{
         symbols::{Comment, SymbolRef},
     },
     ir::{
-        PulseView,
+        PulseView, SubSectionIr,
         lyrics::LyricLineIr,
         solfa::{NoteKind, PulseIr, SolfaLineIr},
     },
@@ -46,6 +46,7 @@ pub struct Formatter<'a> {
     current_scope: usize,
     scope_bounds: Vec<usize>,
     lyrics_map: LyricsMap<usize>,
+    include_slots: bool,
 }
 
 impl<'a> Formatter<'a> {
@@ -68,12 +69,13 @@ impl<'a> Formatter<'a> {
             mergable_lines: Vec::new(),
             scope_bounds: Vec::new(),
             current_scope: 0,
+            include_slots: false,
             lyrics_map,
             source,
         }
     }
 
-    pub fn format<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
+    pub fn format<W: Write>(mut self, writer: &mut W) -> io::Result<()> {
         let header = &self.source.header;
 
         self.process_metadata(&header.metadata);
@@ -85,7 +87,7 @@ impl<'a> Formatter<'a> {
         self.finalize(writer)
     }
 
-    pub fn format_to_string(self) -> Result<String, std::io::Error> {
+    pub fn format_to_string(self) -> io::Result<String> {
         let mut buffer = Vec::new();
 
         self.format(&mut buffer)?;
@@ -94,7 +96,12 @@ impl<'a> Formatter<'a> {
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
-    fn finalize<W: Write>(mut self, writer: &mut W) -> Result<(), io::Error> {
+    pub fn annotate(mut self) -> io::Result<String> {
+        self.include_slots = true;
+        self.format_to_string()
+    }
+
+    fn finalize<W: Write>(mut self, writer: &mut W) -> io::Result<()> {
         self.partials.sort();
 
         let mut lines = self.partials.into_iter().peekable();
@@ -129,6 +136,10 @@ impl<'a> Formatter<'a> {
 
                 for solfa in &sub_section.solfa {
                     self.process_solfa(solfa);
+                }
+
+                if self.include_slots {
+                    self.mark_lyrics_slots(sub_section);
                 }
 
                 for (lyrics_id, lyrics) in sub_section.lyrics.iter().enumerate() {
@@ -252,6 +263,54 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    fn mark_lyrics_slots(&mut self, sub_section: &SubSectionIr) {
+        let mut buffer = ";; @slots".to_string();
+        let mut slurs = vec![false; sub_section.solfa.len()];
+        let line_id = self.partials.last().map(|p| p.line_id).unwrap_or_default();
+
+        for (pulse_id, view) in sub_section.views.iter().enumerate() {
+            if !view.aligned {
+                buffer.push_str(" <TOKEN>");
+                continue;
+            }
+
+            for col_id in 0..view.durations.len() {
+                let mut all_empty = true;
+                let mut all_extended = true;
+                let flat_pulses = sub_section.solfa.iter().map(|line| &line.pulses[pulse_id]);
+
+                for (voice_id, pulse) in flat_pulses.enumerate() {
+                    let column = &pulse.columns[col_id];
+
+                    if column.underline.left {
+                        slurs[voice_id] = true;
+                    }
+
+                    all_empty &= matches!(column.note, NoteKind::EmptyNote);
+                    all_extended &= matches!(column.note, NoteKind::ProlongedNote);
+
+                    if !column.underline.left && slurs[voice_id] {
+                        all_extended = true;
+                    }
+
+                    if column.underline.right {
+                        slurs[voice_id] = false;
+                    }
+                }
+
+                if all_empty {
+                    buffer.push_str(" <REST>");
+                } else if all_extended {
+                    buffer.push_str(" <EXT>");
+                } else {
+                    buffer.push_str(" <TOKEN>");
+                }
+            }
+        }
+
+        self.push_line(LineRank::LyricsAnnotation, line_id, buffer);
+    }
+
     fn process_lyrics(
         &mut self,
         views: &[PulseView],
@@ -368,7 +427,9 @@ impl<'a> Formatter<'a> {
         if comment.value.starts_with(";;") {
             let scope = self.scope_bounds.partition_point(|&line| line <= line_id);
 
-            let rank = if comment.value.contains("=") {
+            let rank = if comment.value.starts_with(";; @slots") {
+                LineRank::LyricsAnnotation
+            } else if comment.value.contains("=") {
                 LineRank::StyleDirective
             } else {
                 LineRank::LangDirective

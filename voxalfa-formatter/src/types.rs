@@ -32,6 +32,7 @@ pub enum LineRank {
     StyleDirective,
     SectionParams,
     Solfa,
+    LyricsAnnotation,
     Lyrics,
     Delimiter,
 }

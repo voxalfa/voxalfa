@@ -1977,6 +1977,7 @@ dependencies = [
  "voxalfa-build-info",
  "voxalfa-core",
  "voxalfa-formatter",
+ "voxalfa-linker",
  "voxalfa-midi",
  "voxalfa-pdf",
  "voxalfa-svg",
@@ -2000,6 +2001,15 @@ version = "0.1.0-alpha"
 dependencies = [
  "insta",
  "voxalfa-core",
+]
+
+[[package]]
+name = "voxalfa-linker"
+version = "0.1.0-alpha"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

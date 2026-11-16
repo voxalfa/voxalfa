@@ -28,6 +28,9 @@ pub enum Error {
     #[error("invalid voice {0}")]
     InvalidVoice(String),
 
+    #[error("{0}")]
+    Linker(#[from] voxalfa_linker::Error),
+
     #[error("no matching file found")]
     NoFileMatch,
 }
