@@ -19,7 +19,7 @@ pub enum CliCommand {
     Format(FormatParams),
     /// Format the provided partition files
     Check(CheckParams),
-    /// Link tokenized lyrics to the annotated slots of a partition
+    /// Link tokenized lyrics to the a given file
     Link(LinkParams),
     /// Convert partitions into MIDI files
     Midi(MidiParams),

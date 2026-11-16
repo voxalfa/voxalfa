@@ -1,7 +1,7 @@
 use std::io::{self, Read};
 
 use clap::Parser;
-use voxalfa_formatter::Formatter;
+use voxalfa_formatter::{Formatter, Injection};
 use voxalfa_linker::{Linker, TokenizerOutput};
 
 use crate::{
@@ -34,9 +34,8 @@ pub fn execute(params: LinkParams) -> Result<()> {
         return Ok(());
     }
 
-    let content = Formatter::new(&output).annotate()?;
-
     if params.annotate {
+        let content = Formatter::new(&output).inject(Injection::slots())?;
         write_file(&file.path, content)?;
         cli_reporter.finalize();
 
@@ -49,6 +48,9 @@ pub fn execute(params: LinkParams) -> Result<()> {
     };
 
     let tokenizer_output = TokenizerOutput::from_json(&json)?;
+    let content = Formatter::new(&output).inject(
+        Injection::slots().metadata("verses", format!("{{{}}}", tokenizer_output.verses.len())),
+    )?;
 
     match Linker::new(&content, &tokenizer_output).link() {
         Ok(linked) => {

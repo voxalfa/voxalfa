@@ -95,13 +95,13 @@ impl<'a> Linker<'a> {
             .iter()
             .any(|line| matches!(line.trim(), "--" | "<<" | "=="));
 
-        for verse_id in 0..self.tokenizer.verses.len() {
-            if underfit[verse_id] {
+        for (verse_id, failed) in underfit.iter_mut().enumerate() {
+            if *failed {
                 continue;
             }
 
             if let Err(kind) = self.process_verse(verse_id, &slots, is_last_section) {
-                underfit[verse_id] = true;
+                *failed = true;
                 errors.push(kind);
             }
         }

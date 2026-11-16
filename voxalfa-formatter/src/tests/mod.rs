@@ -1,4 +1,4 @@
-use crate::tests::utils::assert_formatted_snapshot;
+use crate::{Formatter, Injection, tests::utils::assert_formatted_snapshot};
 use voxalfa_core::validation::Validator;
 
 mod utils;
@@ -134,7 +134,54 @@ fn test_comment_ranking() {
 
     assert!(!output.has_error(), "{:?}", output.diagnostics);
 
-    let formatted = crate::Formatter::new(&output).format_to_string().unwrap();
+    let formatted = Formatter::new(&output).format_to_string().unwrap();
 
     assert!(formatted.contains("; style\n;; @page"));
+}
+
+#[test]
+fn test_metadata_swap() {
+    let input = r#"
+[#] title="foo" | verses={1}
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+[1] do re mi fa
+"#;
+
+    let mut validator = Validator::init().unwrap();
+    let output = validator.analyze(input);
+
+    assert!(!output.has_error(), "{:?}", output.diagnostics);
+
+    let formatted = Formatter::new(&output)
+        .inject(Injection::slots().metadata("verses", "{2}"))
+        .unwrap();
+
+    assert!(formatted.contains(r#"[#] title="foo" | verses={2}"#));
+}
+
+#[test]
+fn test_metadata_addition() {
+    let input = r#"
+[#] title="foo"
+[$] time={4,4} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+"#;
+
+    let mut validator = Validator::init().unwrap();
+    let output = validator.analyze(input);
+
+    assert!(!output.has_error(), "{:?}", output.diagnostics);
+
+    let formatted = Formatter::new(&output)
+        .inject(Injection::slots().metadata("verses", "{2}"))
+        .unwrap();
+
+    assert!(formatted.contains(r#"[#] verses={2}"#));
 }

@@ -1,3 +1,4 @@
+mod injection;
 mod metrics;
 mod primitives;
 mod types;
@@ -7,6 +8,8 @@ mod visitor;
 mod tests;
 
 use std::io::{self, Write};
+
+pub use injection::Injection;
 
 use voxalfa_core::{
     ast::{
@@ -47,6 +50,7 @@ pub struct Formatter<'a> {
     scope_bounds: Vec<usize>,
     lyrics_map: LyricsMap<usize>,
     include_slots: bool,
+    injection: Injection,
 }
 
 impl<'a> Formatter<'a> {
@@ -70,6 +74,7 @@ impl<'a> Formatter<'a> {
             scope_bounds: Vec::new(),
             current_scope: 0,
             include_slots: false,
+            injection: Injection::default(),
             lyrics_map,
             source,
         }
@@ -79,6 +84,7 @@ impl<'a> Formatter<'a> {
         let header = &self.source.header;
 
         self.process_metadata(&header.metadata);
+        self.append_metadata();
         self.proces_initial_params(&header.params);
         self.push_delimiter();
         self.process_body();
@@ -96,8 +102,9 @@ impl<'a> Formatter<'a> {
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
-    pub fn annotate(mut self) -> io::Result<String> {
-        self.include_slots = true;
+    pub fn inject(mut self, injection: Injection) -> io::Result<String> {
+        self.include_slots = injection.slots;
+        self.injection = injection;
         self.format_to_string()
     }
 
@@ -155,38 +162,70 @@ impl<'a> Formatter<'a> {
     }
 
     fn process_metadata(&mut self, meta: &HeaderMetadata) {
-        self.add_assignment(Assignment::Metadata, meta.title.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.author.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.composer.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.verses.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.meter.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.description.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.release.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.language.as_ref());
-        self.add_assignment(Assignment::Metadata, meta.tags.as_ref());
+        self.add_assignment(Assignment::Metadata, "title", meta.title.as_ref());
+        self.add_assignment(Assignment::Metadata, "author", meta.author.as_ref());
+        self.add_assignment(Assignment::Metadata, "composer", meta.composer.as_ref());
+        self.add_assignment(Assignment::Metadata, "verses", meta.verses.as_ref());
+        self.add_assignment(Assignment::Metadata, "meter", meta.meter.as_ref());
+        self.add_assignment(
+            Assignment::Metadata,
+            "description",
+            meta.description.as_ref(),
+        );
+        self.add_assignment(Assignment::Metadata, "release", meta.release.as_ref());
+        self.add_assignment(Assignment::Metadata, "language", meta.language.as_ref());
+        self.add_assignment(Assignment::Metadata, "tags", meta.tags.as_ref());
+    }
+
+    fn append_metadata(&mut self) {
+        let missing: Vec<_> = self
+            .injection
+            .metadata
+            .iter()
+            .filter(|(key, _)| self.source.symbols.get_key_definition(key).is_none())
+            .cloned()
+            .collect();
+
+        for (key, value) in missing {
+            let line_id = self
+                .partials
+                .last()
+                .map(|line| line.line_id + 1)
+                .unwrap_or_default();
+
+            self.push_line(LineRank::Metadata, line_id, format!("[#] {key}={value}"));
+        }
     }
 
     fn proces_section_params(&mut self, params: &SectionParams) {
-        self.add_assignment(Assignment::SectionParams, params.ending.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.label.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.mark.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.key.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.time.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.tempo.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.touches.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.jump.as_ref());
-        self.add_assignment(Assignment::SectionParams, params.repeat.as_ref());
+        self.add_assignment(Assignment::SectionParams, "ending", params.ending.as_ref());
+        self.add_assignment(Assignment::SectionParams, "label", params.label.as_ref());
+        self.add_assignment(Assignment::SectionParams, "mark", params.mark.as_ref());
+        self.add_assignment(Assignment::SectionParams, "key", params.key.as_ref());
+        self.add_assignment(Assignment::SectionParams, "time", params.time.as_ref());
+        self.add_assignment(Assignment::SectionParams, "tempo", params.tempo.as_ref());
+        self.add_assignment(
+            Assignment::SectionParams,
+            "touches",
+            params.touches.as_ref(),
+        );
+        self.add_assignment(Assignment::SectionParams, "jump", params.jump.as_ref());
+        self.add_assignment(Assignment::SectionParams, "repeat", params.repeat.as_ref());
     }
 
     fn proces_initial_params(&mut self, params: &InitialParams) {
-        self.add_assignment(Assignment::InitialParams, params.key.as_ref());
-        self.add_assignment(Assignment::InitialParams, params.time.as_ref());
-        self.add_assignment(Assignment::InitialParams, params.tempo.as_ref());
-        self.add_assignment(Assignment::InitialParams, params.voices.as_ref());
+        self.add_assignment(Assignment::InitialParams, "key", params.key.as_ref());
+        self.add_assignment(Assignment::InitialParams, "time", params.time.as_ref());
+        self.add_assignment(Assignment::InitialParams, "tempo", params.tempo.as_ref());
+        self.add_assignment(Assignment::InitialParams, "voices", params.voices.as_ref());
     }
 
     fn process_local_params(&mut self, params: &SubSectionParams) {
-        self.add_assignment(Assignment::SectionParams, params.dynamics.as_ref());
+        self.add_assignment(
+            Assignment::SectionParams,
+            "dynamics",
+            params.dynamics.as_ref(),
+        );
     }
 
     fn process_solfa(&mut self, solfa: &SolfaLineIr) {
@@ -456,28 +495,36 @@ impl<'a> Formatter<'a> {
     fn add_assignment<F: Formattable>(
         &mut self,
         kind: Assignment,
+        key: &str,
         symbol_ref: Option<&SymbolRef<F>>,
     ) {
         let Some(symbol) = symbol_ref else { return };
 
-        let value_symbol = self.source.symbols.get_symbol(symbol.sid);
-        let scope = self.source.symbols.get_scope(value_symbol.scope);
-        let key_symbol = self.source.symbols.get_symbol(scope.symbols[0]);
-        let line_id = scope.range.start_point.row;
-
-        let key_str = key_symbol.kind.as_key_unchecked();
-        let value_str = symbol.value.format(false);
-        let assignment_str = format!("{key_str}={value_str}");
-
-        let prefix = kind.prefix();
-        let rank = kind.rank();
-
-        let content = match self.mergable_lines.contains(&line_id) {
-            true => format!(" | {assignment_str}"),
-            false => format!("[{prefix}] {assignment_str}"),
+        let injected = if matches!(kind, Assignment::Metadata) {
+            self.injection.get_metadata(key)
+        } else {
+            None
         };
 
-        self.push_line(rank, line_id, content);
+        let value = injected
+            .map(str::to_string)
+            .unwrap_or_else(|| symbol.value.format(false));
+        let value_symbol = self.source.symbols.get_symbol(symbol.sid);
+        let scope = self.source.symbols.get_scope(value_symbol.scope);
+        let line_id = scope.range.start_point.row;
+
+        let merge = self
+            .partials
+            .last()
+            .is_some_and(|line| line.line_id == line_id && line.rank == kind.rank());
+
+        let content = if merge {
+            format!(" | {key}={value}")
+        } else {
+            format!("[{}] {key}={value}", kind.prefix())
+        };
+
+        self.push_line(kind.rank(), line_id, content);
     }
 
     fn push_line(&mut self, rank: LineRank, line_id: usize, content: String) {
