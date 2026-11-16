@@ -3,7 +3,7 @@ source: voxalfa-core/src/tests/utils.rs
 expression: output_str
 ---
 === INPUT ===
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @note-text font-size={0}
 
 [#] title="Invalid directive"

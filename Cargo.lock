@@ -1791,7 +1791,7 @@ checksum = "d0af592be68c579aa78a16846bd19422978c3c52e438523d45ff5d1bff1f9d4a"
 
 [[package]]
 name = "tree-sitter-voxalfa"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "cc",
  "tree-sitter",
@@ -1960,14 +1960,14 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "voxalfa-build-info"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "vergen-gitcl",
 ]
 
 [[package]]
 name = "voxalfa-cli"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "clap",
  "codespan-reporting",
@@ -1985,7 +1985,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-core"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "codespan-reporting",
  "insta",
@@ -1997,7 +1997,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-formatter"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "insta",
  "voxalfa-core",
@@ -2005,7 +2005,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-linker"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2014,7 +2014,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-lsp"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "async-lsp",
  "clap",
@@ -2040,7 +2040,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-midi"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "insta",
  "midly",
@@ -2050,7 +2050,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-pdf"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fontdb",
  "krilla",
@@ -2063,7 +2063,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-svg"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "base64 0.23.1",
  "skrifa 0.45.1",
@@ -2073,7 +2073,7 @@ dependencies = [
 
 [[package]]
 name = "voxalfa-wasm"
-version = "0.1.0-alpha"
+version = "0.1.0-alpha.1"
 dependencies = [
  "voxalfa-core",
  "voxalfa-midi",

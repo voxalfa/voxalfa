@@ -23,7 +23,7 @@ fn test_space_formatting() {
 #[test]
 fn test_line_formatting() {
     let input = r#"
-        ;; @version 0.1.0-alpha
+        ;; @version 0.1.0-alpha.1
   [#] title=  "foo"
 [#]  author={"bar",  "lorem"}  
     [#] verses={1}
@@ -81,7 +81,7 @@ fn test_expr_reordering() {
 [$] time={4,4} | voices={S}
 [#] verses={1}
 
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 ---
 
@@ -118,7 +118,7 @@ fn test_wildcard_lyrics_formatting() {
 #[test]
 fn test_comment_ranking() {
     let input = r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [$] time={4,4} | voices={S}
 

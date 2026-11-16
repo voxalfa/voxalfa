@@ -1,6 +1,6 @@
 {
   "name": "tree-sitter-voxalfa",
-  "version": "0.1.0-alpha",
+  "version": "0.1.0-alpha.1",
   "description": "Voxalfa tree-sitter parser",
   "type": "module",
   "repository": {

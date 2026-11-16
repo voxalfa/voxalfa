@@ -30,7 +30,7 @@ fn analyze(source: &str) -> FinalOutput {
 fn renders_notes_and_lyrics() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Render test"
 [#] verses={1}
@@ -58,7 +58,7 @@ fn renders_notes_and_lyrics() {
 fn repeats_wildcard_lyrics_for_every_verse() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Wildcard lyrics"
 [#] verses={2}
@@ -82,7 +82,7 @@ fn repeats_wildcard_lyrics_for_every_verse() {
 fn repeats_per_voice_wildcard_lyrics_for_every_verse() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Per-voice wildcard"
 [#] verses={2}
@@ -111,7 +111,7 @@ fn repeats_per_voice_wildcard_lyrics_for_every_verse() {
 fn appends_hyphen_to_concatenated_lyrics() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] verses={1}
 
@@ -135,7 +135,7 @@ fn appends_hyphen_to_concatenated_lyrics() {
 fn renders_header_in_requested_layout() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Header layout"
 [#] author={"Alice"}
@@ -169,7 +169,7 @@ fn renders_header_in_requested_layout() {
 fn renders_header_tempo_label() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Header tempo"
 [#] verses={1}
@@ -193,7 +193,7 @@ fn renders_header_tempo_label() {
 fn renders_time_signature_and_jump_markers() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Markers"
 
@@ -237,7 +237,7 @@ fn renders_time_signature_and_jump_markers() {
 fn renders_accidentals() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Accidental keys"
 [#] language="en"
@@ -273,7 +273,7 @@ fn renders_accidentals() {
 fn renders_fermata_staccato_and_marcato_touches() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Touches"
 
@@ -302,7 +302,7 @@ fn renders_fermata_staccato_and_marcato_touches() {
 fn renders_dynamic_hairpin_across_merged_sections() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Merged hairpin"
 
@@ -330,7 +330,7 @@ fn renders_dynamic_hairpin_across_merged_sections() {
 fn continues_hairpin_dash_without_repeating_label_across_systems() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 ;; @page width={200} | height={1000}
 
@@ -364,7 +364,7 @@ fn continues_hairpin_dash_without_repeating_label_across_systems() {
 fn renders_key_tempo_and_dynamics_labels() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Labels"
 [#] language="en"
@@ -407,7 +407,7 @@ fn renders_key_tempo_and_dynamics_labels() {
 fn renders_volta_endings_with_labels() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Volta"
 
@@ -442,7 +442,7 @@ fn renders_volta_endings_with_labels() {
 fn resolves_multi_voice_lyrics_per_subsection() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Multi lyric"
 [#] verses={1}
@@ -476,7 +476,7 @@ fn resolves_multi_voice_lyrics_per_subsection() {
 fn skips_dividers_for_expanded_virtual_columns() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Expanded pulses"
 [#] verses={1}
@@ -503,7 +503,7 @@ fn skips_dividers_for_expanded_virtual_columns() {
 fn applies_per_element_font_directives() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @note-text font-family={"Custom Note"} | font-size={18}
 ;; @lyrics-text font-size={9}
 ;; @jump-label font-size={15}
@@ -545,7 +545,7 @@ fn applies_per_element_font_directives() {
 fn applies_element_color_directives() {
     let output = analyze(
         r##"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @title-text color={"#ff0000"}
 ;; @time-text color={"rebeccapurple"}
 
@@ -588,7 +588,7 @@ fn applies_element_color_directives() {
 fn applies_font_weight_and_style_directives() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @title-text font-weight={"normal"}
 ;; @tempo-label font-style={"normal"}
 ;; @bpm-label font-style={"italic"}
@@ -631,7 +631,7 @@ fn resolves_fonts_from_the_supplied_face_set() {
 
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @note-text font-family={"Custom Note"} | font-weight={"normal"} | font-style={"italic"}
 
 [#] title="Custom faces"
@@ -665,7 +665,7 @@ fn resolves_fonts_from_the_supplied_face_set() {
 fn applies_header_box_directives() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @page width={800} | height={1000} | margin-x={30} | margin-y={40}
 ;; @title-text margin-top={10} | padding-x={4}
 ;; @author-text margin-bottom={3}
@@ -707,7 +707,7 @@ fn applies_header_box_directives() {
 fn applies_font_stretch_directive() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @note-text font-stretch={"condensed"}
 
 [#] title="Stretch"
@@ -740,7 +740,7 @@ fn applies_font_stretch_directive() {
 fn keeps_braces_inside_the_printable_width() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 ;; @page width={800} | height={1000} | margin-x={30} | margin-y={40}
 
 [#] title="Brace bounds"
@@ -782,7 +782,7 @@ fn keeps_braces_inside_the_printable_width() {
 fn renders_footer_as_page_number_only() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 ;; @page width={200} | height={200} | margin-x={30} | margin-y={30}
 ;; @footer-text font-size={30}
@@ -830,7 +830,7 @@ fn renders_footer_as_page_number_only() {
 fn renders_curly_for_a_single_voice() {
     let output = analyze(
         r#"
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="Single voice braces"
 

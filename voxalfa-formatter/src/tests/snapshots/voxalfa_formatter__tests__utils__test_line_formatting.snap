@@ -6,7 +6,7 @@ FILE: test_line_formatting
 
 === SOURCE ===
 
-        ;; @version 0.1.0-alpha
+        ;; @version 0.1.0-alpha.1
   [#] title=  "foo"
 [#]  author={"bar",  "lorem"}  
     [#] verses={1}
@@ -21,7 +21,7 @@ FILE: test_line_formatting
 
 
 === FORMATTED ===
-;; @version 0.1.0-alpha
+;; @version 0.1.0-alpha.1
 
 [#] title="foo"
 [#] author={"bar","lorem"}

@@ -131,7 +131,7 @@ impl CompletionContext {
 
     fn build_document_template_snippet(&self) -> CompletionItem {
         let snippet = [
-            ";; @version 0.1.0-alpha",
+            ";; @version 0.1.0-alpha.1",
             "",
             "[#] title=\"${1:Title}\"",
             "[#] author={\"${2:Author}\"}",
