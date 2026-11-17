@@ -7,6 +7,7 @@ members = [
   "voxalfa-lsp",
   "voxalfa-linker",
   "voxalfa-midi",
+  "voxalfa-musicxml",
   "voxalfa-formatter",
   "voxalfa-pdf",
   "voxalfa-svg",
@@ -29,6 +30,7 @@ thiserror = "2.0.18"
 tree-sitter-voxalfa = { version = "0.1.0-alpha.1", path = "./tree-sitter-voxalfa" }
 vergen-gitcl = "10.0.3"
 voxalfa-midi = { version = "0.1.0-alpha.1", path = "./voxalfa-midi" }
+voxalfa-musicxml = { version = "0.1.0-alpha.1", path = "./voxalfa-musicxml" }
 voxalfa-formatter = { version = "0.1.0-alpha.1", path = "./voxalfa-formatter" }
 voxalfa-linker = { version = "0.1.0-alpha.1", path = "./voxalfa-linker" }
 voxalfa-core = { version = "0.1.0-alpha.1", path = "./voxalfa-core" }

@@ -5,12 +5,13 @@ pub mod lyrics;
 pub mod midi;
 pub mod pdf;
 pub mod svg;
+pub mod xml;
 
 use clap::Subcommand;
 
 use crate::commands::{
     check::CheckParams, format::FormatParams, link::LinkParams, lyrics::LyricsParams,
-    midi::MidiParams, pdf::PdfParams, svg::SvgParams,
+    midi::MidiParams, pdf::PdfParams, svg::SvgParams, xml::XmlParams,
 };
 
 #[derive(Subcommand)]
@@ -23,6 +24,8 @@ pub enum CliCommand {
     Link(LinkParams),
     /// Convert partitions into MIDI files
     Midi(MidiParams),
+    /// Convert partitions into MusicXML files
+    Xml(XmlParams),
     /// Convert partitions into SVG files
     Svg(SvgParams),
     /// Convert partitions into PDF files

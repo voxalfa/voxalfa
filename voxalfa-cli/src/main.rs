@@ -27,6 +27,7 @@ fn main() {
         CliCommand::Check(params) => check::execute(params),
         CliCommand::Link(params) => link::execute(params),
         CliCommand::Midi(params) => midi::execute(params),
+        CliCommand::Xml(params) => xml::execute(params),
         CliCommand::Svg(params) => svg::execute(params),
         CliCommand::Pdf(params) => pdf::execute(params),
         CliCommand::Lyrics(params) => lyrics::execute(params),
