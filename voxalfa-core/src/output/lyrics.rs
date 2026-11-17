@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use crate::{
     ast::{
         lyrics::{LyricOperatorKind, LyricSpecialChar},
-        symbols::SymbolTree,
+        symbols::{SymbolTree, VoiceId},
     },
-    data_types::Voice,
     ir::{
         BodyIr,
         lyrics::{LyricColumnIR, LyricStringIR},
@@ -195,17 +194,20 @@ pub struct LyricToken {
 
 #[derive(Debug)]
 pub struct LyricsResolver {
-    voice: Voice,
+    voice_id: VoiceId,
     lyrics_map: LyricsMap<()>,
 }
 
 impl LyricsResolver {
-    pub fn new(voice: Voice, lyrics_map: LyricsMap<()>) -> Self {
-        Self { voice, lyrics_map }
+    pub fn new(voice_id: VoiceId, lyrics_map: LyricsMap<()>) -> Self {
+        Self {
+            voice_id,
+            lyrics_map,
+        }
     }
 
     pub fn process<V: LyricVisitor>(self, data: &FinalOutput) -> Vec<String> {
-        let verse_tokens = self.resolve_voice_tokens(self.voice, data);
+        let verse_tokens = self.resolve_voice_tokens(self.voice_id, data);
         let mut results = Vec::new();
 
         for tokens in verse_tokens {
@@ -225,9 +227,9 @@ impl LyricsResolver {
         results
     }
 
-    fn resolve_voice_tokens(&self, voice: Voice, data: &FinalOutput) -> Vec<Vec<LyricToken>> {
+    fn resolve_voice_tokens(&self, voice_id: VoiceId, data: &FinalOutput) -> Vec<Vec<LyricToken>> {
         let mut result = Vec::new();
-        let voice_line = &data.build_voice_line(voice);
+        let voice_line = &data.build_voice_line(voice_id);
 
         let verses = data
             .header

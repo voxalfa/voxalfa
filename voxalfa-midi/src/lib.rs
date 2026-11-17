@@ -71,9 +71,9 @@ impl<'a> Converter<'a> {
         voice: Voice,
         params: PlaybackParams,
     ) -> Result<TaskResult> {
-        let voice_line = self.source.build_voice_line(voice);
+        let voice_line = self.source.build_voice_line(id);
         let evaluator = TimelineEvaluator::new(params);
-        let task = ConverterTask::new(id, voice_line.voice, evaluator);
+        let task = ConverterTask::new(id, voice, evaluator);
         let track = task.process(&voice_line)?;
 
         Ok(track)

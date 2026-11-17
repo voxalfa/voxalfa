@@ -142,11 +142,17 @@ pub struct Scope {
 #[derive(Debug, Default)]
 pub struct SymbolCache {
     key_refs: HashMap<String, Vec<SymbolId>>,
-    voice_defs: Vec<Voice>,
+    voice_defs: Vec<VoiceDef>,
     voice_refs: HashMap<VoiceId, Vec<SymbolId>>,
     comments: Vec<Comment>,
     lyrics: Vec<String>,
     delimiters: Vec<Delimiter>,
+}
+
+#[derive(Debug)]
+pub struct VoiceDef {
+    pub voice: Voice,
+    pub index: usize,
 }
 
 #[derive(Debug, Default)]
@@ -247,7 +253,14 @@ impl SymbolTree {
     pub fn define_voices(&mut self, voices: &[SymbolRef<Voice>]) {
         for (id, voice) in voices.iter().enumerate() {
             self.store_voice_ref(id, voice.sid);
-            self.cache.voice_defs.push(voice.value);
+
+            self.cache.voice_defs.push(VoiceDef {
+                voice: voice.value,
+                index: voices[..=id]
+                    .iter()
+                    .filter(|v| v.value == voice.value)
+                    .count(), // 1-based index
+            });
         }
     }
 
@@ -256,7 +269,16 @@ impl SymbolTree {
     }
 
     pub fn get_voice(&self, voice_id: usize) -> Option<Voice> {
-        self.cache.voice_defs.get(voice_id).copied()
+        self.cache.voice_defs.get(voice_id).map(|def| def.voice)
+    }
+
+    pub fn resolve_voice_id(&self, kind: Voice, index: usize) -> Option<VoiceId> {
+        self.cache
+            .voice_defs
+            .iter()
+            .enumerate()
+            .find(|(_, def)| def.voice == kind && def.index == index)
+            .map(|(id, _)| id)
     }
 
     pub fn get_symbol_refs(&self, position: &Point) -> Option<Vec<Range>> {

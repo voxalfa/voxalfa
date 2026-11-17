@@ -1,19 +1,19 @@
 use crate::{
-    data_types::Voice,
+    ast::symbols::VoiceId,
     ir::solfa::PulseColumn,
     output::event::{Event, NoteTimeline, Timestamp, get_note_ticks},
 };
 
 #[derive(Debug)]
 pub struct VoiceLine<'a> {
-    pub voice: Voice,
+    pub voice_id: VoiceId,
     pub timeline: NoteTimeline,
     pub notes: Vec<NoteContext<'a>>,
 }
 
 impl<'a> VoiceLine<'a> {
     pub fn new(
-        voice: Voice,
+        voice_id: VoiceId,
         notes: Vec<NoteContext<'a>>,
         flat_timeline: Vec<&(Timestamp, Event)>,
     ) -> Self {
@@ -36,7 +36,7 @@ impl<'a> VoiceLine<'a> {
         }
 
         Self {
-            voice,
+            voice_id,
             timeline,
             notes,
         }
@@ -50,4 +50,5 @@ pub struct NoteContext<'a> {
     pub lyric_id: usize,
     pub section_id: usize,
     pub sub_section_id: usize,
+    pub measure_start: bool,
 }

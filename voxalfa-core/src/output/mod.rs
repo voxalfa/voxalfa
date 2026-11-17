@@ -9,8 +9,11 @@ pub mod voice;
 use tree_sitter::Tree;
 
 use crate::{
-    ast::{header::Header, symbols::SymbolTree},
-    data_types::Voice,
+    ast::{
+        header::Header,
+        solfa::PulseAccent,
+        symbols::{SymbolTree, VoiceId},
+    },
     diagnostics::types::Diagnostic,
     ir::BodyIr,
     output::{
@@ -56,13 +59,16 @@ impl FinalOutput {
             .unwrap_or(1)
     }
 
-    pub fn build_voice_line(&self, voice: Voice) -> VoiceLine<'_> {
+    pub fn build_voice_line(&self, voice_id: VoiceId) -> VoiceLine<'_> {
         let mut notes = Vec::new();
         let mut timeline = Vec::new();
 
         for (section_id, section) in self.body.sections.iter().enumerate() {
+            let mut voice_count = 0;
+
             for (sub_section_id, sub_section) in section.items.iter().enumerate() {
-                let Some(solfa) = sub_section.solfa.iter().find(|s| s.voice == voice) else {
+                let Some(solfa) = sub_section.solfa.get(voice_id - voice_count) else {
+                    voice_count += sub_section.solfa.len();
                     continue;
                 };
 
@@ -79,6 +85,7 @@ impl FinalOutput {
                         notes.push(NoteContext {
                             column: note,
                             factor: pulse.factor,
+                            measure_start: pulse.accent == PulseAccent::Strong,
                             lyric_id,
                             section_id,
                             sub_section_id,
@@ -96,6 +103,6 @@ impl FinalOutput {
             }
         }
 
-        VoiceLine::new(voice, notes, timeline)
+        VoiceLine::new(voice_id, notes, timeline)
     }
 }
