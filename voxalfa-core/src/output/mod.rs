@@ -81,11 +81,13 @@ impl FinalOutput {
                 for (id, pulse) in solfa.pulses.iter().enumerate() {
                     let view = &sub_section.views[id];
 
-                    for note in &pulse.columns {
+                    for (col_id, note) in pulse.columns.iter().enumerate() {
+                        let measure_start = pulse.accent == PulseAccent::Strong && col_id == 0;
+
                         notes.push(NoteContext {
                             column: note,
                             factor: pulse.factor,
-                            measure_start: pulse.accent == PulseAccent::Strong,
+                            measure_start,
                             lyric_id,
                             section_id,
                             sub_section_id,
@@ -100,6 +102,8 @@ impl FinalOutput {
                         lyric_id += 1;
                     }
                 }
+
+                break;
             }
         }
 
