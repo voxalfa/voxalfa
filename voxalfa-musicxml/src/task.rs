@@ -9,7 +9,7 @@ use voxalfa_core::{
 };
 
 use crate::types::{
-    Attributes, Choice, Clef, ClefSign, Direction, Key, Measure, MeasureItem, Note, Pitch,
+    Attributes, Choice, Clef, Direction, DirectionType, Key, Measure, MeasureItem, Note, Pitch,
     Position, Rest, Sound, Step, Time,
 };
 
@@ -94,13 +94,7 @@ impl MeasureTask {
                 beats: self.time.top,
                 beat_type: self.time.bottom,
             }),
-            clef: Some(Clef {
-                sign: match self.voice {
-                    Voice::B => ClefSign::F,
-                    Voice::S => ClefSign::G,
-                    _ => ClefSign::C,
-                },
-            }),
+            clef: Some(Clef::from_voice(self.voice)),
         }));
     }
 
@@ -108,9 +102,9 @@ impl MeasureTask {
         for event in events {
             match event.kind {
                 EventKind::Key(key) => self.handle_key_change(key),
-                EventKind::TimeSignature(time) => self.pending_time = Some(time),
                 EventKind::Jump(jump) => self.handle_jump_event(jump),
                 EventKind::Mark(mark) => self.handle_mark_event(mark),
+                EventKind::TimeSignature(time) => self.pending_time = Some(time),
                 _ => {} // EventKind::Dynamic(dynamic) => todo!(),
                         // EventKind::Tempo(static_tempo) => todo!(),
                         // EventKind::Touch(touch) => todo!(),
@@ -134,33 +128,29 @@ impl MeasureTask {
     }
 
     fn handle_jump_event(&mut self, jump: JumpEvent) {
-        match jump.kind {
-            Jump::DS => self.items.push(MeasureItem::Direction(Direction {
-                sound: Sound {
-                    dalsegno: Some(1),
-                    ..Default::default()
-                },
-            })),
-            Jump::DC => todo!(),
-            Jump::DSC => todo!(),
-            Jump::DSF => todo!(),
-            Jump::DCC => todo!(),
-            Jump::DCF => todo!(),
-        }
+        let direction = match jump.kind {
+            Jump::DS => Direction::jump("D.S.", Sound::default().dalsegno()),
+            Jump::DC => Direction::jump("D.C.", Sound::default().dacapo()),
+            Jump::DSC => Direction::jump("D.S. al Coda", Sound::default().dalsegno().tocoda()),
+            Jump::DSF => Direction::jump("D.S. al Fine", Sound::default().dalsegno().fine()),
+            Jump::DCC => Direction::jump("D.C. al Coda", Sound::default().dacapo().tocoda()),
+            Jump::DCF => Direction::jump("D.C. al Fine", Sound::default().dacapo().fine()),
+        };
+
+        self.items.push(MeasureItem::Direction(direction));
     }
 
     fn handle_mark_event(&mut self, mark: Mark) {
-        match mark {
-            Mark::ToCoda => todo!(),
-            Mark::Segno => self.items.push(MeasureItem::Direction(Direction {
-                sound: Sound {
-                    segno: Some(1),
-                    ..Default::default()
-                },
-            })),
-            Mark::Coda => todo!(),
-            Mark::Fine => todo!(),
-        }
+        let direction = match mark {
+            Mark::ToCoda => {
+                Direction::mark(DirectionType::words("To Coda"), Sound::default().tocoda())
+            }
+            Mark::Segno => Direction::mark(DirectionType::segno(), Sound::default().segno()),
+            Mark::Coda => Direction::mark(DirectionType::coda(), Sound::default().coda()),
+            Mark::Fine => Direction::mark(DirectionType::words("Fine"), Sound::default().fine()),
+        };
+
+        self.items.push(MeasureItem::Direction(direction));
     }
 
     fn handle_pending_updates(&mut self) {

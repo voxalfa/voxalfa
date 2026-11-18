@@ -1,4 +1,5 @@
 use serde::Serialize;
+use voxalfa_core::data_types::Voice;
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -89,6 +90,30 @@ pub enum ClefSign {
 #[derive(Debug, Serialize)]
 pub struct Clef {
     pub sign: ClefSign,
+    pub line: u8,
+}
+
+impl Clef {
+    pub fn from_voice(voice: Voice) -> Self {
+        match voice {
+            Voice::S => Self {
+                sign: ClefSign::G,
+                line: 2,
+            },
+            Voice::A => Self {
+                sign: ClefSign::C,
+                line: 3,
+            },
+            Voice::T => Self {
+                sign: ClefSign::C,
+                line: 4,
+            },
+            Voice::B => Self {
+                sign: ClefSign::F,
+                line: 4,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -198,14 +223,151 @@ impl Step {
 }
 
 #[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Direction {
-    pub sound: Sound,
+    pub direction_type: Vec<DirectionType>,
+    #[serde(rename = "@placement")]
+    pub placement: Placement,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sound: Option<Sound>,
+}
+
+impl Direction {
+    pub fn jump(label: &str, sound: Sound) -> Self {
+        Self {
+            placement: Placement::Below,
+            direction_type: vec![DirectionType {
+                words: Some(Words {
+                    content: label.to_string(),
+                }),
+                ..Default::default()
+            }],
+            sound: Some(sound),
+        }
+    }
+
+    pub fn mark(direction_type: DirectionType, sound: Sound) -> Self {
+        Self {
+            placement: Placement::Below,
+            direction_type: vec![direction_type],
+            sound: Some(sound),
+        }
+    }
+}
+
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Placement {
+    #[default]
+    Above,
+    Below,
+}
+
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub struct DirectionType {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub segno: Option<()>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coda: Option<()>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub words: Option<Words>,
+}
+
+impl DirectionType {
+    pub fn segno() -> Self {
+        Self {
+            segno: Some(()),
+            ..Default::default()
+        }
+    }
+
+    pub fn coda() -> Self {
+        Self {
+            coda: Some(()),
+            ..Default::default()
+        }
+    }
+
+    pub fn words(content: &str) -> Self {
+        Self {
+            words: Some(Words {
+                content: content.to_string(),
+            }),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct Words {
+    #[serde(rename = "$text")]
+    pub content: String,
 }
 
 #[derive(Debug, Default, Serialize)]
 pub struct Sound {
     #[serde(rename = "@segno", skip_serializing_if = "Option::is_none")]
-    pub segno: Option<usize>,
+    pub segno: Option<SoundId>,
+    #[serde(rename = "@coda", skip_serializing_if = "Option::is_none")]
+    pub coda: Option<SoundId>,
+    #[serde(rename = "@tocoda", skip_serializing_if = "Option::is_none")]
+    pub tocoda: Option<SoundId>,
+    #[serde(rename = "@dacapo", skip_serializing_if = "Option::is_none")]
+    pub dacapo: Option<Choice>,
+    #[serde(rename = "@fine", skip_serializing_if = "Option::is_none")]
+    pub fine: Option<Choice>,
     #[serde(rename = "@dalsegno", skip_serializing_if = "Option::is_none")]
-    pub dalsegno: Option<usize>,
+    pub dalsegno: Option<SoundId>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SoundId {
+    Segno,
+    Coda,
+}
+
+impl Sound {
+    pub fn coda(self) -> Self {
+        Self {
+            coda: Some(SoundId::Coda),
+            ..self
+        }
+    }
+
+    pub fn segno(self) -> Self {
+        Self {
+            segno: Some(SoundId::Segno),
+            ..self
+        }
+    }
+
+    pub fn fine(self) -> Self {
+        Self {
+            fine: Some(Choice::Yes),
+            ..self
+        }
+    }
+
+    pub fn tocoda(self) -> Self {
+        Self {
+            tocoda: Some(SoundId::Coda),
+            ..self
+        }
+    }
+
+    pub fn dalsegno(self) -> Self {
+        Self {
+            dalsegno: Some(SoundId::Segno),
+            ..self
+        }
+    }
+
+    pub fn dacapo(self) -> Self {
+        Self {
+            dacapo: Some(Choice::Yes),
+            ..self
+        }
+    }
 }
