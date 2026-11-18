@@ -1,5 +1,5 @@
 use serde::Serialize;
-use voxalfa_core::data_types::Voice;
+use voxalfa_core::data_types::{Dynamic as CoreDynamics, Voice};
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -272,6 +272,8 @@ pub struct DirectionType {
     pub coda: Option<()>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub words: Option<Words>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dynamics: Option<DynamicsWrapper>,
 }
 
 impl DirectionType {
@@ -297,6 +299,63 @@ impl DirectionType {
             ..Default::default()
         }
     }
+
+    pub fn dynamics(value: Dynamics) -> Self {
+        Self {
+            dynamics: Some(DynamicsWrapper { value }),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct DynamicsWrapper {
+    #[serde(rename = "$value")]
+    pub value: Dynamics,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Dynamics {
+    FFF,
+    FF,
+    F,
+    MF,
+    MP,
+    P,
+    PP,
+    PPP,
+}
+
+impl From<CoreDynamics> for Dynamics {
+    fn from(value: CoreDynamics) -> Self {
+        match value {
+            CoreDynamics::PPP => Self::PPP,
+            CoreDynamics::PP => Self::PP,
+            CoreDynamics::P => Self::P,
+            CoreDynamics::MP => Self::MP,
+            CoreDynamics::MF => Self::MF,
+            CoreDynamics::F => Self::F,
+            CoreDynamics::FF => Self::FF,
+            CoreDynamics::FFF => Self::FFF,
+            _ => unreachable!("invalid dynamics conversion"),
+        }
+    }
+}
+
+impl Dynamics {
+    pub fn velocity(self) -> u16 {
+        match self {
+            Self::PPP => 16,
+            Self::PP => 32,
+            Self::P => 48,
+            Self::MP => 64,
+            Self::MF => 80,
+            Self::F => 96,
+            Self::FF => 112,
+            Self::FFF => 127,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -319,6 +378,8 @@ pub struct Sound {
     pub fine: Option<Choice>,
     #[serde(rename = "@dalsegno", skip_serializing_if = "Option::is_none")]
     pub dalsegno: Option<SoundId>,
+    #[serde(rename = "@dynamics", skip_serializing_if = "Option::is_none")]
+    pub dynamics: Option<u16>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]

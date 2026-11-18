@@ -1,6 +1,9 @@
 use voxalfa_core::{
     ast::solfa::{BaseNote, Note as CoreNote},
-    data_types::{BaseKey, Jump, Key as KeySignature, KeyAccidental, Mark, TimeSignature, Voice},
+    data_types::{
+        BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature, KeyAccidental, Mark,
+        TimeSignature, Voice,
+    },
     ir::solfa::NoteKind,
     output::{
         event::{Event, EventKind, JumpEvent},
@@ -9,8 +12,8 @@ use voxalfa_core::{
 };
 
 use crate::types::{
-    Attributes, Choice, Clef, Direction, DirectionType, Key, Measure, MeasureItem, Note, Pitch,
-    Position, Rest, Sound, Step, Time,
+    Attributes, Choice, Clef, Direction, DirectionType, Dynamics, Key, Measure, MeasureItem, Note,
+    Pitch, Position, Rest, Sound, Step, Time,
 };
 
 const MIDDLE_C: i8 = 60;
@@ -105,13 +108,16 @@ impl MeasureTask {
                 EventKind::Jump(jump) => self.handle_jump_event(jump),
                 EventKind::Mark(mark) => self.handle_mark_event(mark),
                 EventKind::TimeSignature(time) => self.pending_time = Some(time),
-                _ => {} // EventKind::Dynamic(dynamic) => todo!(),
-                        // EventKind::Tempo(static_tempo) => todo!(),
-                        // EventKind::Touch(touch) => todo!(),
-                        // EventKind::EndingStart(_) => todo!(),
-                        // EventKind::EndingEnd(_) => todo!(),
-                        // EventKind::TempoStart(progressive_tempo) => todo!(),
-                        // EventKind::TempoEnd(progressive_tempo) => todo!(),
+                EventKind::Dynamic(CoreDynamics::Cre) => {}
+                EventKind::Dynamic(CoreDynamics::Dec) => {}
+                EventKind::Dynamic(dynamic) => self.handle_dynamics_event(dynamic),
+                // EventKind::Tempo(static_tempo) => todo!(),
+                // EventKind::Touch(touch) => todo!(),
+                // EventKind::EndingStart(_) => todo!(),
+                // EventKind::EndingEnd(_) => todo!(),
+                // EventKind::TempoStart(progressive_tempo) => todo!(),
+                // EventKind::TempoEnd(progressive_tempo) => todo!(),
+                _ => {}
             }
         }
     }
@@ -148,6 +154,22 @@ impl MeasureTask {
             Mark::Segno => Direction::mark(DirectionType::segno(), Sound::default().segno()),
             Mark::Coda => Direction::mark(DirectionType::coda(), Sound::default().coda()),
             Mark::Fine => Direction::mark(DirectionType::words("Fine"), Sound::default().fine()),
+        };
+
+        self.items.push(MeasureItem::Direction(direction));
+    }
+
+    fn handle_dynamics_event(&mut self, dynamics: CoreDynamics) {
+        let dynamics = Dynamics::from(dynamics);
+        let velocity = dynamics.velocity();
+
+        let direction = Direction {
+            direction_type: vec![DirectionType::dynamics(dynamics)],
+            sound: Some(Sound {
+                dynamics: Some(velocity),
+                ..Default::default()
+            }),
+            ..Default::default()
         };
 
         self.items.push(MeasureItem::Direction(direction));
