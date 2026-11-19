@@ -1,0 +1,35 @@
+---
+source: voxalfa-midi/src/tests/utils.rs
+expression: output
+---
+FILE: test_inclusive_dynamic_range
+
+=== SOURCE ===
+[$] key={C} | time={4,4} | tempo={50} | voices={A}
+
+---
+
+[$] dynamics={p:0, cre:0.5..1}
+
+[A] |d ,r .m ,f :s .l ||
+
+=== MIDI TRACKS ===
+--- Track 0 [Tempo / Meta] ---
+[00000 t / +000 t] Event 00 | Meta: Tempo(u24(1200000))
+[00000 t / +000 t] Event 01 | Meta: TimeSignature(4, 2, 24, 8)
+[00960 t / +960 t] Event 02 | Meta: EndOfTrack
+
+--- Track 1 ---
+[00000 t / +000 t] Event 00 | Ch 00 | NoteOn  key: 060 (C4) vel: 048
+[00108 t / +108 t] Event 01 | Ch 00 | NoteOff key: 060 (C4) vel: 000
+[00120 t / +012 t] Event 02 | Ch 00 | NoteOn  key: 062 (D4) vel: 048
+[00228 t / +108 t] Event 03 | Ch 00 | NoteOff key: 062 (D4) vel: 000
+[00240 t / +012 t] Event 04 | Ch 00 | NoteOn  key: 064 (E4) vel: 048
+[00348 t / +108 t] Event 05 | Ch 00 | NoteOff key: 064 (E4) vel: 000
+[00360 t / +012 t] Event 06 | Ch 00 | NoteOn  key: 065 (F4) vel: 052
+[00468 t / +108 t] Event 07 | Ch 00 | NoteOff key: 065 (F4) vel: 000
+[00480 t / +012 t] Event 08 | Ch 00 | NoteOn  key: 067 (G4) vel: 056
+[00696 t / +216 t] Event 09 | Ch 00 | NoteOff key: 067 (G4) vel: 000
+[00720 t / +024 t] Event 10 | Ch 00 | NoteOn  key: 069 (A4) vel: 048
+[00936 t / +216 t] Event 11 | Ch 00 | NoteOff key: 069 (A4) vel: 000
+[00960 t / +024 t] Event 12 | Meta: EndOfTrack

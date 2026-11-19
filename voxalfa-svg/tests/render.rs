@@ -310,7 +310,7 @@ fn renders_dynamic_hairpin_across_merged_sections() {
 
 ---
 
-[$] dynamics={cre:0..6}
+[$] dynamics={cre:0..5}
 
 [S] |d :- .d :d ||
 
@@ -340,7 +340,7 @@ fn continues_hairpin_dash_without_repeating_label_across_systems() {
 
 ---
 
-[$] dynamics={cre:0..6}
+[$] dynamics={cre:0..5}
 
 [S] |d :- .d :d ||
 

@@ -93,3 +93,17 @@ fn test_dc_al_coda() {
 
     run_snapshot("test_dc_al_coda", source);
 }
+
+#[test]
+fn test_inclusive_dynamic_range() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={50} | voices={A}
+
+---
+
+[$] dynamics={p:0, cre:0.5..1}
+
+[A] |d ,r .m ,f :s .l ||"#;
+
+    run_snapshot("test_inclusive_dynamic_range", source);
+}

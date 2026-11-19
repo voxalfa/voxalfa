@@ -9,10 +9,10 @@ pub type SubSectonId = usize;
 pub type Timestamp = usize;
 pub type NoteId = usize;
 
-pub const TICK_PER_WHOLE_NOTE: usize = 960;
+pub const TICK_PER_PULSE: usize = 960;
 
 pub fn get_note_ticks(numerator: u8, denominator: u8) -> Timestamp {
-    (TICK_PER_WHOLE_NOTE * numerator as usize) / denominator as usize
+    (TICK_PER_PULSE * numerator as usize) / denominator as usize
 }
 
 type PartialTimeline = Vec<(Timestamp, Event)>;

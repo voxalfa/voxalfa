@@ -123,6 +123,25 @@ fn test_range_not_allowed_error() {
 }
 
 #[test]
+fn test_range_out_of_bounds_error() {
+    let source = r#"
+[$] key={C} | time={3,4} | tempo={70} | voices={A}
+---
+
+[$] dynamics={cre:0..6}
+
+[A] |d :- .d :d ||
+
+<<
+
+[A] |r :- .r :r ||
+
+"#;
+
+    assert_diagnostic_snapshot("inclusive_range_out_of_bounds_error", source);
+}
+
+#[test]
 fn test_invalid_voice_error() {
     let source = r#"
 [$] time={4,4} | voices={A}
