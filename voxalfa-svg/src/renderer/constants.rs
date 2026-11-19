@@ -1,4 +1,3 @@
-pub const TITLE_LINE_HEIGHT_FACTOR: f32 = 1.0;
 pub const HEADER_GROUP_GAP: f32 = 0.5;
 pub const HEADER_BOTTOM_PADDING: f32 = 0.45;
 pub const HEADER_TITLE_BOTTOM_GAP: f32 = 0.7;

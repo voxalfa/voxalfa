@@ -56,14 +56,13 @@ impl<'a> HeaderRows<'a> {
         let width = (self.options.printable_width() - style.left() - style.right()).max(1.0);
 
         for line in wrap_text(title, width, &self.fonts.text.title) {
-            let text = header_text(
+            let text = HeaderText::new(
                 line,
                 HeaderKind::Title,
                 self.center,
                 TextAnchor::Middle,
                 &self.fonts.text.title,
                 style,
-                TITLE_LINE_HEIGHT_FACTOR,
             );
 
             self.push_row(vec![text], 0.0);
@@ -82,25 +81,23 @@ impl<'a> HeaderRows<'a> {
             return;
         }
 
-        texts.push(header_text(
+        texts.push(HeaderText::new(
             composers,
             HeaderKind::Composer,
             self.right,
             TextAnchor::End,
             &self.fonts.text.composer,
             &styles.composer,
-            1.0,
         ));
 
         if !authors.is_empty() {
-            texts.push(header_text(
+            texts.push(HeaderText::new(
                 authors,
                 HeaderKind::Author,
                 self.left,
                 TextAnchor::Start,
                 &self.fonts.text.author,
                 &styles.author,
-                1.0,
             ));
         }
 
@@ -132,38 +129,35 @@ impl<'a> HeaderRows<'a> {
         let mut texts = Vec::new();
 
         if author_on_meta {
-            texts.push(header_text(
+            texts.push(HeaderText::new(
                 self.header.authors.join(", "),
                 HeaderKind::Author,
                 self.right,
                 TextAnchor::End,
                 &self.fonts.text.author,
                 &styles.author,
-                1.0,
             ));
         }
 
         if let Some(text) = key {
-            texts.push(header_text(
+            texts.push(HeaderText::new(
                 text,
                 HeaderKind::Key,
                 self.left,
                 TextAnchor::Start,
                 &self.fonts.text.key,
                 &styles.key,
-                1.0,
             ));
         }
 
         if let Some(time) = &self.header.time {
-            texts.push(header_text(
+            texts.push(HeaderText::new(
                 time.clone(),
                 HeaderKind::Time,
                 time_x,
                 TextAnchor::Start,
                 &self.fonts.text.time,
                 &styles.time,
-                1.0,
             ));
         }
 
@@ -174,26 +168,24 @@ impl<'a> HeaderRows<'a> {
                 (HeaderKind::Tempo, &self.fonts.label.tempo, &styles.tempo)
             };
 
-            texts.push(header_text(
+            texts.push(HeaderText::new(
                 tempo.clone(),
                 kind,
                 tempo_x,
                 TextAnchor::Start,
                 font,
                 style,
-                1.0,
             ));
         }
 
         if let Some(meter) = &self.header.meter {
-            texts.push(header_text(
+            texts.push(HeaderText::new(
                 meter.clone(),
                 HeaderKind::Meter,
                 self.center,
                 TextAnchor::Middle,
                 &self.fonts.text.meter,
                 &styles.meter,
-                1.0,
             ));
         }
 
@@ -226,23 +218,20 @@ impl<'a> HeaderRows<'a> {
         (time_x, tempo_x)
     }
 
-    fn push_row(&mut self, mut texts: Vec<(HeaderText, f32)>, gap_before: f32) {
-        let baseline = texts
-            .iter()
-            .map(|(text, _)| text.baseline)
-            .fold(0.0, f32::max);
+    fn push_row(&mut self, mut texts: Vec<HeaderText>, gap_before: f32) {
+        let baseline = texts.iter().map(|text| text.baseline).fold(0.0, f32::max);
 
         let height = texts
             .iter()
-            .map(|(text, text_height)| baseline + (*text_height - text.baseline))
+            .map(|text| baseline + (text.height - text.baseline))
             .fold(0.0, f32::max);
 
-        for (text, _) in &mut texts {
+        for text in texts.iter_mut() {
             text.baseline = baseline;
         }
 
         self.rows.push(HeaderRow {
-            texts: texts.into_iter().map(|(text, _)| text).collect(),
+            texts,
             height,
             gap_before,
         });
@@ -325,6 +314,7 @@ enum HeaderKind {
     Meter,
 }
 
+#[derive(Debug)]
 struct HeaderLine {
     text: String,
     kind: HeaderKind,
@@ -333,55 +323,56 @@ struct HeaderLine {
     anchor: TextAnchor,
 }
 
+#[derive(Debug)]
 struct HeaderText {
     text: String,
     kind: HeaderKind,
     x: f32,
     baseline: f32,
+    height: f32,
     anchor: TextAnchor,
 }
 
+impl HeaderText {
+    fn new(
+        text: impl Into<String>,
+        kind: HeaderKind,
+        x: f32,
+        anchor: TextAnchor,
+        font: &FontMetrics,
+        style: &ElementStyle,
+    ) -> Self {
+        let baseline = style.top() + font.line_height();
+        let height = baseline + style.bottom();
+
+        let x = match anchor {
+            TextAnchor::Start => x + style.left(),
+            TextAnchor::Middle => x + (style.left() - style.right()) / 2.0,
+            TextAnchor::End => x - style.right(),
+        };
+
+        Self {
+            text: text.into(),
+            kind,
+            x,
+            baseline,
+            height,
+            anchor,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct HeaderRow {
     texts: Vec<HeaderText>,
     height: f32,
     gap_before: f32,
 }
 
+#[derive(Debug)]
 pub struct HeaderLayout {
     lines: Vec<HeaderLine>,
     pub height: f32,
-}
-
-fn header_text(
-    text: String,
-    kind: HeaderKind,
-    x: f32,
-    anchor: TextAnchor,
-    font: &FontMetrics,
-    style: &ElementStyle,
-    line_factor: f32,
-) -> (HeaderText, f32) {
-    let baseline = style.top() + font.line_height() * line_factor;
-    let height = baseline + style.bottom();
-
-    (
-        HeaderText {
-            text,
-            kind,
-            x: anchor_x(x, anchor, style),
-            baseline,
-            anchor,
-        },
-        height,
-    )
-}
-
-fn anchor_x(x: f32, anchor: TextAnchor, style: &ElementStyle) -> f32 {
-    match anchor {
-        TextAnchor::Start => x + style.left(),
-        TextAnchor::Middle => x + (style.left() - style.right()) / 2.0,
-        TextAnchor::End => x - style.right(),
-    }
 }
 
 fn wrap_text(text: &str, max_width: f32, font: &FontMetrics) -> Vec<String> {

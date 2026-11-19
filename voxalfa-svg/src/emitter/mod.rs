@@ -17,7 +17,7 @@ use crate::{
         geometry::system_width,
         systems::{SystemLayout, layout_system},
     },
-    resolver,
+    resolver::resolve,
 };
 
 use defs::emit_defs;
@@ -32,13 +32,14 @@ pub fn render_pages(
     faces: &FontFaces,
 ) -> Result<Vec<String>> {
     let mut options = options.clone();
+
     options.apply_directives(&data.header.directives);
 
     let options = &options;
     let fonts = Fonts::with_faces(options, faces)?;
     let brace_padding = brace_padding(&fonts);
     let content_width = options.printable_width() - brace_padding.0 - brace_padding.1;
-    let score = resolver::resolve(data, &fonts, options, content_width)?;
+    let score = resolve(data, &fonts, options, content_width)?;
     let header = layout_header(&score.header, &fonts, options);
 
     let system_layouts = score

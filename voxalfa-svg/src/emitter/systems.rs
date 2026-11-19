@@ -343,13 +343,14 @@ impl<'a> SystemRender<'a> {
     }
 
     fn emit_voice_row(&mut self, voice: Voice, baseline: f32) -> Result<()> {
-        let mut underline: Option<UnderlineState> = None;
+        let mut underline_start: Option<f32> = None;
         let mut last_note_end = self.origin_x;
         let note_offset = self.options.elements.note.left();
 
         let underline_y = baseline
             + self.fonts.text.note.descent()
             + self.fonts.text.note.size() * SOLFA_UNDERLINE_OFFSET;
+
         let octave_y = underline_y
             - self.fonts.text.octave.descent()
             - self.fonts.text.octave.size() * BOTTOM_OCTAVE_UNDERLINE_GAP;
@@ -462,15 +463,15 @@ impl<'a> SystemRender<'a> {
                 }
 
                 if column.underline.left {
-                    underline = Some(UnderlineState { start: note_start });
+                    underline_start = Some(note_start);
                 }
 
                 if column.underline.right
-                    && let Some(open) = underline.take()
+                    && let Some(start) = underline_start.take()
                 {
                     emit_line(
                         self.svg,
-                        open.start,
+                        start,
                         underline_y,
                         note_end,
                         underline_y,
@@ -482,10 +483,10 @@ impl<'a> SystemRender<'a> {
             }
         }
 
-        if let Some(open) = underline {
+        if let Some(start) = underline_start {
             emit_line(
                 self.svg,
-                open.start,
+                start,
                 underline_y,
                 last_note_end,
                 underline_y,
@@ -597,8 +598,4 @@ impl<'a> SystemRender<'a> {
 
         Ok(())
     }
-}
-
-struct UnderlineState {
-    start: f32,
 }
