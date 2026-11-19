@@ -1,12 +1,14 @@
 use voxalfa_core::{
     ast::directives::ElementStyle,
-    data_types::{Touch, Voice},
+    data_types::Touch,
     ir::solfa::{NoteKind, PulseIr},
 };
 
 use crate::{
     fonts::{FontMetrics, Fonts},
-    model::{MarkerGlyph, MarkerKind, System, SystemMarker, SystemPulse, TextAnchor},
+    model::{
+        MarkerGlyph, MarkerKind, System, SystemMarker, SystemPulse, TextAnchor, VoiceInstance,
+    },
     options::RenderOptions,
 };
 
@@ -99,11 +101,11 @@ pub fn label_at(
     markers: &[PlacedMarker],
     pulse: usize,
     unit: f32,
-    voice: Option<Voice>,
+    voice: Option<VoiceInstance>,
 ) -> Option<&PlacedMarker> {
     markers.iter().find(|marker| {
         marker.kind == MarkerKind::Dynamic
-            && marker.voice == voice
+            && marker.voice.map(|voice| voice.id) == voice.map(|voice| voice.id)
             && marker.pulse == pulse
             && (marker.unit - unit).abs() < FLOAT_ERROR
     })
@@ -117,11 +119,11 @@ pub fn marker_bounds(marker: &PlacedMarker) -> (f32, f32) {
     }
 }
 
-fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
+fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: VoiceInstance) -> Option<&'a PulseIr> {
     pulse.stack.iter().find_map(|sub| {
         sub.voices
             .iter()
-            .find(|(current, _)| *current == voice)
+            .find(|(current, _)| current.id == voice.id)
             .map(|(_, voice_pulse)| *voice_pulse)
     })
 }
@@ -201,6 +203,7 @@ impl MarkerColumn {
             }
 
             let height = rank_heights[rank];
+
             let (group_start, base) = match stack {
                 MarkerStack::Continuous { bottom } => (0, *bottom),
                 MarkerStack::Split { above_bottom, .. } if rank >= 2 => (2, *above_bottom),
@@ -274,12 +277,34 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
             };
         }
 
-        self.stack(self.columns())
+        let global_voice = self.system.voices.first().map(|voice| voice.id);
+
+        let (voice_dynamics, stacked): (Vec<_>, Vec<_>) =
+            self.system.markers.iter().partition(|marker| {
+                marker.kind == MarkerKind::Dynamic
+                    && marker
+                        .voice
+                        .is_some_and(|voice| Some(voice.id) != global_voice)
+            });
+
+        let mut layout = if stacked.is_empty() {
+            MarkerLayout {
+                markers: Vec::new(),
+                height: self.volta_height,
+                volta_offset: 0.0,
+            }
+        } else {
+            self.stack(self.columns(stacked))
+        };
+
+        layout
+            .markers
+            .extend(voice_dynamics.into_iter().map(|marker| self.place(marker)));
+
+        layout
     }
 
-    fn columns(&self) -> Vec<Vec<PlacedMarker>> {
-        let mut markers = self.system.markers.iter().collect::<Vec<_>>();
-
+    fn columns(&self, mut markers: Vec<&SystemMarker>) -> Vec<Vec<PlacedMarker>> {
         markers.sort_by(|lhs, rhs| {
             lhs.pulse
                 .cmp(&rhs.pulse)
@@ -507,7 +532,7 @@ pub struct PlacedMarker {
     pub y: f32,
     pub pulse: usize,
     pub unit: f32,
-    pub voice: Option<Voice>,
+    pub voice: Option<VoiceInstance>,
 }
 
 impl PlacedMarker {

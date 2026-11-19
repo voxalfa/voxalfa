@@ -1,7 +1,7 @@
 use voxalfa_core::{
     ast::{lyrics::LyricOperatorKind, solfa::PulseAccent},
     data_types::{
-        Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature, Voice,
+        Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature,
     },
     ir::{
         PulseView, SectionIr, SubSectionIr,
@@ -98,6 +98,7 @@ struct SectionContext<'a> {
     time_changed: bool,
     volta: Option<FlatVolta>,
     lyrics: Vec<Vec<LyricLine>>,
+    voices: Vec<Vec<VoiceInstance>>,
 }
 
 impl<'a, 'b> PulseResolver<'a, 'b> {
@@ -151,6 +152,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
 
         let volta = build_volta(section);
         let lyrics = self.build_section_lyrics(section);
+        let voices = self.get_section_voices(section);
 
         if let Some(time) = declared_time {
             self.current_time = time;
@@ -171,6 +173,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             time: self.current_time,
             volta,
             lyrics,
+            voices,
             section,
             time_changed,
             pulse_count,
@@ -186,6 +189,28 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         self.add_touch_markers(context.start, section);
         self.add_jump_markers(&context);
         self.mark_section_end(section_id, &context);
+    }
+
+    fn get_section_voices(&self, section: &SectionIr) -> Vec<Vec<VoiceInstance>> {
+        let mut voices = Vec::with_capacity(section.items.len());
+        let mut id = 0;
+
+        for sub in &section.items {
+            let mut subsection = Vec::with_capacity(sub.solfa.len());
+
+            for line in &sub.solfa {
+                subsection.push(VoiceInstance {
+                    id,
+                    role: line.voice,
+                });
+
+                id += 1;
+            }
+
+            voices.push(subsection);
+        }
+
+        voices
     }
 
     fn build_section_lyrics(&self, section: &SectionIr) -> Vec<Vec<LyricLine>> {
@@ -362,18 +387,24 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
 
         for (sub_id, sub) in context.section.items.iter().enumerate() {
             let views = combined_views(&self.data.body.sections, section_id, sub_id);
+            let voice = context.voices[sub_id].first().copied();
 
-            self.add_dynamic_markers_impl(context.start, sub, &views);
+            self.add_dynamic_markers_impl(context.start, sub, &views, voice);
         }
     }
 
-    fn add_dynamic_markers_impl(&mut self, offset: usize, sub: &SubSectionIr, views: &[PulseView]) {
+    fn add_dynamic_markers_impl(
+        &mut self,
+        offset: usize,
+        sub: &SubSectionIr,
+        views: &[PulseView],
+        voice: Option<VoiceInstance>,
+    ) {
         let Some(dynamics) = &sub.params.dynamics else {
             return;
         };
 
         let positions = make_indexed_notes(views);
-        let voice = sub.solfa.first().map(|line| line.voice);
 
         for timed in &dynamics.value {
             let event = &timed.value;
@@ -518,7 +549,8 @@ fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> PulseStack<
         let voices = sub
             .solfa
             .iter()
-            .filter_map(|line| line.pulses.get(pulse_id).map(|pulse| (line.voice, pulse)))
+            .zip(&context.voices[sub_id])
+            .filter_map(|(line, voice)| line.pulses.get(pulse_id).map(|pulse| (*voice, pulse)))
             .collect::<Vec<_>>();
 
         if let Some((_, first)) = voices.first() {
@@ -532,7 +564,7 @@ fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> PulseStack<
             .unwrap_or_default();
 
         stack.push(PulseStackItem {
-            lyric_voices: sub.solfa.iter().map(|s| s.voice).collect(),
+            lyric_voices: context.voices[sub_id].clone(),
             lyrics,
             voices,
         });
@@ -1059,7 +1091,7 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
 
     // Two section with different voice set might share the same line
     // so we must merge lyrics for visual consistency
-    fn lyrics(&self) -> (Vec<Voice>, Vec<SystemLyricGroup>) {
+    fn lyrics(&self) -> (Vec<VoiceInstance>, Vec<SystemLyricGroup>) {
         let voices = self.resolve_voice_set();
         let voice_lyrics = self.collect_lyrics(&voices);
         let groups = merge_lyric_groups(&voices, &voice_lyrics);
@@ -1067,13 +1099,13 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
         (voices, groups)
     }
 
-    fn resolve_voice_set(&self) -> Vec<Voice> {
-        let mut voices = Vec::new();
+    fn resolve_voice_set(&self) -> Vec<VoiceInstance> {
+        let mut voices: Vec<VoiceInstance> = Vec::new();
 
         for pulse_id in self.pulses() {
             for sub in &self.pulses[pulse_id].stack {
                 for &voice in &sub.lyric_voices {
-                    if !voices.contains(&voice) {
+                    if !voices.iter().any(|item| item.id == voice.id) {
                         voices.push(voice);
                     }
                 }
@@ -1087,7 +1119,7 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
     /// a sub-section belongs to every voice of that sub-section, so a shared
     /// line is copied onto each voice. Voices that end up with identical lines
     /// are merged again when the rows are emitted.
-    fn collect_lyrics(&self, voices: &[Voice]) -> Vec<SystemVoiceLyrics> {
+    fn collect_lyrics(&self, voices: &[VoiceInstance]) -> Vec<SystemVoiceLyrics> {
         let mut voice_lyrics = vec![SystemVoiceLyrics::new(self.verses); voices.len()];
 
         for (rel_id, abs_id) in self.pulses().enumerate() {
@@ -1103,7 +1135,7 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
                     let system_token = self.make_system_lyric_token(rel_id, token);
 
                     for &voice in &sub.lyric_voices {
-                        if let Some(index) = voices.iter().position(|item| *item == voice) {
+                        if let Some(index) = voices.iter().position(|item| item.id == voice.id) {
                             voice_lyrics[index].verses[verse].push(system_token.clone());
                         }
                     }
@@ -1140,7 +1172,7 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
 /// Merges consecutive voices whose collected lyrics are identical. The
 /// resulting group is emitted once, after the last voice it contains.
 fn merge_lyric_groups(
-    voices: &[Voice],
+    voices: &[VoiceInstance],
     voice_lyrics: &[SystemVoiceLyrics],
 ) -> Vec<SystemLyricGroup> {
     let mut groups = Vec::new();

@@ -1,6 +1,5 @@
 use voxalfa_core::{
     ast::solfa::PulseAccent,
-    data_types::Voice,
     ir::solfa::{NoteKind, PulseIr},
 };
 
@@ -9,7 +8,7 @@ use crate::{
     fonts::Fonts,
     model::{
         DynamicSpanKind, MarkerGlyph, MarkerKind, ResolvedScore, System, SystemLyricToken,
-        SystemPulse,
+        SystemPulse, VoiceInstance,
     },
     options::RenderOptions,
     renderer::{
@@ -321,7 +320,7 @@ impl<'a> SystemRender<'a> {
         Ok(())
     }
 
-    fn emit_voice_row(&mut self, voice: Voice, baseline: f32) -> Result<()> {
+    fn emit_voice_row(&mut self, voice: VoiceInstance, baseline: f32) -> Result<()> {
         let mut underline_start: Option<f32> = None;
         let mut last_note_end = self.origin_x;
         let note_offset = self.options.elements.note.left();
@@ -583,11 +582,11 @@ impl<'a> SystemRender<'a> {
     }
 }
 
-fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
+fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: VoiceInstance) -> Option<&'a PulseIr> {
     pulse.stack.iter().find_map(|sub| {
         sub.voices
             .iter()
-            .find(|(current, _)| *current == voice)
+            .find(|(current, _)| current.id == voice.id)
             .map(|(_, voice_pulse)| *voice_pulse)
     })
 }

@@ -40,7 +40,8 @@ pub fn layout_dynamic_spans(
         .iter()
         .filter_map(|voice| {
             let marker = markers.iter().find(|marker| {
-                marker.kind == MarkerKind::Dynamic && marker.voice == Some(*voice)
+                marker.kind == MarkerKind::Dynamic
+                    && marker.voice.map(|item| item.id) == Some(voice.id)
             })?;
 
             Some((*voice, fonts.label.dynamic.line_center(marker.y)))
@@ -67,7 +68,7 @@ pub fn layout_dynamic_spans(
             .and_then(|voice| {
                 voice_centers
                     .iter()
-                    .find(|(current, _)| *current == voice)
+                    .find(|(current, _)| current.id == voice.id)
                     .map(|(_, center)| *center)
             })
             .or(dynamic_center)

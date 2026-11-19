@@ -21,6 +21,7 @@ pub const ACCENT_STROKE_WIDTH: f32 = 0.1;
 pub const DYNAMIC_SPAN_LABEL_GAP: f32 = 0.4;
 pub const DYNAMIC_HAIRPIN_HEIGHT: f32 = 0.5;
 pub const DYNAMIC_DASH_GAP: f32 = 0.3;
+pub const DYNAMIC_VOICE_GAP: f32 = 0.35;
 
 pub const BARLINE_STROKE_WIDTH: f32 = 0.1;
 pub const BARLINE_BLOCK_INSET: f32 = 0.5;
