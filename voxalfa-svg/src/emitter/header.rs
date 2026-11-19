@@ -345,16 +345,10 @@ impl HeaderText {
         let baseline = style.top() + font.line_height();
         let height = baseline + style.bottom();
 
-        let x = match anchor {
-            TextAnchor::Start => x + style.left(),
-            TextAnchor::Middle => x + (style.left() - style.right()) / 2.0,
-            TextAnchor::End => x - style.right(),
-        };
-
         Self {
             text: text.into(),
             kind,
-            x,
+            x: anchor.align_x(x, style),
             baseline,
             height,
             anchor,

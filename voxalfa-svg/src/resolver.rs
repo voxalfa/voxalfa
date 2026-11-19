@@ -887,9 +887,18 @@ fn make_system<'a>(
     let time = resolver_data.pulses[measures[0].start].time;
     let layout = SystemLayout::new(&resolver_data.pulses, measures, resolver_data.verses);
     let (voices, lyric_groups) = layout.lyrics();
+    let pulses = layout.system_pulses(pulse_width);
+    let mut pulse_offsets = Vec::with_capacity(pulses.len());
+    let mut x = 0.0;
+
+    for pulse in &pulses {
+        pulse_offsets.push(x);
+        x += pulse.pulse_width;
+    }
 
     System {
-        pulses: layout.system_pulses(pulse_width),
+        pulses,
+        pulse_offsets,
         markers: layout.markers(),
         dynamic_spans: layout.dynamic_spans(&resolver_data.dynamic_spans),
         voltas: layout.voltas(),

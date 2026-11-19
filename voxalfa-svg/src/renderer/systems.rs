@@ -4,7 +4,7 @@ use crate::{fonts::Fonts, model::System, options::RenderOptions};
 
 use super::{
     dynamics::{PlacedDynamicSpan, layout_dynamic_spans},
-    markers::{MarkerLayout, PlacedMarker},
+    markers::{PlacedMarker, layout_markers},
     voltas::{PlacedVolta, layout_voltas},
 };
 
@@ -17,10 +17,7 @@ pub fn layout_system(
     let elements = &options.elements;
 
     let (mut voltas, volta_height) = layout_voltas(system, fonts, lead, options);
-    let volta_line = voltas.first().map(|volta| volta.line_y).unwrap_or(0.0);
-
-    let marker_layout =
-        MarkerLayout::new(system, fonts, lead, options).layout(volta_height, volta_line);
+    let marker_layout = layout_markers(system, fonts, lead, options, &voltas, volta_height);
 
     for volta in &mut voltas {
         volta.text_y += marker_layout.volta_offset;
@@ -30,20 +27,19 @@ pub fn layout_system(
     let mut lyric_rows: Vec<Vec<(usize, usize)>> = vec![Vec::new(); system.voices.len()];
 
     for (group_index, group) in system.lyric_groups.iter().enumerate() {
-        let Some(last_voice) = group
+        let last_voice = group
             .voices
             .iter()
             .filter_map(|voice| system.voices.iter().position(|item| item == voice))
-            .max()
-        else {
-            continue;
-        };
+            .max();
 
-        for (verse_index, verse) in group.verses.iter().enumerate() {
-            if !verse.is_empty() {
-                lyric_rows[last_voice].push((group_index, verse_index));
+        if let Some(last_voice) = last_voice {
+            for (verse_index, verse) in group.verses.iter().enumerate() {
+                if !verse.is_empty() {
+                    lyric_rows[last_voice].push((group_index, verse_index));
+                }
             }
-        }
+        };
     }
 
     let note_scale = fonts.text.note.size() / options.solfa_font_size.max(1.0);
@@ -117,6 +113,7 @@ fn layout_column(heights: &[f32]) -> ColumnLayout {
     ColumnLayout { ys, height: y }
 }
 
+#[derive(Debug)]
 pub struct SystemLayout {
     pub rows: Vec<SystemRow>,
     pub markers: Vec<PlacedMarker>,
@@ -141,6 +138,7 @@ pub enum SystemRowKind {
     },
 }
 
+#[derive(Debug)]
 pub struct ColumnLayout {
     pub ys: Vec<f32>,
     pub height: f32,

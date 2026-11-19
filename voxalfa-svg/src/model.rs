@@ -1,5 +1,5 @@
 use voxalfa_core::{
-    ast::solfa::PulseAccent,
+    ast::{directives::ElementStyle, solfa::PulseAccent},
     data_types::{TimeSignature, Touch, Voice},
     ir::solfa::PulseIr,
 };
@@ -113,6 +113,7 @@ pub struct PulseResolverData<'a> {
 
 pub struct System<'a> {
     pub pulses: Vec<SystemPulse<'a>>,
+    pub pulse_offsets: Vec<f32>,
     pub time: TimeSignature,
     pub voices: Vec<Voice>,
     pub lyric_groups: Vec<SystemLyricGroup>,
@@ -245,6 +246,14 @@ impl TextAnchor {
             Self::Start => "start",
             Self::Middle => "middle",
             Self::End => "end",
+        }
+    }
+
+    pub fn align_x(self, x: f32, style: &ElementStyle) -> f32 {
+        match self {
+            Self::Start => x + style.left(),
+            Self::Middle => x + (style.left() - style.right()) / 2.0,
+            Self::End => x - style.right(),
         }
     }
 }

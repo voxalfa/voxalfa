@@ -14,22 +14,13 @@ use crate::{
     options::RenderOptions,
     renderer::{
         constants::*,
-        geometry::{baseline, prolonged_leading, pulse_offsets, pulse_usable_width},
+        geometry::{prolonged_leading, pulse_usable_width},
         systems::{SystemLayout, SystemRowKind},
         text::{division_symbol, note_text},
     },
 };
 
 use super::primitives::{BraceSide, emit_brace, emit_line, emit_segno, emit_text, emit_touch};
-
-fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
-    pulse.stack.iter().find_map(|sub| {
-        sub.voices
-            .iter()
-            .find(|(current, _)| *current == voice)
-            .map(|(_, voice_pulse)| *voice_pulse)
-    })
-}
 
 pub fn emit_system(
     svg: &mut String,
@@ -69,7 +60,6 @@ struct SystemRender<'a> {
     fonts: &'a Fonts,
     system: &'a System<'a>,
     layout: &'a SystemLayout,
-    xs: Vec<f32>,
     usable_widths: Vec<f32>,
     origin_x: f32,
     lead: f32,
@@ -87,8 +77,6 @@ impl<'a> SystemRender<'a> {
         origin_x: f32,
         options: &'a RenderOptions,
     ) -> Self {
-        let xs = pulse_offsets(placement.system);
-
         let usable_widths = placement
             .system
             .pulses
@@ -101,7 +89,6 @@ impl<'a> SystemRender<'a> {
             fonts,
             system: placement.system,
             layout: placement.layout,
-            xs,
             usable_widths,
             origin_x,
             lead,
@@ -114,6 +101,7 @@ impl<'a> SystemRender<'a> {
     fn emit(&mut self) -> Result<()> {
         let system = self.system;
         let layout = self.layout;
+        let style = &self.fonts.text;
         let y = self.y;
 
         for volta in &layout.voltas {
@@ -151,16 +139,7 @@ impl<'a> SystemRender<'a> {
                     x,
                     baseline,
                     text.as_str(),
-                    match marker.kind {
-                        MarkerKind::Dynamic => "dynamic-label",
-                        MarkerKind::Jump => "jump-label",
-                        MarkerKind::Key => "key-label",
-                        MarkerKind::Tempo => "tempo-label",
-                        MarkerKind::Bpm => "bpm-label",
-                        MarkerKind::Mark => "mark-label",
-                        MarkerKind::TimeSignature => "time-label",
-                        MarkerKind::Touch => "marker",
-                    },
+                    marker_class(marker.kind),
                     marker.anchor.as_str(),
                 )?,
                 MarkerGlyph::Segno => emit_segno(self.svg, x, baseline, self.fonts)?,
@@ -241,7 +220,7 @@ impl<'a> SystemRender<'a> {
         for row in &layout.rows {
             match row.kind {
                 SystemRowKind::Voice(voice) => {
-                    let voice_baseline = baseline(y + row.y, row.height, &self.fonts.text.note);
+                    let voice_baseline = style.note.centered_baseline(y + row.y, row.height);
 
                     self.emit_voice_row(voice, voice_baseline)?;
                 }
@@ -251,7 +230,7 @@ impl<'a> SystemRender<'a> {
                 } => {
                     let group = &system.lyric_groups[group_index];
                     let tokens = &group.verses[verse_index];
-                    let lyric_baseline = baseline(y + row.y, row.height, &self.fonts.text.lyric);
+                    let lyric_baseline = style.lyric.centered_baseline(y + row.y, row.height);
 
                     self.emit_lyric_row(tokens, lyric_baseline)?;
                 }
@@ -324,7 +303,7 @@ impl<'a> SystemRender<'a> {
         let origin_x = self.origin_x;
 
         for (pulse_id, pulse) in system.pulses.iter().enumerate() {
-            let x = origin_x + self.xs[pulse_id];
+            let x = origin_x + self.system.pulse_offsets[pulse_id];
 
             if pulse.measure_start {
                 emit_line(self.svg, x, top, x, bottom, "barline")?;
@@ -357,7 +336,7 @@ impl<'a> SystemRender<'a> {
 
         for (pulse_id, pulse) in self.system.pulses.iter().enumerate() {
             let Some(voice_pulse) = find_voice(pulse, voice) else {
-                let cell_x = self.origin_x + self.xs[pulse_id];
+                let cell_x = self.origin_x + self.system.pulse_offsets[pulse_id];
                 self.emit_pulse_accent(pulse, cell_x, baseline)?;
                 continue;
             };
@@ -386,7 +365,8 @@ impl<'a> SystemRender<'a> {
                     cursor as f32 / total as f32
                 };
 
-                let cell_x = self.origin_x + self.xs[pulse_id] + start * usable_width;
+                let cell_x =
+                    self.origin_x + self.system.pulse_offsets[pulse_id] + start * usable_width;
 
                 let mut note_start = cell_x + self.lead;
                 let mut note_end = note_start;
@@ -505,8 +485,7 @@ impl<'a> SystemRender<'a> {
             PulseAccent::Strong => {}
             PulseAccent::Medium => {
                 let x = cell_x + lead / 2.0;
-                let note_center =
-                    baseline - (fonts.text.note.ascent() - fonts.text.note.descent()) / 2.0;
+                let note_center = fonts.text.note.line_center(baseline);
                 let half = fonts.text.note.size() / 2.0;
 
                 emit_line(
@@ -552,7 +531,8 @@ impl<'a> SystemRender<'a> {
                 .copied()
                 .unwrap_or(system.pulses[token.end].pulse_width);
 
-            let end_x = origin_x + self.xs[token.end] + token.end_unit * end_width;
+            let end_x =
+                origin_x + self.system.pulse_offsets[token.end] + token.end_unit * end_width;
 
             let start_width = self
                 .usable_widths
@@ -568,8 +548,11 @@ impl<'a> SystemRender<'a> {
                 token.start_unit
             };
 
-            let x =
-                origin_x + self.xs[token.start] + start_unit * start_width + lead + style.left();
+            let x = origin_x
+                + self.system.pulse_offsets[token.start]
+                + start_unit * start_width
+                + lead
+                + style.left();
 
             let end_x = (end_x - style.right()).max(x);
 
@@ -597,5 +580,27 @@ impl<'a> SystemRender<'a> {
         }
 
         Ok(())
+    }
+}
+
+fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
+    pulse.stack.iter().find_map(|sub| {
+        sub.voices
+            .iter()
+            .find(|(current, _)| *current == voice)
+            .map(|(_, voice_pulse)| *voice_pulse)
+    })
+}
+
+fn marker_class(marker: MarkerKind) -> &'static str {
+    match marker {
+        MarkerKind::Dynamic => "dynamic-label",
+        MarkerKind::Jump => "jump-label",
+        MarkerKind::Key => "key-label",
+        MarkerKind::Tempo => "tempo-label",
+        MarkerKind::Bpm => "bpm-label",
+        MarkerKind::Mark => "mark-label",
+        MarkerKind::TimeSignature => "time-label",
+        MarkerKind::Touch => "marker",
     }
 }

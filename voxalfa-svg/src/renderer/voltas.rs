@@ -1,6 +1,6 @@
 use crate::{fonts::Fonts, model::System, options::RenderOptions};
 
-use super::{constants::*, geometry::pulse_offsets};
+use super::constants::*;
 
 pub fn layout_voltas(
     system: &System,
@@ -13,7 +13,6 @@ pub fn layout_voltas(
     }
 
     let style = &options.elements.volta;
-    let xs = pulse_offsets(system);
     let text_y = style.top() + fonts.label.volta.ascent();
 
     let line_y =
@@ -26,8 +25,8 @@ pub fn layout_voltas(
             continue;
         }
 
-        let start_x = xs[volta.start] + lead;
-        let end_x = xs[volta.end - 1] + system.pulses[volta.end - 1].pulse_width;
+        let start_x = system.pulse_offsets[volta.start] + lead;
+        let end_x = system.pulse_offsets[volta.end - 1] + system.pulses[volta.end - 1].pulse_width;
         let text_x = start_x + style.left() + fonts.label.volta.size() * VOLTA_TEXT_INSET;
 
         let text = match &volta.label {

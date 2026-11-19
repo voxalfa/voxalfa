@@ -1,7 +1,7 @@
 use voxalfa_core::ir::solfa::NoteKind;
 
 use crate::{
-    fonts::{FontMetrics, Fonts},
+    fonts::Fonts,
     model::{System, SystemPulse},
     renderer::text::note_text,
     symbols::{SEGNO_ASPECT_RATIO, SEGNO_HEIGHT_SCALE},
@@ -24,18 +24,6 @@ pub fn system_width(system: &System) -> f32 {
         .sum::<f32>();
 
     leading_width + pulses_width
-}
-
-pub fn pulse_offsets(system: &System) -> Vec<f32> {
-    let mut result = Vec::with_capacity(system.pulses.len());
-    let mut x = 0.0;
-
-    for pulse in &system.pulses {
-        result.push(x);
-        x += pulse.pulse_width;
-    }
-
-    result
 }
 
 fn octave_width(fonts: &Fonts) -> f32 {
@@ -85,7 +73,7 @@ pub fn pulse_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 
         }
     }
 
-    usable.max(0.0)
+    usable
 }
 
 pub fn prolonged_leading(fonts: &Fonts) -> f32 {
@@ -114,8 +102,4 @@ fn note_extent(note: &NoteKind, fonts: &Fonts, lead: f32) -> f32 {
         NoteKind::ProlongedNote => lead + prolonged_leading(fonts) + fonts.text.note.width("-"),
         NoteKind::EmptyNote => lead,
     }
-}
-
-pub fn baseline(row_y: f32, row_height: f32, font: &FontMetrics) -> f32 {
-    row_y + (row_height - font.line_height()) / 2.0 + font.ascent()
 }
