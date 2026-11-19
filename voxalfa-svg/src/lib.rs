@@ -1,3 +1,4 @@
+mod emitter;
 mod error;
 mod locale;
 mod model;
@@ -29,5 +30,5 @@ pub fn render_pages_with_fonts(
     options: &RenderOptions,
     faces: &FontFaces,
 ) -> Result<Vec<String>> {
-    renderer::render_pages(data, options, faces)
+    emitter::render_pages(data, options, faces)
 }

@@ -12,15 +12,15 @@ use crate::{
         SystemPulse,
     },
     options::RenderOptions,
-    renderer::text::{division_symbol, note_text},
+    renderer::{
+        constants::*,
+        geometry::{baseline, prolonged_leading, pulse_offsets, pulse_usable_width},
+        systems::{SystemLayout, SystemRowKind},
+        text::{division_symbol, note_text},
+    },
 };
 
-use super::{
-    constants::*,
-    geometry::{baseline, prolonged_leading, pulse_offsets, pulse_usable_width},
-    layout::{SystemLayout, SystemRowKind},
-    primitives::{BraceSide, emit_brace, emit_line, emit_segno, emit_text, emit_touch},
-};
+use super::primitives::{BraceSide, emit_brace, emit_line, emit_segno, emit_text, emit_touch};
 
 fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
     pulse.stack.iter().find_map(|sub| {
@@ -150,7 +150,7 @@ impl<'a> SystemRender<'a> {
                     self.svg,
                     x,
                     baseline,
-                    text,
+                    text.as_str(),
                     match marker.kind {
                         MarkerKind::Dynamic => "dynamic-label",
                         MarkerKind::Jump => "jump-label",

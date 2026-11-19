@@ -4,14 +4,12 @@ use crate::{
     error::Result,
     fonts::{FontMetrics, Fonts},
     locale::Locale,
-    model::HeaderView,
+    model::{HeaderView, TextAnchor},
     options::RenderOptions,
+    renderer::constants::*,
 };
 
-use super::{
-    constants::*,
-    primitives::{TextAnchor, emit_text},
-};
+use super::primitives::emit_text;
 
 pub fn layout_header(header: &HeaderView, fonts: &Fonts, options: &RenderOptions) -> HeaderLayout {
     let mut rows = HeaderRows::new(header, fonts, options);

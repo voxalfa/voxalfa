@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-use super::{constants::*, geometry::segno_width};
+use crate::renderer::{constants::*, geometry::segno_width};
 
 pub fn emit_text(
     svg: &mut String,
@@ -153,23 +153,6 @@ pub fn emit_touch(
     }
 
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum TextAnchor {
-    Start,
-    Middle,
-    End,
-}
-
-impl TextAnchor {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Start => "start",
-            Self::Middle => "middle",
-            Self::End => "end",
-        }
-    }
 }
 
 fn xml_escape(input: &str) -> String {

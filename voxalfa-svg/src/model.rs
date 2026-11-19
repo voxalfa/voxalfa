@@ -131,19 +131,23 @@ pub enum DynamicSpanKind {
 #[derive(Debug, Clone, Copy)]
 pub struct FlatDynamicSpan {
     pub kind: DynamicSpanKind,
+    pub voice: Option<Voice>,
     pub start_pulse: usize,
     pub start_unit: f32,
     pub end_pulse: usize,
     pub end_unit: f32,
+    pub end_duration: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct SystemDynamicSpan {
     pub kind: DynamicSpanKind,
+    pub voice: Option<Voice>,
     pub start: usize,
     pub start_unit: f32,
     pub end: usize,
     pub end_unit: f32,
+    pub end_duration: f32,
     pub fits: bool,
     pub continued: bool,
 }
@@ -226,4 +230,21 @@ pub struct ResolvedScore<'a> {
     pub header: HeaderView,
     pub systems: Vec<System<'a>>,
     pub lead_width: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TextAnchor {
+    Start,
+    Middle,
+    End,
+}
+
+impl TextAnchor {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::Middle => "middle",
+            Self::End => "end",
+        }
+    }
 }

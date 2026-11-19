@@ -85,6 +85,7 @@ struct PulseResolver<'a, 'd> {
     lyrics_map: LyricsMap<f32>,
     pulses: Vec<PulseStack<'a>>,
     dynamic_spans: Vec<FlatDynamicSpan>,
+    pending_markers: Vec<(usize, FlatMarker)>,
     current_time: TimeSignature,
     verses: usize,
 }
@@ -119,6 +120,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             lyrics_map,
             pulses: Vec::new(),
             dynamic_spans: Vec::new(),
+            pending_markers: Vec::new(),
             current_time: default_time,
         }
     }
@@ -126,6 +128,12 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
     fn resolve(mut self) -> PulseResolverData<'a> {
         for (section_id, section) in self.data.body.sections.iter().enumerate() {
             self.resolve_section(section_id, section);
+        }
+
+        for (pulse_id, marker) in self.pending_markers.drain(..) {
+            if let Some(pulse) = self.pulses.get_mut(pulse_id) {
+                pulse.markers.push(marker);
+            }
         }
 
         self.compute_measures();
@@ -359,12 +367,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         }
     }
 
-    fn add_dynamic_markers_impl(
-        &mut self,
-        section_start: usize,
-        sub: &SubSectionIr,
-        views: &[PulseView],
-    ) {
+    fn add_dynamic_markers_impl(&mut self, offset: usize, sub: &SubSectionIr, views: &[PulseView]) {
         let Some(dynamics) = &sub.params.dynamics else {
             return;
         };
@@ -376,48 +379,40 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             let event = &timed.value;
             let dynamic = event.value;
 
-            if matches!(dynamic, Dynamic::Cre | Dynamic::Dec) {
-                let Some(end) = event.end else {
+            let span_kind = match dynamic {
+                Dynamic::Cre => Some(DynamicSpanKind::Crescendo),
+                Dynamic::Dec => Some(DynamicSpanKind::Decrescendo),
+                _ => None,
+            };
+
+            if let Some(kind) = span_kind {
+                let Some(start) = resolve_event(&positions, event.start) else {
                     continue;
                 };
 
-                let Some((start_pulse, start_unit)) = resolve_event(&positions, event.start) else {
-                    continue;
-                };
-
-                let Some((end_pulse, end_unit)) = resolve_event(&positions, end) else {
+                let Some(end) = event.end.and_then(|e| resolve_event(&positions, e)) else {
                     continue;
                 };
 
                 self.dynamic_spans.push(FlatDynamicSpan {
-                    kind: match dynamic {
-                        Dynamic::Cre => DynamicSpanKind::Crescendo,
-                        Dynamic::Dec => DynamicSpanKind::Decrescendo,
-                        _ => unreachable!(),
-                    },
-                    start_pulse: section_start + start_pulse,
-                    start_unit,
-                    end_pulse: section_start + end_pulse,
-                    end_unit,
+                    kind,
+                    voice,
+                    start_pulse: offset + start.pulse,
+                    start_unit: start.unit,
+                    end_pulse: offset + end.pulse,
+                    end_unit: end.unit,
+                    end_duration: end.duration,
                 });
+            } else if let Some(resolved) = resolve_event(&positions, event.start) {
+                let marker = FlatMarker {
+                    kind: MarkerKind::Dynamic,
+                    glyph: MarkerGlyph::Text(dynamic.to_string()),
+                    index: resolved.unit,
+                    voice,
+                };
 
-                continue;
-            }
-
-            let Some((pulse_id, unit)) = resolve_event(&positions, event.start) else {
-                continue;
+                self.pending_markers.push((offset + resolved.pulse, marker));
             };
-
-            let Some(pulse) = self.pulses.get_mut(section_start + pulse_id) else {
-                continue;
-            };
-
-            pulse.markers.push(FlatMarker {
-                kind: MarkerKind::Dynamic,
-                glyph: MarkerGlyph::Text(dynamic.to_string()),
-                index: unit,
-                voice,
-            });
         }
     }
 
@@ -477,15 +472,15 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         for timed in &touches.value {
             let event = &timed.value;
 
-            let Some((pulse_id, index)) = resolve_event(&positions, event.start) else {
+            let Some(resolved) = resolve_event(&positions, event.start) else {
                 continue;
             };
 
-            if let Some(pulse) = self.pulses.get_mut(section_start + pulse_id) {
+            if let Some(pulse) = self.pulses.get_mut(section_start + resolved.pulse) {
                 pulse.markers.push(FlatMarker {
                     kind: MarkerKind::Touch,
                     glyph: MarkerGlyph::Touch(event.value),
-                    index,
+                    index: resolved.unit,
                     voice: None,
                 });
             }
@@ -584,6 +579,13 @@ struct IndexedNote {
     duration: f32,
 }
 
+#[derive(Clone, Copy)]
+struct ResolvedEvent {
+    pulse: usize,
+    unit: f32,
+    duration: f32,
+}
+
 fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
     let mut positions = Vec::new();
     let mut abs_offset = 0.0;
@@ -609,16 +611,25 @@ fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
     positions
 }
 
-fn resolve_event(positions: &[IndexedNote], target: f32) -> Option<(usize, f32)> {
+fn resolve_event(positions: &[IndexedNote], target: f32) -> Option<ResolvedEvent> {
     positions
         .iter()
         .find_map(|note| {
-            ((note.abs_index - target).abs() < FLOAT_ERROR).then_some((note.pulse, note.rel_index))
+            ((note.abs_index - target).abs() < FLOAT_ERROR).then_some(ResolvedEvent {
+                pulse: note.pulse,
+                unit: note.rel_index,
+                duration: note.duration,
+            })
         })
         .or_else(|| {
             positions.iter().find_map(|note| {
-                ((note.abs_index + note.duration - target).abs() < FLOAT_ERROR)
-                    .then_some((note.pulse, note.rel_index + note.duration))
+                ((note.abs_index + note.duration - target).abs() < FLOAT_ERROR).then_some(
+                    ResolvedEvent {
+                        pulse: note.pulse,
+                        unit: note.rel_index + note.duration,
+                        duration: 0.0,
+                    },
+                )
             })
         })
 }
@@ -926,14 +937,24 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
         spans
             .iter()
             .filter(|span| span.end_pulse >= self.start && span.start_pulse < self.end)
-            .map(|span| SystemDynamicSpan {
-                kind: span.kind,
-                start: span.start_pulse.saturating_sub(self.start),
-                start_unit: span.start_unit,
-                end: (span.end_pulse - self.start).min(self.len() - 1),
-                end_unit: span.end_unit,
-                fits: span.start_pulse >= self.start && span.end_pulse < self.end,
-                continued: span.start_pulse < self.start,
+            .map(|span| {
+                let ends_after = span.end_pulse >= self.end;
+
+                SystemDynamicSpan {
+                    kind: span.kind,
+                    voice: span.voice,
+                    start: span.start_pulse.saturating_sub(self.start),
+                    start_unit: span.start_unit,
+                    end: if ends_after {
+                        self.len() - 1
+                    } else {
+                        (span.end_pulse - self.start).min(self.len() - 1)
+                    },
+                    end_unit: if ends_after { 1.0 } else { span.end_unit },
+                    end_duration: if ends_after { 0.0 } else { span.end_duration },
+                    fits: span.start_pulse >= self.start && span.end_pulse < self.end,
+                    continued: span.start_pulse < self.start,
+                }
             })
             .collect()
     }

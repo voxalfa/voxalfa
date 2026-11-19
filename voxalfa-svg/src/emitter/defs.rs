@@ -9,7 +9,7 @@ use crate::{
     options::RenderOptions,
 };
 
-use super::constants::*;
+use crate::renderer::constants::*;
 
 pub fn emit_defs(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> Result<()> {
     writeln!(svg, "<defs>\n  <style>")?;
