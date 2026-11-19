@@ -35,7 +35,7 @@ pub fn execute(params: XmlParams) -> Result<()> {
             let base_path = default_path.file_name();
 
             let output_path = match output_path {
-                Some(path) if path.is_file() => path,
+                Some(path) if path.extension().is_some() => path,
                 Some(path) if let Some(base) = base_path => path.join(base),
                 _ => default_path,
             };

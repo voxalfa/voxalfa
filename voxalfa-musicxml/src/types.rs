@@ -236,12 +236,7 @@ impl Direction {
     pub fn jump(label: &str, sound: Sound) -> Self {
         Self {
             placement: Placement::Below,
-            direction_type: vec![DirectionType {
-                words: Some(Words {
-                    content: label.to_string(),
-                }),
-                ..Default::default()
-            }],
+            direction_type: vec![DirectionType::words(label)],
             sound: Some(sound),
         }
     }
@@ -274,6 +269,8 @@ pub struct DirectionType {
     pub words: Option<Words>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dynamics: Option<DynamicsWrapper>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metronome: Option<Metronome>,
 }
 
 impl DirectionType {
@@ -295,6 +292,7 @@ impl DirectionType {
         Self {
             words: Some(Words {
                 content: content.to_string(),
+                ..Default::default()
             }),
             ..Default::default()
         }
@@ -358,10 +356,27 @@ impl Dynamics {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct Words {
     #[serde(rename = "$text")]
     pub content: String,
+    #[serde(rename = "@font-style")]
+    pub font_style: Option<FontStyle>,
+}
+
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FontStyle {
+    #[default]
+    Normal,
+    Italic,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Metronome {
+    pub beat_unit: NoteType,
+    pub per_minute: String,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -380,6 +395,8 @@ pub struct Sound {
     pub dalsegno: Option<SoundId>,
     #[serde(rename = "@dynamics", skip_serializing_if = "Option::is_none")]
     pub dynamics: Option<u16>,
+    #[serde(rename = "@tempo", skip_serializing_if = "Option::is_none")]
+    pub tempo: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -429,6 +446,42 @@ impl Sound {
         Self {
             dacapo: Some(Choice::Yes),
             ..self
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub enum NoteType {
+    #[serde(rename = "whole")]
+    Whole,
+    #[serde(rename = "half")]
+    Half,
+    #[serde(rename = "quarter")]
+    Quarter,
+    #[serde(rename = "eighth")]
+    Eighth,
+    #[serde(rename = "16th")]
+    N16,
+    #[serde(rename = "32nd")]
+    N32,
+    #[serde(rename = "64th")]
+    N64,
+    #[serde(rename = "128th")]
+    N128,
+}
+
+impl NoteType {
+    pub fn from_factor(factor: usize) -> Self {
+        match factor {
+            1 => Self::Whole,
+            2 => Self::Half,
+            4 => Self::Quarter,
+            8 => Self::Eighth,
+            16 => Self::N16,
+            32 => Self::N32,
+            64 => Self::N64,
+            128 => Self::N128,
+            _ => panic!("unsupported note type: {factor}"),
         }
     }
 }

@@ -2,7 +2,7 @@ use voxalfa_core::{
     ast::solfa::{BaseNote, Note as CoreNote},
     data_types::{
         BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature, KeyAccidental, Mark,
-        TimeSignature, Voice,
+        StaticTempo, TimeSignature, Voice,
     },
     ir::solfa::NoteKind,
     output::{
@@ -12,8 +12,8 @@ use voxalfa_core::{
 };
 
 use crate::types::{
-    Attributes, Choice, Clef, Direction, DirectionType, Dynamics, Key, Measure, MeasureItem, Note,
-    Pitch, Position, Rest, Sound, Step, Time,
+    Attributes, Choice, Clef, Direction, DirectionType, Dynamics, FontStyle, Key, Measure,
+    MeasureItem, Metronome, Note, NoteType, Pitch, Position, Rest, Sound, Step, Time, Words,
 };
 
 const MIDDLE_C: i8 = 60;
@@ -50,8 +50,6 @@ impl MeasureTask {
                 self.set_initial_attributes();
             }
 
-            self.handle_events(events);
-
             if note.measure_start && note_id > 0 {
                 self.result.push(Measure {
                     number: self.result.len() + 1,
@@ -59,6 +57,8 @@ impl MeasureTask {
                     items: std::mem::take(&mut self.items),
                 });
             }
+
+            self.handle_events(events);
 
             let duration = ((MEASURE_DIVISION * note.column.duration as u16) / note.factor as u16)
                 / (4 / self.time.bottom as u16);
@@ -107,11 +107,11 @@ impl MeasureTask {
                 EventKind::Key(key) => self.handle_key_change(key),
                 EventKind::Jump(jump) => self.handle_jump_event(jump),
                 EventKind::Mark(mark) => self.handle_mark_event(mark),
-                EventKind::TimeSignature(time) => self.pending_time = Some(time),
                 EventKind::Dynamic(CoreDynamics::Cre) => {}
                 EventKind::Dynamic(CoreDynamics::Dec) => {}
                 EventKind::Dynamic(dynamic) => self.handle_dynamics_event(dynamic),
-                // EventKind::Tempo(static_tempo) => todo!(),
+                EventKind::Tempo(tempo) => self.handle_tempo_event(tempo),
+                EventKind::TimeSignature(time) => self.pending_time = Some(time),
                 // EventKind::Touch(touch) => todo!(),
                 // EventKind::EndingStart(_) => todo!(),
                 // EventKind::EndingEnd(_) => todo!(),
@@ -189,6 +189,34 @@ impl MeasureTask {
         }
     }
 
+    fn handle_tempo_event(&mut self, tempo: StaticTempo) {
+        let direction_type = match tempo {
+            StaticTempo::Custom(bpm) => DirectionType {
+                metronome: Some(Metronome {
+                    beat_unit: NoteType::from_factor(self.time.bottom.into()),
+                    per_minute: bpm.to_string(),
+                }),
+                ..Default::default()
+            },
+            named_tempo => DirectionType {
+                words: Some(Words {
+                    content: named_tempo.to_string(),
+                    font_style: Some(FontStyle::Italic),
+                }),
+                ..Default::default()
+            },
+        };
+
+        self.items.push(MeasureItem::Direction(Direction {
+            direction_type: vec![direction_type],
+            sound: Some(Sound {
+                tempo: Some(tempo.bpm().into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }));
+    }
+
     fn handle_note(&mut self, note: CoreNote, duration: u16, tied: bool) {
         let semitones = MIDDLE_C + note.offset() + self.key.offset() + self.voice.offset();
         let octave = (semitones / 12) - 1;
@@ -217,11 +245,20 @@ impl MeasureTask {
     }
 
     fn handle_empty_note(&mut self, duration: u16) {
-        self.items.push(MeasureItem::Note(Note {
-            rest: Some(Rest {}),
-            duration,
-            ..Default::default()
-        }));
+        let last_note = self.items.last_mut().and_then(|i| match i {
+            MeasureItem::Note(note) if note.rest.is_some() => Some(note),
+            _ => None,
+        });
+
+        if let Some(note) = last_note {
+            note.duration += duration;
+        } else {
+            self.items.push(MeasureItem::Note(Note {
+                rest: Some(Rest {}),
+                duration,
+                ..Default::default()
+            }));
+        }
     }
 
     fn handle_prolonged_note(&mut self, duration: u16) {
