@@ -143,7 +143,6 @@ pub struct FlatDynamicSpan {
     pub start_unit: f32,
     pub end_pulse: usize,
     pub end_unit: f32,
-    pub end_duration: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -154,7 +153,6 @@ pub struct SystemDynamicSpan {
     pub start_unit: f32,
     pub end: usize,
     pub end_unit: f32,
-    pub end_duration: f32,
     pub fits: bool,
     pub continued: bool,
 }

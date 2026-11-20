@@ -240,13 +240,11 @@ impl ConverterTask {
         let end_vel = u8::from(self.get_target_velocity(transition)) as f32;
 
         let total_ticks = notes.iter().map(|n| n.duration).sum::<u32>();
-        let last_duration = notes.last().map(|note| note.duration).unwrap_or_default();
-        let ramp_ticks = total_ticks.saturating_sub(last_duration);
         let mut elapsed_ticks = 0;
 
         for note in notes {
-            let progress = if ramp_ticks > 0 {
-                elapsed_ticks as f32 / ramp_ticks as f32
+            let progress = if total_ticks > 0 {
+                elapsed_ticks as f32 / total_ticks as f32
             } else {
                 1.0
             };

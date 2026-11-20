@@ -79,8 +79,7 @@ pub fn layout_dynamic_spans(
             .map(|(start, _)| start + style.left())
             .unwrap_or(fallback_start_x);
 
-        let end_unit = span.end_unit + span.end_duration;
-        let fallback_end_x = geometry.note_x(span.end, end_unit) - style.right();
+        let fallback_end_x = geometry.note_x(span.end, span.end_unit) - style.right();
 
         let end_x = geometry
             .note_bounds(span.end, span.end_unit, span.voice)

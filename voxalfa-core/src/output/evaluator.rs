@@ -7,7 +7,7 @@ use crate::{
     },
     output::{
         dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
-        event::{Event, EventKind, JumpEvent, NoteTimeline},
+        event::{Event, EventKind, EventRole, JumpEvent, NoteTimeline},
         tempo::{TempoState, TempoTransition},
     },
 };
@@ -84,12 +84,7 @@ impl TimelineEvaluator {
     }
 
     pub fn poll_dynamic_update(&mut self) -> Option<DynamicTransition> {
-        if self.dynamic.update {
-            self.dynamic.update = false;
-            self.dynamic.transition.take()
-        } else {
-            None
-        }
+        self.dynamic.ended.take()
     }
 
     pub fn poll_tempo_update(&mut self) -> Option<TempoTransition> {
@@ -111,7 +106,11 @@ impl TimelineEvaluator {
             EventKind::Touch(touch) => self.pending_touch = Some(touch),
             EventKind::Mark(mark) => self.handle_mark_event(mark),
             EventKind::Jump(jump) => self.handle_jump_event(jump),
-            EventKind::Dynamic(dynamic) => self.handle_dynamic_event(dynamic),
+            EventKind::Dynamic(dynamic) => match event.role {
+                EventRole::Point => self.dynamic.current = dynamic,
+                EventRole::Start => self.handle_dynamic_start(dynamic),
+                EventRole::End => self.handle_dynamic_end(dynamic),
+            },
             EventKind::TempoStart(kind) => self.handle_tempo_start(kind),
             EventKind::TempoEnd(kind) => self.handle_tempo_end(kind),
 
@@ -154,35 +153,42 @@ impl TimelineEvaluator {
         }
     }
 
-    fn handle_dynamic_event(&mut self, dynamic: Dynamic) {
+    fn handle_dynamic_start(&mut self, dynamic: Dynamic) {
         match dynamic {
-            Dynamic::Cre | Dynamic::Dec if self.dynamic.transition.is_some() => {
-                if let Some(transition) = &self.dynamic.transition
-                    && self.dynamic.current == transition.level
-                {
-                    self.dynamic.current = transition.target(self.dynamic.current);
-                }
+            Dynamic::Cre => self.start_dynamic_transition(DynamicTransitionKind::Cre),
+            Dynamic::Dec => self.start_dynamic_transition(DynamicTransitionKind::Dec),
+            _ => self.dynamic.current = dynamic,
+        }
+    }
 
-                self.dynamic.update = true;
+    fn start_dynamic_transition(&mut self, kind: DynamicTransitionKind) {
+        if self.dynamic.transition.is_none() {
+            self.dynamic.transition = Some(DynamicTransition {
+                level: self.dynamic.current,
+                kind,
+            });
+        }
+    }
+
+    fn handle_dynamic_end(&mut self, dynamic: Dynamic) {
+        let kind = match dynamic {
+            Dynamic::Cre => DynamicTransitionKind::Cre,
+            _ => DynamicTransitionKind::Dec,
+        };
+
+        let Some(transition) = self.dynamic.transition.take() else {
+            return;
+        };
+
+        // handle adjacent dynamic edge case
+        if transition.kind != kind {
+            self.dynamic.transition = Some(transition);
+        } else {
+            if self.dynamic.current == transition.level {
+                self.dynamic.current = transition.target(self.dynamic.current);
             }
 
-            Dynamic::Cre => {
-                self.dynamic.transition = Some(DynamicTransition {
-                    level: self.dynamic.current,
-                    kind: DynamicTransitionKind::Cre,
-                });
-            }
-
-            Dynamic::Dec => {
-                self.dynamic.transition = Some(DynamicTransition {
-                    level: self.dynamic.current,
-                    kind: DynamicTransitionKind::Dec,
-                });
-            }
-
-            _ => {
-                self.dynamic.current = dynamic;
-            }
+            self.dynamic.ended = Some(transition);
         }
     }
 
