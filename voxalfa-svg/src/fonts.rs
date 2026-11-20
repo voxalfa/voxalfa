@@ -322,6 +322,14 @@ impl FontMetrics {
         self.ascent + self.descent
     }
 
+    pub fn centered_baseline(&self, top: f32, height: f32) -> f32 {
+        top + (height - self.line_height()) / 2.0 + self.ascent()
+    }
+
+    pub fn line_center(&self, baseline: f32) -> f32 {
+        baseline + (self.descent() - self.ascent()) / 2.0
+    }
+
     pub fn width(&self, text: &str) -> f32 {
         let Ok(font) = FontRef::from_index(&self.face.data, self.face.index) else {
             return 0.0;
