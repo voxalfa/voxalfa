@@ -1,25 +1,16 @@
-use voxalfa_core::{
-    ast::directives::ElementStyle,
-    data_types::Touch,
-    ir::solfa::{NoteKind, PulseIr},
-};
+use voxalfa_core::{ast::directives::ElementStyle, data_types::Touch};
 
 use crate::{
     fonts::{FontMetrics, Fonts},
-    model::{
-        MarkerGlyph, MarkerKind, System, SystemMarker, SystemPulse, TextAnchor, VoiceInstance,
-    },
+    model::{MarkerGlyph, MarkerKind, System, SystemMarker, TextAnchor, VoiceInstance},
     options::RenderOptions,
 };
 
 use super::{
     constants::*,
-    geometry::{prolonged_leading, pulse_usable_width, segno_width},
-    text::note_text,
+    geometry::{FLOAT_ERROR, SystemGeometry, segno_width},
     voltas::PlacedVolta,
 };
-
-const FLOAT_ERROR: f32 = 0.001;
 
 pub fn layout_markers(
     system: &System,
@@ -117,15 +108,6 @@ pub fn marker_bounds(marker: &PlacedMarker) -> (f32, f32) {
         TextAnchor::Middle => (marker.x - marker.width / 2.0, marker.x + marker.width / 2.0),
         TextAnchor::End => (marker.x - marker.width, marker.x),
     }
-}
-
-fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: VoiceInstance) -> Option<&'a PulseIr> {
-    pulse.stack.iter().find_map(|sub| {
-        sub.voices
-            .iter()
-            .find(|(current, _)| current.id == voice.id)
-            .map(|(_, voice_pulse)| *voice_pulse)
-    })
 }
 
 #[derive(Debug)]
@@ -229,8 +211,7 @@ struct MarkerStacker<'a, 'b> {
     system: &'a System<'b>,
     fonts: &'a Fonts,
     options: &'a RenderOptions,
-    lead: f32,
-    usable_widths: Vec<f32>,
+    geometry: SystemGeometry<'a, 'b>,
     volta_height: f32,
     volta_line: f32,
     volta_spans: Vec<(f32, f32)>,
@@ -245,12 +226,8 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
         voltas: &[PlacedVolta],
         volta_height: f32,
     ) -> Self {
-        let usable_widths = system
-            .pulses
-            .iter()
-            .map(|pulse| pulse_usable_width(pulse, fonts, lead))
-            .collect();
         let volta_line = voltas.first().map(|volta| volta.line_y).unwrap_or(0.0);
+
         let volta_spans = voltas
             .iter()
             .map(|volta| (volta.start_x, volta.end_x))
@@ -260,8 +237,7 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
             system,
             fonts,
             options,
-            lead,
-            usable_widths,
+            geometry: SystemGeometry::new(system, fonts, lead),
             volta_height,
             volta_line,
             volta_spans,
@@ -334,9 +310,7 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
             MarkerGlyph::Touch(_) => touch_width(&marker.glyph, self.fonts),
         };
 
-        let fallback_x = self.system.pulse_offsets[marker.pulse]
-            + marker.unit * self.usable_widths[marker.pulse]
-            + self.lead;
+        let fallback_x = self.geometry.note_x(marker.pulse, marker.unit);
 
         let x = match marker.kind {
             MarkerKind::Dynamic | MarkerKind::Touch => self
@@ -375,56 +349,7 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
     }
 
     fn note_center(&self, pulse_id: usize, unit: f32) -> Option<f32> {
-        let pulse = self.system.pulses.get(pulse_id)?;
-        let usable_width = self.usable_widths[pulse_id];
-
-        for voice in &self.system.voices {
-            let Some(voice_pulse) = find_voice(pulse, *voice) else {
-                continue;
-            };
-
-            let total = voice_pulse
-                .columns
-                .iter()
-                .map(|column| column.duration as u32)
-                .sum::<u32>()
-                .max(1);
-
-            let mut cursor = 0u32;
-
-            for (index, column) in voice_pulse.columns.iter().enumerate() {
-                let start = cursor as f32 / total as f32;
-
-                cursor += column.duration as u32;
-
-                let end = cursor as f32 / total as f32;
-                let is_last = index + 1 == voice_pulse.columns.len();
-
-                if unit + FLOAT_ERROR >= start
-                    && (unit < end - FLOAT_ERROR || (is_last && unit <= end + FLOAT_ERROR))
-                {
-                    if matches!(column.note, NoteKind::EmptyNote) {
-                        break;
-                    }
-
-                    let (text, _) = note_text(&column.note);
-                    let glyph_width = self.fonts.text.note.width(&text);
-                    let leading = match column.note {
-                        NoteKind::ProlongedNote => self.lead + prolonged_leading(self.fonts),
-                        _ => self.lead,
-                    };
-
-                    return Some(
-                        self.system.pulse_offsets[pulse_id]
-                            + start * usable_width
-                            + leading
-                            + glyph_width / 2.0,
-                    );
-                }
-            }
-        }
-
-        None
+        self.geometry.note_center(pulse_id, unit, None)
     }
 
     fn stack(&self, columns: Vec<Vec<PlacedMarker>>) -> MarkerLayout {

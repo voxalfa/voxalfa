@@ -13,7 +13,7 @@ use crate::{
     options::RenderOptions,
     renderer::{
         constants::*,
-        geometry::{prolonged_leading, pulse_usable_width},
+        geometry::{SystemGeometry, prolonged_leading},
         systems::{SystemLayout, SystemRowKind},
         text::{division_symbol, note_text},
     },
@@ -59,7 +59,7 @@ struct SystemRender<'a> {
     fonts: &'a Fonts,
     system: &'a System<'a>,
     layout: &'a SystemLayout,
-    usable_widths: Vec<f32>,
+    geometry: SystemGeometry<'a, 'a>,
     origin_x: f32,
     lead: f32,
     y: f32,
@@ -76,19 +76,14 @@ impl<'a> SystemRender<'a> {
         origin_x: f32,
         options: &'a RenderOptions,
     ) -> Self {
-        let usable_widths = placement
-            .system
-            .pulses
-            .iter()
-            .map(|pulse| pulse_usable_width(pulse, fonts, lead))
-            .collect();
+        let geometry = SystemGeometry::new(placement.system, fonts, lead);
 
         Self {
             svg,
             fonts,
             system: placement.system,
             layout: placement.layout,
-            usable_widths,
+            geometry,
             origin_x,
             lead,
             y: placement.y,
@@ -340,11 +335,7 @@ impl<'a> SystemRender<'a> {
                 continue;
             };
 
-            let usable_width = self
-                .usable_widths
-                .get(pulse_id)
-                .copied()
-                .unwrap_or(pulse.pulse_width);
+            let usable_width = self.geometry.usable_width(pulse_id);
 
             let total = voice_pulse
                 .columns
@@ -514,7 +505,6 @@ impl<'a> SystemRender<'a> {
     }
 
     fn emit_lyric_row(&mut self, tokens: &[SystemLyricToken], baseline: f32) -> Result<()> {
-        let system = self.system;
         let fonts = self.fonts;
         let origin_x = self.origin_x;
         let lead = self.lead;
@@ -524,22 +514,12 @@ impl<'a> SystemRender<'a> {
                 continue;
             }
 
-            let end_width = self
-                .usable_widths
-                .get(token.end)
-                .copied()
-                .unwrap_or(system.pulses[token.end].pulse_width);
+            let style = &self.options.elements.lyrics;
+            let start_width = self.geometry.usable_width(token.start);
+            let end_width = self.geometry.usable_width(token.end);
 
             let end_x =
                 origin_x + self.system.pulse_offsets[token.end] + token.end_unit * end_width;
-
-            let start_width = self
-                .usable_widths
-                .get(token.start)
-                .copied()
-                .unwrap_or(system.pulses[token.start].pulse_width);
-
-            let style = &self.options.elements.lyrics;
 
             let start_unit = if (token.start_unit - 0.75).abs() < f32::EPSILON {
                 0.70 // add more room for 1/4 cells

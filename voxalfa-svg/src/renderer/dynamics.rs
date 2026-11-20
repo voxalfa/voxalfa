@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     constants::*,
-    geometry::pulse_usable_width,
+    geometry::SystemGeometry,
     markers::{PlacedMarker, label_at, marker_bounds},
 };
 
@@ -23,12 +23,7 @@ pub fn layout_dynamic_spans(
     }
 
     let style = &options.elements.dynamic;
-
-    let usable_widths = system
-        .pulses
-        .iter()
-        .map(|pulse| pulse_usable_width(pulse, fonts, lead))
-        .collect::<Vec<_>>();
+    let geometry = SystemGeometry::new(system, fonts, lead);
 
     let dynamic_center = markers
         .iter()
@@ -77,14 +72,20 @@ pub fn layout_dynamic_spans(
         let baseline =
             center_y + (fonts.label.dynamic.ascent() - fonts.label.dynamic.descent()) / 2.0;
 
-        let start_x = system.pulse_offsets[span.start]
-            + span.start_unit * usable_widths[span.start]
-            + lead
-            + style.left();
+        let fallback_start_x = geometry.note_x(span.start, span.start_unit) + style.left();
+
+        let start_x = geometry
+            .note_bounds(span.start, span.start_unit, span.voice)
+            .map(|(start, _)| start + style.left())
+            .unwrap_or(fallback_start_x);
 
         let end_unit = span.end_unit + span.end_duration;
-        let end_x = system.pulse_offsets[span.end] + end_unit * usable_widths[span.end] + lead
-            - style.right();
+        let fallback_end_x = geometry.note_x(span.end, end_unit) - style.right();
+
+        let end_x = geometry
+            .note_bounds(span.end, span.end_unit, span.voice)
+            .map(|(_, end)| end - style.right())
+            .unwrap_or(fallback_end_x);
 
         let start_x = match label_at(markers, span.start, span.start_unit, span.voice) {
             Some(marker) => {
