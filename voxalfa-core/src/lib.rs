@@ -11,4 +11,4 @@ pub mod validation;
 mod tests;
 
 pub const LIB_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const SUPPORTED_VERSION: &str = ">=0.1.0-alpha, <0.2.0";
+pub const SUPPORTED_VERSION: &str = ">=0.1.0-alpha.2, <0.2.0";

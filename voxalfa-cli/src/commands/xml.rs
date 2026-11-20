@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use clap::Parser;
 use voxalfa_musicxml::Converter;
@@ -6,7 +6,7 @@ use voxalfa_musicxml::Converter;
 use crate::{
     error::Result,
     reporter::CliReporter,
-    utils::fs::{parse_file, read_files, write_file},
+    utils::fs::{parse_file, read_files, resolve_output_path, write_file},
 };
 
 #[derive(Parser)]
@@ -17,7 +17,7 @@ pub struct XmlParams {
     output: Option<String>,
 }
 
-pub fn execute(params: XmlParams) -> Result<()> {
+pub fn execute(params: XmlParams) -> Result<ExitCode> {
     let files = read_files(&params.files)?;
     let mut reporter = CliReporter::new(1);
 
@@ -29,22 +29,11 @@ pub fn execute(params: XmlParams) -> Result<()> {
         } else {
             let converter = Converter::new(&output);
             let xml = converter.convert().unwrap();
-            let file_path = Path::new(&file.path);
-            let output_path = params.output.as_ref().map(PathBuf::from);
-            let default_path = file_path.with_extension("xml");
-            let base_path = default_path.file_name();
-
-            let output_path = match output_path {
-                Some(path) if path.extension().is_some() => path,
-                Some(path) if let Some(base) = base_path => path.join(base),
-                _ => default_path,
-            };
+            let output_path = resolve_output_path(&file.path, params.output.as_deref(), "xml");
 
             write_file(output_path, xml)?;
         }
     }
 
-    reporter.finalize();
-
-    Ok(())
+    Ok(reporter.finalize())
 }

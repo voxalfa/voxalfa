@@ -9,7 +9,6 @@ FILE: test_expr_reordering
 [$] time={4,4} | voices={S}
 [#] verses={1}
 
-;; @version 0.1.0-alpha.1
 
 ---
 
@@ -20,8 +19,6 @@ FILE: test_expr_reordering
 
 
 === FORMATTED ===
-;; @version 0.1.0-alpha.1
-
 [#] verses={1}
 
 [$] time={4,4} | voices={S}

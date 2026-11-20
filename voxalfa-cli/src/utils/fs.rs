@@ -51,6 +51,38 @@ pub fn parse_file(content: &str) -> Result<FinalOutput> {
     Ok(output)
 }
 
+pub fn resolve_output_path(source: &str, output: Option<&str>, extension: &str) -> PathBuf {
+    let default_path = Path::new(source).with_extension(extension);
+
+    match output.map(PathBuf::from) {
+        Some(path) if path.extension().is_some() => path,
+        Some(path) => path.join(
+            default_path
+                .file_name()
+                .expect("file path should have a name"),
+        ),
+        None => default_path.clone(),
+    }
+}
+
+pub fn resolve_page_path(path: &Path, index: usize, page_count: usize) -> PathBuf {
+    if page_count == 1 {
+        return path.to_path_buf();
+    }
+
+    let base = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("page");
+
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("svg");
+
+    path.with_file_name(format!("{base}-{}.{extension}", index + 1))
+}
+
 pub fn write_file<P, B>(path: P, content: B) -> Result<()>
 where
     P: AsRef<Path>,

@@ -103,7 +103,29 @@ fn test_inclusive_dynamic_range() {
 
 [$] dynamics={p:0, cre:0.5..1}
 
-[A] |d ,r .m ,f :s .l ||"#;
+[A] |d ,r .m ,f :s .l !d :r ||
+
+--
+
+[A] |d :r !m :f ||"#;
 
     run_snapshot("test_inclusive_dynamic_range", source);
+}
+
+#[test]
+fn test_explicit_dynamic_target() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={50} | voices={A}
+
+---
+
+[$] dynamics={p:0, cre:0.5..1, f:1}
+
+[A] |d ,r .m ,f :s .l !d :r ||
+
+--
+
+[A] |d :r !m :f ||"#;
+
+    run_snapshot("test_explicit_dynamic_target", source);
 }

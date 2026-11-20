@@ -1,3 +1,5 @@
+use std::process::ExitCode;
+
 use clap::Parser;
 use voxalfa_core::{
     data_types::Voice,
@@ -25,7 +27,7 @@ pub struct LyricsParams {
     voice: String,
 }
 
-pub fn execute(params: LyricsParams) -> Result<()> {
+pub fn execute(params: LyricsParams) -> Result<ExitCode> {
     let mut cli_reporter = CliReporter::new(1);
 
     let file = read_file(params.file.into())?;
@@ -49,9 +51,7 @@ pub fn execute(params: LyricsParams) -> Result<()> {
         }
     }
 
-    cli_reporter.finalize();
-
-    Ok(())
+    Ok(cli_reporter.finalize())
 }
 
 fn parse_voice(s: &str) -> Option<(Voice, usize)> {

@@ -1,4 +1,7 @@
-use std::io::{self, Read};
+use std::{
+    io::{self, Read},
+    process::ExitCode,
+};
 
 use clap::Parser;
 use voxalfa_formatter::{Formatter, Injection};
@@ -22,24 +25,20 @@ pub struct LinkParams {
     annotate: bool,
 }
 
-pub fn execute(params: LinkParams) -> Result<()> {
+pub fn execute(params: LinkParams) -> Result<ExitCode> {
     let file = read_file(params.file.into())?;
     let output = parse_file(&file.content)?;
     let mut cli_reporter = CliReporter::new(1);
 
     if output.has_syntax_error() {
         cli_reporter.register_diagnostics(&file, output.diagnostics);
-        cli_reporter.finalize();
-
-        return Ok(());
+        return Ok(cli_reporter.finalize());
     }
 
     if params.annotate {
         let content = Formatter::new(&output).inject(Injection::slots())?;
         write_file(&file.path, content)?;
-        cli_reporter.finalize();
-
-        return Ok(());
+        return Ok(cli_reporter.finalize());
     }
 
     let json = match params.tokens {
@@ -67,9 +66,7 @@ pub fn execute(params: LinkParams) -> Result<()> {
         }
     }
 
-    cli_reporter.finalize();
-
-    Ok(())
+    Ok(cli_reporter.finalize())
 }
 
 fn read_stdin() -> Result<String> {

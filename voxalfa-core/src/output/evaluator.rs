@@ -157,6 +157,12 @@ impl TimelineEvaluator {
     fn handle_dynamic_event(&mut self, dynamic: Dynamic) {
         match dynamic {
             Dynamic::Cre | Dynamic::Dec if self.dynamic.transition.is_some() => {
+                if let Some(transition) = &self.dynamic.transition
+                    && self.dynamic.current == transition.level
+                {
+                    self.dynamic.current = transition.target(self.dynamic.current);
+                }
+
                 self.dynamic.update = true;
             }
 

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use clap::Parser;
 use voxalfa_midi::Converter;
@@ -6,7 +6,7 @@ use voxalfa_midi::Converter;
 use crate::{
     error::Result,
     reporter::CliReporter,
-    utils::fs::{parse_file, read_files},
+    utils::fs::{parse_file, read_files, resolve_output_path},
 };
 
 #[derive(Parser)]
@@ -17,7 +17,7 @@ pub struct MidiParams {
     output: Option<String>,
 }
 
-pub fn execute(params: MidiParams) -> Result<()> {
+pub fn execute(params: MidiParams) -> Result<ExitCode> {
     let files = read_files(&params.files)?;
     let mut reporter = CliReporter::new(1);
 
@@ -29,22 +29,11 @@ pub fn execute(params: MidiParams) -> Result<()> {
         } else {
             let converter = Converter::new(&output);
             let smf = converter.convert()?;
-            let file_path = Path::new(&file.path);
-            let output_path = params.output.as_ref().map(PathBuf::from);
-            let default_path = file_path.with_extension("mid");
-            let base_path = default_path.file_name();
-
-            let output_path = match output_path {
-                Some(path) if path.is_file() => path,
-                Some(path) if let Some(base) = base_path => path.join(base),
-                _ => default_path,
-            };
+            let output_path = resolve_output_path(&file.path, params.output.as_deref(), "mid");
 
             smf.save(output_path)?;
         }
     }
 
-    reporter.finalize();
-
-    Ok(())
+    Ok(reporter.finalize())
 }

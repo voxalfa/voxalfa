@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use clap::Parser;
 use voxalfa_svg::RenderOptions;
@@ -6,7 +6,7 @@ use voxalfa_svg::RenderOptions;
 use crate::{
     error::Result,
     reporter::CliReporter,
-    utils::fs::{parse_file, read_files, write_file},
+    utils::fs::{parse_file, read_files, resolve_output_path, write_file},
 };
 
 #[derive(Parser)]
@@ -17,7 +17,7 @@ pub struct PdfParams {
     output: Option<String>,
 }
 
-pub fn execute(params: PdfParams) -> Result<()> {
+pub fn execute(params: PdfParams) -> Result<ExitCode> {
     let files = read_files(&params.files)?;
     let mut reporter = CliReporter::new(1);
 
@@ -28,22 +28,11 @@ pub fn execute(params: PdfParams) -> Result<()> {
             reporter.register_diagnostics(file, output.diagnostics);
         } else {
             let pdf = voxalfa_pdf::render(&output, &RenderOptions::default())?;
-            let file_path = Path::new(&file.path);
-            let output_path = params.output.as_ref().map(PathBuf::from);
-            let default_path = file_path.with_extension("pdf");
-            let base_path = default_path.file_name();
-
-            let output_path = match output_path {
-                Some(path) if path.is_file() => path,
-                Some(path) if let Some(base) = base_path => path.join(base),
-                _ => default_path,
-            };
+            let output_path = resolve_output_path(&file.path, params.output.as_deref(), "pdf");
 
             write_file(output_path, pdf)?;
         }
     }
 
-    reporter.finalize();
-
-    Ok(())
+    Ok(reporter.finalize())
 }

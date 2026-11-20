@@ -1,8 +1,14 @@
 use voxalfa_core::{
-    ast::solfa::PulseAccent,
+    ast::{directives::ElementStyle, solfa::PulseAccent, symbols::VoiceId},
     data_types::{TimeSignature, Touch, Voice},
     ir::solfa::PulseIr,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VoiceInstance {
+    pub id: VoiceId,
+    pub role: Voice,
+}
 
 #[derive(Debug, Default)]
 pub struct HeaderView {
@@ -42,7 +48,7 @@ pub struct FlatMarker {
     pub kind: MarkerKind,
     pub glyph: MarkerGlyph,
     pub index: f32, // pulse relative index (0-1)
-    pub voice: Option<Voice>,
+    pub voice: Option<VoiceInstance>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,8 +71,8 @@ pub enum MarkerGlyph {
 }
 
 pub struct PulseStackItem<'a> {
-    pub voices: Vec<(Voice, &'a PulseIr)>,
-    pub lyric_voices: Vec<Voice>,
+    pub voices: Vec<(VoiceInstance, &'a PulseIr)>,
+    pub lyric_voices: Vec<VoiceInstance>,
     pub lyrics: Vec<ShiftedLyrics>,
 }
 
@@ -113,8 +119,9 @@ pub struct PulseResolverData<'a> {
 
 pub struct System<'a> {
     pub pulses: Vec<SystemPulse<'a>>,
+    pub pulse_offsets: Vec<f32>,
     pub time: TimeSignature,
-    pub voices: Vec<Voice>,
+    pub voices: Vec<VoiceInstance>,
     pub lyric_groups: Vec<SystemLyricGroup>,
     pub markers: Vec<SystemMarker>,
     pub dynamic_spans: Vec<SystemDynamicSpan>,
@@ -131,19 +138,23 @@ pub enum DynamicSpanKind {
 #[derive(Debug, Clone, Copy)]
 pub struct FlatDynamicSpan {
     pub kind: DynamicSpanKind,
+    pub voice: Option<VoiceInstance>,
     pub start_pulse: usize,
     pub start_unit: f32,
     pub end_pulse: usize,
     pub end_unit: f32,
+    pub end_duration: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct SystemDynamicSpan {
     pub kind: DynamicSpanKind,
+    pub voice: Option<VoiceInstance>,
     pub start: usize,
     pub start_unit: f32,
     pub end: usize,
     pub end_unit: f32,
+    pub end_duration: f32,
     pub fits: bool,
     pub continued: bool,
 }
@@ -175,7 +186,7 @@ pub struct SystemMarker {
     pub unit: f32,
     pub kind: MarkerKind,
     pub glyph: MarkerGlyph,
-    pub voice: Option<Voice>,
+    pub voice: Option<VoiceInstance>,
 }
 
 pub struct SystemPulse<'a> {
@@ -187,11 +198,11 @@ pub struct SystemPulse<'a> {
 }
 
 pub struct SystemPulseStackItem<'a> {
-    pub voices: Vec<(Voice, &'a PulseIr)>,
+    pub voices: Vec<(VoiceInstance, &'a PulseIr)>,
 }
 
 pub struct SystemLyricGroup {
-    pub voices: Vec<Voice>,
+    pub voices: Vec<VoiceInstance>,
     pub verses: Vec<Vec<SystemLyricToken>>,
 }
 
@@ -226,4 +237,29 @@ pub struct ResolvedScore<'a> {
     pub header: HeaderView,
     pub systems: Vec<System<'a>>,
     pub lead_width: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TextAnchor {
+    Start,
+    Middle,
+    End,
+}
+
+impl TextAnchor {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::Middle => "middle",
+            Self::End => "end",
+        }
+    }
+
+    pub fn align_x(self, x: f32, style: &ElementStyle) -> f32 {
+        match self {
+            Self::Start => x + style.left(),
+            Self::Middle => x + (style.left() - style.right()) / 2.0,
+            Self::End => x - style.right(),
+        }
+    }
 }

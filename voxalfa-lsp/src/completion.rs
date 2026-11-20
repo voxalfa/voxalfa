@@ -1,4 +1,6 @@
-use async_lsp::lsp_types::{CompletionItem, CompletionItemKind, Documentation, InsertTextFormat};
+use async_lsp::lsp_types::{
+    CompletionItem, CompletionItemKind, CompletionList, Documentation, InsertTextFormat,
+};
 use tree_sitter::{Node, Point};
 use voxalfa_core::{
     data_types::{TimeSignature, Voice},
@@ -84,8 +86,8 @@ pub enum CompletionContext {
 }
 
 impl CompletionContext {
-    pub fn completion_items(&self) -> Vec<CompletionItem> {
-        match self {
+    pub fn completion_items(&self) -> CompletionList {
+        let items = match self {
             CompletionContext::Header => vec![
                 self.build_document_template_snippet(),
                 self.snippet_item("parameters ($)", "Initial Parameters", "[\\$] ${0}"),
@@ -94,24 +96,37 @@ impl CompletionContext {
             CompletionContext::Metadata => self.build_param_snippets(HEADER_PARAMS),
             CompletionContext::InitialParams => self.build_param_snippets(INITIAL_PARAMS),
             CompletionContext::SectionParams => self.build_param_snippets(SECTION_PARAMS),
-            CompletionContext::Section(context) => {
-                let mut items = Vec::new();
-
-                items.extend(context.build_voice_combo_snippets(1));
-                items.extend(context.build_voice_combo_snippets(2));
-                items.extend(context.build_voice_combo_snippets(3));
-
-                items.extend(vec![
-                    self.snippet_item("1 (verse)", "Verse 1", "[1] ${0}"),
-                    self.snippet_item("2 (verse)", "Verse 2", "[2] ${0}"),
-                    self.snippet_item("3 (verse)", "Verse 3", "[3] ${0}"),
-                    self.snippet_item("parameters ($)", "Section Parameters", "[\\$] ${0}"),
-                ]);
-
-                items
-            }
+            CompletionContext::Section(context) => self.build_section_snippets(context),
             CompletionContext::Builtin(builtin) => builtin.completion_items(),
+        };
+
+        CompletionList {
+            is_incomplete: matches!(self, CompletionContext::Section(_)),
+            items,
         }
+    }
+
+    fn build_section_snippets(&self, context: &SectionContext) -> Vec<CompletionItem> {
+        let mut items = Vec::new();
+
+        for measures in 1..=3 {
+            items.push(context.build_system_voice_snippet(measures));
+        }
+
+        if let Some(voices) = context.parse_voice_line() {
+            for measures in 1..=3 {
+                items.push(context.build_voice_snippet(&voices, measures));
+            }
+        }
+
+        items.extend(vec![
+            self.snippet_item("verse (1)", "Verse 1", "[1] ${0}"),
+            self.snippet_item("verse (2)", "Verse 2", "[2] ${0}"),
+            self.snippet_item("verse (3)", "Verse 3", "[3] ${0}"),
+            self.snippet_item("parameters ($)", "Section Parameters", "[\\$] ${0}"),
+        ]);
+
+        items
     }
 
     fn build_param_snippets(&self, specs: &[ParamSpec]) -> Vec<CompletionItem> {
@@ -131,7 +146,7 @@ impl CompletionContext {
 
     fn build_document_template_snippet(&self) -> CompletionItem {
         let snippet = [
-            ";; @version 0.1.0-alpha.1",
+            ";; @version 0.1.0-alpha.2",
             "",
             "[#] title=\"${1:Title}\"",
             "[#] author={\"${2:Author}\"}",
@@ -218,27 +233,30 @@ impl Builtin {
 
 const DEFAULT_NOTES: &[&str] = &["s", "m", "d", "d"];
 
-const STANDARD_VOICE_COMBOS: [&[Voice]; 9] = [
-    &[Voice::S],
-    &[Voice::A],
-    &[Voice::T],
-    &[Voice::B],
-    &[Voice::S, Voice::A],
-    &[Voice::T, Voice::B],
-    &[Voice::S, Voice::A, Voice::T],
-    &[Voice::A, Voice::T, Voice::B],
-    &[Voice::S, Voice::A, Voice::T, Voice::B],
-];
-
 #[derive(Debug)]
 pub struct SectionContext {
+    line: String,
     voices: Vec<Voice>,
-    used_voices: Vec<Voice>,
     time: TimeSignature,
-    verses: u8,
+    verses: usize,
 }
 
 impl SectionContext {
+    fn parse_voice_line(&self) -> Option<Vec<Vec<Voice>>> {
+        self.line
+            .split_whitespace()
+            .last()?
+            .split('+')
+            .map(|split| {
+                split
+                    .chars()
+                    .map(|c| Voice::try_from(c.to_uppercase().to_string()))
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .ok()
+    }
+
     fn build_voice_line(
         &self,
         voice: Voice,
@@ -272,82 +290,86 @@ impl SectionContext {
         line
     }
 
-    fn build_voice_combo_snippets(&self, measures: usize) -> Vec<CompletionItem> {
-        let mut result = STANDARD_VOICE_COMBOS
-            .iter()
-            .enumerate()
-            .filter(|(_, combo)| {
-                combo
-                    .iter()
-                    .all(|v| self.voices.contains(v) && !self.used_voices.contains(v))
-            })
-            .map(|(combo_idx, combo)| {
-                self.build_voice_combo_snippet(combo, measures, combo_idx + 1, None)
-            })
-            .collect::<Vec<_>>();
+    fn build_system_voice_snippet(&self, measures: usize) -> CompletionItem {
+        let voices = std::slice::from_ref(&self.voices);
+        let group = format_voice_groups(voices);
 
-        let rest_voices = self
-            .voices
-            .iter()
-            .filter(|v| !self.used_voices.contains(*v))
-            .copied()
-            .collect::<Vec<_>>();
+        let mut item = self.build_voice_snippet(voices, measures);
 
-        if !rest_voices.is_empty() {
-            let snippet = self.build_voice_combo_snippet(&rest_voices, measures, 0, Some("lines"));
+        item.label = format!("system ({group})");
+        item.filter_text = Some("system".to_string());
 
-            result.push(snippet);
-        }
-
-        result
+        item
     }
 
-    fn build_voice_combo_snippet(
-        &self,
-        combo: &[Voice],
-        measures: usize,
-        combo_idx: usize,
-        label: Option<&str>,
-    ) -> CompletionItem {
+    fn build_voice_snippet(&self, splits: &[Vec<Voice>], measures: usize) -> CompletionItem {
         let mut snippet = String::new();
         let mut tab_stop = 1;
+        let mut voice_idx = 0;
 
-        for &voice in combo {
-            let orig_idx = self.voices.iter().position(|&v| v == voice).unwrap_or(0);
-            let line = self.build_voice_line(voice, orig_idx, measures, &mut tab_stop);
-            snippet.push_str(&line);
-            snippet.push('\n');
-        }
+        for (group_id, group) in splits.iter().enumerate() {
+            for &voice in group {
+                let line = self.build_voice_line(voice, voice_idx, measures, &mut tab_stop);
+                voice_idx += 1;
 
-        if self.verses > 0 {
-            snippet.push('\n');
-            for verse in 0..self.verses {
-                snippet.push_str(&format!("[{}] ${{{tab_stop}:~}}\n", verse + 1));
-                tab_stop += 1;
+                snippet.push_str(&line);
+                snippet.push('\n');
+            }
+
+            if self.verses > 0 {
+                snippet.push('\n');
+
+                for verse in 0..self.verses {
+                    snippet.push_str(&format!("[{}] ${{{tab_stop}:~}}\n", verse + 1));
+                    tab_stop += 1;
+                }
+            }
+
+            if group_id != splits.len() - 1 {
+                snippet.push_str("\n++\n\n");
             }
         }
 
-        let combo_label = combo.iter().map(|v| format!("{v:?}")).collect::<String>();
-        let popup_label = label.unwrap_or(&combo_label);
-        let is_single = combo.len() == 1;
-        let kind_label = if is_single { "voice" } else { "voices" };
+        let expression = self
+            .line
+            .split_whitespace()
+            .last()
+            .unwrap_or_default()
+            .to_string();
+
+        let groups = format_voice_groups(splits);
+        let is_single = splits.len() == 1;
 
         CompletionItem {
-            label: format!("{popup_label} ({kind_label})"),
+            label: format!("{expression} ({groups})"),
+            filter_text: Some(expression.clone()),
             kind: Some(CompletionItemKind::SNIPPET),
             detail: Some(format!(
-                "Insert line{} for {combo_label} with {} verse(s) ({measures} measure(s) in {}/{})",
+                "Insert line{} for {} with {} verse(s) ({measures} measure(s) in {}/{})",
                 if is_single { "" } else { "s" },
+                expression.to_uppercase(),
                 self.verses,
                 self.time.top,
                 self.time.bottom
             )),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             insert_text: Some(snippet),
-            sort_text: Some(format!("{combo_idx:02}_{measures:02}")),
             ..Default::default()
         }
     }
+}
+
+fn format_voice_groups(groups: &[Vec<Voice>]) -> String {
+    groups
+        .iter()
+        .map(|group| {
+            group
+                .iter()
+                .map(|voice| format!("{voice:?}"))
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn get_builtin_context(target: Node<'_>, source: &str) -> Option<Builtin> {
@@ -373,35 +395,30 @@ fn get_builtin_context(target: Node<'_>, source: &str) -> Option<Builtin> {
 
 fn get_section_context(document: &Document, line: usize) -> Option<SectionContext> {
     let header = &document.data.header;
-    let voices = header.params.voices.clone()?.value;
     let verses = header.metadata.verses.clone().map(|v| v.value);
 
     let mut time = header.params.time.clone()?.value;
-    let mut used_voices = Vec::new();
 
     for section in &document.data.body.sections {
-        let range = document.data.symbols.get_scope_range(section.sid);
-
         if let Some(new_time) = &section.params.time {
             time = new_time.value;
         }
-
-        if range.start_point.row <= line && line <= range.end_point.row {
-            for item in &section.items {
-                for solfa in &item.solfa {
-                    used_voices.push(solfa.voice);
-                }
-            }
-
-            break;
-        }
     }
+
+    let voices = header
+        .params
+        .voices
+        .as_ref()?
+        .value
+        .iter()
+        .map(|voice| voice.value)
+        .collect();
 
     Some(SectionContext {
         time,
-        used_voices,
-        verses: verses.unwrap_or_default() as u8,
-        voices: voices.iter().map(|v| v.value).collect(),
+        line: document.rope.line(line).to_string(),
+        voices,
+        verses: verses.unwrap_or_default(),
     })
 }
 
@@ -478,5 +495,29 @@ mod tests {
         let context = get_completion_context(&doc, 2, 0);
 
         assert!(matches!(context, Some(CompletionContext::Header)));
+    }
+
+    #[test]
+    fn test_voice_snippet_input() {
+        let cases = [
+            "S", "SA", "SAT", "SATB", "satb", "SA+TB", "sa+tb", "S+ATB", "S+A+T+B",
+        ];
+
+        for input in cases {
+            let source = format!("[$] voices={{S,A,T,B}} time={{4,4}}\n\n---\n\n{input}");
+            let doc = document(&source);
+
+            let result = get_completion_context(&doc, 4, input.len())
+                .unwrap()
+                .completion_items();
+
+            let snippet_match = result
+                .items
+                .iter()
+                .any(|item| item.label.to_lowercase().starts_with(&input.to_lowercase()));
+
+            assert!(result.is_incomplete);
+            assert!(snippet_match,);
+        }
     }
 }

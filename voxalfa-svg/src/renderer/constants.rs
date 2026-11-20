@@ -1,4 +1,3 @@
-pub const TITLE_LINE_HEIGHT_FACTOR: f32 = 1.0;
 pub const HEADER_GROUP_GAP: f32 = 0.5;
 pub const HEADER_BOTTOM_PADDING: f32 = 0.45;
 pub const HEADER_TITLE_BOTTOM_GAP: f32 = 0.7;
@@ -7,12 +6,11 @@ pub const HEADER_TIME_RIGHT_MARGIN: f32 = 2.5;
 pub const MARKER_BOTTOM_GAP: f32 = 0.35;
 pub const MARKER_HORIZONTAL_GAP: f32 = 0.55;
 
-pub const VOLTA_TOP_GAP: f32 = 0.55;
-pub const VOLTA_STAFF_GAP: f32 = 0.3;
 pub const VOLTA_TEXT_GAP: f32 = 0.2;
 pub const VOLTA_BOTTOM_GAP: f32 = 0.35;
 pub const VOLTA_END_TICK: f32 = 0.45;
 pub const VOLTA_TEXT_INSET: f32 = 0.20;
+pub const VOLTA_MARKER_GAP: f32 = 0.25;
 
 pub const TOUCH_SYMBOL_SCALE: f32 = 0.75;
 pub const FERMATA_WIDTH_SCALE: f32 = 1.5;
@@ -20,10 +18,9 @@ pub const STACCATO_WIDTH_SCALE: f32 = 0.30;
 pub const MARCATO_WIDTH_SCALE: f32 = 0.85;
 pub const ACCENT_STROKE_WIDTH: f32 = 0.1;
 
-pub const DYNAMIC_SPAN_INSET: f32 = 1.0;
+pub const DYNAMIC_SPAN_LABEL_GAP: f32 = 0.4;
 pub const DYNAMIC_HAIRPIN_HEIGHT: f32 = 0.5;
 pub const DYNAMIC_DASH_GAP: f32 = 0.3;
-pub const DYNAMIC_SPAN_BOTTOM_GAP: f32 = 0.2;
 pub const DYNAMIC_VOICE_GAP: f32 = 0.35;
 
 pub const BARLINE_STROKE_WIDTH: f32 = 0.1;

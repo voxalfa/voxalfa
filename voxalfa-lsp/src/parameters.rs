@@ -100,7 +100,7 @@ pub const SECTION_PARAMS: &[ParamSpec] = &[
     ParamSpec {
         name: "tempo",
         type_str: "tempo | integer",
-        snippet: "tempo={${1:Allegro}}",
+        snippet: "tempo={${1:allegro}}",
         doc: "Changes section-level playback tempo.",
     },
     ParamSpec {

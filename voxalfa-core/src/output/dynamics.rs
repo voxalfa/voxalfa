@@ -23,7 +23,22 @@ pub struct DynamicTransition {
     pub kind: DynamicTransitionKind,
 }
 
-#[derive(Debug)]
+impl DynamicTransition {
+    pub fn target(&self, current: Dynamic) -> Dynamic {
+        if current != self.level {
+            return current;
+        }
+
+        let target = match self.kind {
+            DynamicTransitionKind::Cre => self.level.get_next(),
+            DynamicTransitionKind::Dec => self.level.get_prev(),
+        };
+
+        target.unwrap_or(self.level)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum DynamicTransitionKind {
     Cre,
     Dec,

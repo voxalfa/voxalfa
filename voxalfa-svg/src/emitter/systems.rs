@@ -1,6 +1,5 @@
 use voxalfa_core::{
     ast::solfa::PulseAccent,
-    data_types::Voice,
     ir::solfa::{NoteKind, PulseIr},
 };
 
@@ -9,27 +8,18 @@ use crate::{
     fonts::Fonts,
     model::{
         DynamicSpanKind, MarkerGlyph, MarkerKind, ResolvedScore, System, SystemLyricToken,
-        SystemPulse,
+        SystemPulse, VoiceInstance,
     },
     options::RenderOptions,
-    renderer::text::{division_symbol, note_text},
+    renderer::{
+        constants::*,
+        geometry::{SystemGeometry, prolonged_leading},
+        systems::{SystemLayout, SystemRowKind},
+        text::{division_symbol, note_text},
+    },
 };
 
-use super::{
-    constants::*,
-    geometry::{baseline, prolonged_leading, pulse_offsets, pulse_usable_width},
-    layout::{SystemLayout, SystemRowKind},
-    primitives::{BraceSide, emit_brace, emit_line, emit_segno, emit_text, emit_touch},
-};
-
-fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: Voice) -> Option<&'a PulseIr> {
-    pulse.stack.iter().find_map(|sub| {
-        sub.voices
-            .iter()
-            .find(|(current, _)| *current == voice)
-            .map(|(_, voice_pulse)| *voice_pulse)
-    })
-}
+use super::primitives::{BraceSide, emit_brace, emit_line, emit_segno, emit_text, emit_touch};
 
 pub fn emit_system(
     svg: &mut String,
@@ -69,8 +59,7 @@ struct SystemRender<'a> {
     fonts: &'a Fonts,
     system: &'a System<'a>,
     layout: &'a SystemLayout,
-    xs: Vec<f32>,
-    usable_widths: Vec<f32>,
+    geometry: SystemGeometry<'a, 'a>,
     origin_x: f32,
     lead: f32,
     y: f32,
@@ -87,22 +76,14 @@ impl<'a> SystemRender<'a> {
         origin_x: f32,
         options: &'a RenderOptions,
     ) -> Self {
-        let xs = pulse_offsets(placement.system);
-
-        let usable_widths = placement
-            .system
-            .pulses
-            .iter()
-            .map(|pulse| pulse_usable_width(pulse, fonts, lead))
-            .collect();
+        let geometry = SystemGeometry::new(placement.system, fonts, lead);
 
         Self {
             svg,
             fonts,
             system: placement.system,
             layout: placement.layout,
-            xs,
-            usable_widths,
+            geometry,
             origin_x,
             lead,
             y: placement.y,
@@ -114,6 +95,7 @@ impl<'a> SystemRender<'a> {
     fn emit(&mut self) -> Result<()> {
         let system = self.system;
         let layout = self.layout;
+        let style = &self.fonts.text;
         let y = self.y;
 
         for volta in &layout.voltas {
@@ -150,17 +132,8 @@ impl<'a> SystemRender<'a> {
                     self.svg,
                     x,
                     baseline,
-                    text,
-                    match marker.kind {
-                        MarkerKind::Dynamic => "dynamic-label",
-                        MarkerKind::Jump => "jump-label",
-                        MarkerKind::Key => "key-label",
-                        MarkerKind::Tempo => "tempo-label",
-                        MarkerKind::Bpm => "bpm-label",
-                        MarkerKind::Mark => "mark-label",
-                        MarkerKind::TimeSignature => "time-label",
-                        MarkerKind::Touch => "marker",
-                    },
+                    text.as_str(),
+                    marker_class(marker.kind),
                     marker.anchor.as_str(),
                 )?,
                 MarkerGlyph::Segno => emit_segno(self.svg, x, baseline, self.fonts)?,
@@ -241,7 +214,7 @@ impl<'a> SystemRender<'a> {
         for row in &layout.rows {
             match row.kind {
                 SystemRowKind::Voice(voice) => {
-                    let voice_baseline = baseline(y + row.y, row.height, &self.fonts.text.note);
+                    let voice_baseline = style.note.centered_baseline(y + row.y, row.height);
 
                     self.emit_voice_row(voice, voice_baseline)?;
                 }
@@ -251,7 +224,7 @@ impl<'a> SystemRender<'a> {
                 } => {
                     let group = &system.lyric_groups[group_index];
                     let tokens = &group.verses[verse_index];
-                    let lyric_baseline = baseline(y + row.y, row.height, &self.fonts.text.lyric);
+                    let lyric_baseline = style.lyric.centered_baseline(y + row.y, row.height);
 
                     self.emit_lyric_row(tokens, lyric_baseline)?;
                 }
@@ -324,7 +297,7 @@ impl<'a> SystemRender<'a> {
         let origin_x = self.origin_x;
 
         for (pulse_id, pulse) in system.pulses.iter().enumerate() {
-            let x = origin_x + self.xs[pulse_id];
+            let x = origin_x + self.system.pulse_offsets[pulse_id];
 
             if pulse.measure_start {
                 emit_line(self.svg, x, top, x, bottom, "barline")?;
@@ -342,30 +315,27 @@ impl<'a> SystemRender<'a> {
         Ok(())
     }
 
-    fn emit_voice_row(&mut self, voice: Voice, baseline: f32) -> Result<()> {
-        let mut underline: Option<UnderlineState> = None;
+    fn emit_voice_row(&mut self, voice: VoiceInstance, baseline: f32) -> Result<()> {
+        let mut underline_start: Option<f32> = None;
         let mut last_note_end = self.origin_x;
         let note_offset = self.options.elements.note.left();
 
         let underline_y = baseline
             + self.fonts.text.note.descent()
             + self.fonts.text.note.size() * SOLFA_UNDERLINE_OFFSET;
+
         let octave_y = underline_y
             - self.fonts.text.octave.descent()
             - self.fonts.text.octave.size() * BOTTOM_OCTAVE_UNDERLINE_GAP;
 
         for (pulse_id, pulse) in self.system.pulses.iter().enumerate() {
             let Some(voice_pulse) = find_voice(pulse, voice) else {
-                let cell_x = self.origin_x + self.xs[pulse_id];
+                let cell_x = self.origin_x + self.system.pulse_offsets[pulse_id];
                 self.emit_pulse_accent(pulse, cell_x, baseline)?;
                 continue;
             };
 
-            let usable_width = self
-                .usable_widths
-                .get(pulse_id)
-                .copied()
-                .unwrap_or(pulse.pulse_width);
+            let usable_width = self.geometry.usable_width(pulse_id);
 
             let total = voice_pulse
                 .columns
@@ -385,7 +355,8 @@ impl<'a> SystemRender<'a> {
                     cursor as f32 / total as f32
                 };
 
-                let cell_x = self.origin_x + self.xs[pulse_id] + start * usable_width;
+                let cell_x =
+                    self.origin_x + self.system.pulse_offsets[pulse_id] + start * usable_width;
 
                 let mut note_start = cell_x + self.lead;
                 let mut note_end = note_start;
@@ -462,15 +433,15 @@ impl<'a> SystemRender<'a> {
                 }
 
                 if column.underline.left {
-                    underline = Some(UnderlineState { start: note_start });
+                    underline_start = Some(note_start);
                 }
 
                 if column.underline.right
-                    && let Some(open) = underline.take()
+                    && let Some(start) = underline_start.take()
                 {
                     emit_line(
                         self.svg,
-                        open.start,
+                        start,
                         underline_y,
                         note_end,
                         underline_y,
@@ -482,10 +453,10 @@ impl<'a> SystemRender<'a> {
             }
         }
 
-        if let Some(open) = underline {
+        if let Some(start) = underline_start {
             emit_line(
                 self.svg,
-                open.start,
+                start,
                 underline_y,
                 last_note_end,
                 underline_y,
@@ -504,8 +475,7 @@ impl<'a> SystemRender<'a> {
             PulseAccent::Strong => {}
             PulseAccent::Medium => {
                 let x = cell_x + lead / 2.0;
-                let note_center =
-                    baseline - (fonts.text.note.ascent() - fonts.text.note.descent()) / 2.0;
+                let note_center = fonts.text.note.line_center(baseline);
                 let half = fonts.text.note.size() / 2.0;
 
                 emit_line(
@@ -535,7 +505,6 @@ impl<'a> SystemRender<'a> {
     }
 
     fn emit_lyric_row(&mut self, tokens: &[SystemLyricToken], baseline: f32) -> Result<()> {
-        let system = self.system;
         let fonts = self.fonts;
         let origin_x = self.origin_x;
         let lead = self.lead;
@@ -545,21 +514,12 @@ impl<'a> SystemRender<'a> {
                 continue;
             }
 
-            let end_width = self
-                .usable_widths
-                .get(token.end)
-                .copied()
-                .unwrap_or(system.pulses[token.end].pulse_width);
-
-            let end_x = origin_x + self.xs[token.end] + token.end_unit * end_width;
-
-            let start_width = self
-                .usable_widths
-                .get(token.start)
-                .copied()
-                .unwrap_or(system.pulses[token.start].pulse_width);
-
             let style = &self.options.elements.lyrics;
+            let start_width = self.geometry.usable_width(token.start);
+            let end_width = self.geometry.usable_width(token.end);
+
+            let end_x =
+                origin_x + self.system.pulse_offsets[token.end] + token.end_unit * end_width;
 
             let start_unit = if (token.start_unit - 0.75).abs() < f32::EPSILON {
                 0.70 // add more room for 1/4 cells
@@ -567,8 +527,11 @@ impl<'a> SystemRender<'a> {
                 token.start_unit
             };
 
-            let x =
-                origin_x + self.xs[token.start] + start_unit * start_width + lead + style.left();
+            let x = origin_x
+                + self.system.pulse_offsets[token.start]
+                + start_unit * start_width
+                + lead
+                + style.left();
 
             let end_x = (end_x - style.right()).max(x);
 
@@ -599,6 +562,24 @@ impl<'a> SystemRender<'a> {
     }
 }
 
-struct UnderlineState {
-    start: f32,
+fn find_voice<'a>(pulse: &SystemPulse<'a>, voice: VoiceInstance) -> Option<&'a PulseIr> {
+    pulse.stack.iter().find_map(|sub| {
+        sub.voices
+            .iter()
+            .find(|(current, _)| current.id == voice.id)
+            .map(|(_, voice_pulse)| *voice_pulse)
+    })
+}
+
+fn marker_class(marker: MarkerKind) -> &'static str {
+    match marker {
+        MarkerKind::Dynamic => "dynamic-label",
+        MarkerKind::Jump => "jump-label",
+        MarkerKind::Key => "key-label",
+        MarkerKind::Tempo => "tempo-label",
+        MarkerKind::Bpm => "bpm-label",
+        MarkerKind::Mark => "mark-label",
+        MarkerKind::TimeSignature => "time-label",
+        MarkerKind::Touch => "marker",
+    }
 }

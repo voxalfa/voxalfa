@@ -7,7 +7,7 @@ use voxalfa_core::{
     data_types::{Dynamic, Touch, Voice},
     ir::solfa::NoteKind,
     output::{
-        dynamics::{DynamicTransition, DynamicTransitionKind},
+        dynamics::DynamicTransition,
         evaluator::{PlaybackParams, TimelineEvaluator},
         event::NoteTimeline,
         tempo::TempoTransition,
@@ -240,13 +240,15 @@ impl ConverterTask {
         let end_vel = u8::from(self.get_target_velocity(transition)) as f32;
 
         let total_ticks = notes.iter().map(|n| n.duration).sum::<u32>();
-        let mut elapsed_ticks: u32 = 0;
+        let last_duration = notes.last().map(|note| note.duration).unwrap_or_default();
+        let ramp_ticks = total_ticks.saturating_sub(last_duration);
+        let mut elapsed_ticks = 0;
 
         for note in notes {
-            let progress = if total_ticks > 0 {
-                elapsed_ticks as f32 / total_ticks as f32
+            let progress = if ramp_ticks > 0 {
+                elapsed_ticks as f32 / ramp_ticks as f32
             } else {
-                0.0
+                1.0
             };
 
             let vel_val = (start_vel + (end_vel - start_vel) * progress)
@@ -410,15 +412,7 @@ impl ConverterTask {
     }
 
     fn get_target_velocity(&self, transition: DynamicTransition) -> u7 {
-        let dynamic = match transition.kind {
-            _ if transition.level != self.context.dynamic.current => {
-                Some(self.context.dynamic.current)
-            }
-            DynamicTransitionKind::Cre => transition.level.get_next(),
-            DynamicTransitionKind::Dec => transition.level.get_prev(),
-        };
-
-        self.get_velocity(dynamic.unwrap_or(transition.level))
+        self.get_velocity(transition.target(self.context.dynamic.current))
     }
 
     fn get_midi_note(&self, note: Note) -> Result<u7> {

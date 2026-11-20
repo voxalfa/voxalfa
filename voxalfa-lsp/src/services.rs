@@ -35,7 +35,7 @@ impl LanguageServer for ServerState {
                 document_formatting_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(false),
-                    trigger_characters: Some("{,".chars().map(|c| c.to_string()).collect()),
+                    trigger_characters: Some("{,+".chars().map(|c| c.to_string()).collect()),
                     ..Default::default()
                 }),
                 references_provider: Some(OneOf::Left(true)),
@@ -116,7 +116,7 @@ impl LanguageServer for ServerState {
             .documents
             .get(&uri)
             .and_then(|d| get_completion_context(d, line, column))
-            .map(|c| CompletionResponse::Array(c.completion_items()));
+            .map(|c| CompletionResponse::List(c.completion_items()));
 
         Box::pin(async { Ok(result) })
     }
