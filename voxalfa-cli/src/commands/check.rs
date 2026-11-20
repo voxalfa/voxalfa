@@ -1,3 +1,5 @@
+use std::process::ExitCode;
+
 use clap::Parser;
 
 use crate::{
@@ -12,7 +14,7 @@ pub struct CheckParams {
     file: Vec<String>,
 }
 
-pub fn execute(params: CheckParams) -> Result<()> {
+pub fn execute(params: CheckParams) -> Result<ExitCode> {
     let files = read_files(&params.file)?;
     let mut cli_reporter = CliReporter::new(files.len());
 
@@ -22,7 +24,5 @@ pub fn execute(params: CheckParams) -> Result<()> {
         cli_reporter.register_diagnostics(file, output.diagnostics);
     }
 
-    cli_reporter.finalize();
-
-    Ok(())
+    Ok(cli_reporter.finalize())
 }

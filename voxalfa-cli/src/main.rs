@@ -4,6 +4,8 @@ mod reporter;
 mod types;
 mod utils;
 
+use std::process::ExitCode;
+
 use clap::Parser;
 
 use crate::{commands::*, reporter::CliReporter};
@@ -19,7 +21,7 @@ pub struct Cli {
     command: CliCommand,
 }
 
-fn main() {
+fn main() -> ExitCode {
     let cli = Cli::parse();
 
     let result = match cli.command {
@@ -32,7 +34,11 @@ fn main() {
         CliCommand::Lyrics(params) => lyrics::execute(params),
     };
 
-    if let Err(error) = result {
-        CliReporter::print_error(error);
+    match result {
+        Ok(code) => code,
+        Err(error) => {
+            CliReporter::print_error(error);
+            ExitCode::FAILURE
+        }
     }
 }

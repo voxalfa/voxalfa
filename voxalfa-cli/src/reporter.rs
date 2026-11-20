@@ -1,3 +1,5 @@
+use std::process::ExitCode;
+
 use clap::builder::styling::*;
 use codespan_reporting::{
     diagnostic::{self as codespan, Severity},
@@ -76,7 +78,7 @@ impl<'a> CliReporter<'a> {
         });
     }
 
-    pub fn finalize(&mut self) {
+    pub fn finalize(&mut self) -> ExitCode {
         if !self.diagnostics.is_empty() {
             let writer = StandardStream::stderr(ColorChoice::Always);
 
@@ -102,7 +104,9 @@ impl<'a> CliReporter<'a> {
         }
 
         if self.has_errors_or_diffs(Severity::Error) {
-            std::process::exit(1);
+            ExitCode::FAILURE
+        } else {
+            ExitCode::SUCCESS
         }
     }
 
@@ -112,7 +116,6 @@ impl<'a> CliReporter<'a> {
             .bold();
 
         eprintln!("{red}error{red:#}: {message}");
-        std::process::exit(1);
     }
 
     fn has_errors_or_diffs(&self, min_severity: Severity) -> bool {
