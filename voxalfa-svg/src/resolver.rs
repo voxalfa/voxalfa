@@ -432,7 +432,6 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                     start_unit: start.unit,
                     end_pulse: offset + end.pulse,
                     end_unit: end.unit,
-                    end_duration: end.duration,
                 });
             } else if let Some(resolved) = resolve_event(&positions, event.start) {
                 let marker = FlatMarker {
@@ -615,7 +614,6 @@ struct IndexedNote {
 struct ResolvedEvent {
     pulse: usize,
     unit: f32,
-    duration: f32,
 }
 
 fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
@@ -650,7 +648,6 @@ fn resolve_event(positions: &[IndexedNote], target: f32) -> Option<ResolvedEvent
             ((note.abs_index - target).abs() < FLOAT_ERROR).then_some(ResolvedEvent {
                 pulse: note.pulse,
                 unit: note.rel_index,
-                duration: note.duration,
             })
         })
         .or_else(|| {
@@ -659,7 +656,6 @@ fn resolve_event(positions: &[IndexedNote], target: f32) -> Option<ResolvedEvent
                     ResolvedEvent {
                         pulse: note.pulse,
                         unit: note.rel_index + note.duration,
-                        duration: 0.0,
                     },
                 )
             })
@@ -992,7 +988,6 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
                         (span.end_pulse - self.start).min(self.len() - 1)
                     },
                     end_unit: if ends_after { 1.0 } else { span.end_unit },
-                    end_duration: if ends_after { 0.0 } else { span.end_duration },
                     fits: span.start_pulse >= self.start && span.end_pulse < self.end,
                     continued: span.start_pulse < self.start,
                 }

@@ -62,17 +62,33 @@ impl NoteTimeline {
 #[derive(Debug, Clone)]
 pub struct Event {
     pub kind: EventKind,
+    pub role: EventRole,
 }
 
 impl Event {
     pub fn new(kind: EventKind) -> Self {
-        Self { kind }
+        Self {
+            kind,
+            role: EventRole::Point,
+        }
+    }
+
+    pub fn start(kind: EventKind) -> Self {
+        Self {
+            kind,
+            role: EventRole::Start,
+        }
+    }
+
+    pub fn end(kind: EventKind) -> Self {
+        Self {
+            kind,
+            role: EventRole::End,
+        }
     }
 
     pub fn with<T: ToEventKind>(value: T) -> Self {
-        Self {
-            kind: value.to_event_kind(),
-        }
+        Self::new(value.to_event_kind())
     }
 }
 
@@ -97,8 +113,9 @@ pub struct JumpEvent {
     pub repeat: u8,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum EventDispatch {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventRole {
+    Point,
     Start,
     End,
 }

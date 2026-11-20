@@ -129,3 +129,17 @@ fn test_explicit_dynamic_target() {
 
     run_snapshot("test_explicit_dynamic_target", source);
 }
+
+#[test]
+fn test_adjacent_dynamic_ranges() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={50} | voices={A}
+
+---
+
+[$] dynamics={p:0, cre:0..2, dec:2..4}
+
+[A] |d :r !m :f |s :l !t :d+1 ||"#;
+
+    run_snapshot("test_adjacent_dynamic_ranges", source);
+}

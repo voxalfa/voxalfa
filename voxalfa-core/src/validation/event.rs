@@ -101,16 +101,16 @@ impl EventBuffer {
             }
 
             if current.value.is_range() {
-                if let Some(timestamp) = current
-                    .end
-                    .and_then(|e| self.get_range_end_timestamp(e, params))
-                {
-                    self.push_event(sub_id, timestamp, Event::new(kind));
-                    self.mark_event(kind, id);
+                if let Some(timestamp) = self.get_range_timestamp(current.start, params) {
+                    self.push_event(sub_id, timestamp, Event::start(kind));
                 }
 
-                if let Some(timestamp) = self.get_range_start_timestamp(current.start, params) {
-                    self.push_event(sub_id, timestamp, Event::new(kind));
+                if let Some(timestamp) = current
+                    .end
+                    .and_then(|e| self.get_range_timestamp(e, params))
+                {
+                    self.push_event(sub_id, timestamp, Event::end(kind));
+                    self.mark_event(kind, id);
                 }
 
                 continue;
@@ -133,18 +133,9 @@ impl EventBuffer {
         }
     }
 
-    fn get_range_start_timestamp(
-        &self,
-        value: f32,
-        params: &EventMatchParams,
-    ) -> Option<Timestamp> {
+    fn get_range_timestamp(&self, value: f32, params: &EventMatchParams) -> Option<Timestamp> {
         self.check_eq(value, params.note_start)
             .then_some(params.elapsed)
-    }
-
-    fn get_range_end_timestamp(&self, value: f32, params: &EventMatchParams) -> Option<Timestamp> {
-        self.check_eq(value, params.note_start)
-            .then_some(params.elapsed + params.note_ticks)
     }
 
     fn check_eq(&self, lhs: f32, rhs: f32) -> bool {

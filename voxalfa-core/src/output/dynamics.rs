@@ -4,7 +4,7 @@ use crate::data_types::Dynamic;
 pub struct DynamicState {
     pub current: Dynamic,
     pub transition: Option<DynamicTransition>,
-    pub update: bool,
+    pub ended: Option<DynamicTransition>,
 }
 
 impl Default for DynamicState {
@@ -12,7 +12,7 @@ impl Default for DynamicState {
         Self {
             current: Dynamic::MF,
             transition: None,
-            update: false,
+            ended: None,
         }
     }
 }
@@ -38,7 +38,7 @@ impl DynamicTransition {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DynamicTransitionKind {
     Cre,
     Dec,
