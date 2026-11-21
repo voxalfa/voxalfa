@@ -15,7 +15,7 @@ use crate::{
     renderer::{
         constants::{BRACE_PADDING_LEFT, BRACE_PADDING_RIGHT},
         geometry::system_width,
-        systems::{SystemLayout, layout_system},
+        systems::{LayoutContext, SystemLayout, layout_system},
     },
     resolver::resolve,
 };
@@ -45,7 +45,14 @@ pub fn render_pages(
     let system_layouts = score
         .systems
         .iter()
-        .map(|system| layout_system(system, &fonts, score.lead_width, options))
+        .map(|system| {
+            layout_system(&LayoutContext {
+                system,
+                fonts: &fonts,
+                lead: score.lead_width,
+                options,
+            })
+        })
         .collect::<Vec<_>>();
 
     let pages = paginate(&system_layouts, header.height, options);

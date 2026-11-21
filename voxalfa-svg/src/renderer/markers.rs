@@ -4,23 +4,16 @@ use crate::{
     fonts::{FontMetrics, Fonts},
     model::{MarkerGlyph, MarkerKind, System, SystemMarker, TextAnchor, VoiceInstance},
     options::RenderOptions,
+    renderer::systems::LayoutContext,
 };
 
 use super::{
     constants::*,
     geometry::{FLOAT_ERROR, SystemGeometry, segno_width},
-    voltas::PlacedVolta,
 };
 
-pub fn layout_markers(
-    system: &System,
-    fonts: &Fonts,
-    lead: f32,
-    options: &RenderOptions,
-    voltas: &[PlacedVolta],
-    volta_height: f32,
-) -> MarkerLayout {
-    MarkerStacker::new(system, fonts, lead, options, voltas, volta_height).layout()
+pub fn layout_markers(ctx: &LayoutContext) -> MarkerLayout {
+    MarkerStacker::new(ctx).layout()
 }
 
 fn marker_rank(kind: MarkerKind) -> usize {
@@ -62,12 +55,7 @@ fn spread_markers(markers: &mut [PlacedMarker], gap: f32) {
     let mut right_edge = f32::NEG_INFINITY;
 
     for marker in markers {
-        let left = match marker.anchor {
-            TextAnchor::Start => marker.x,
-            TextAnchor::Middle => marker.x - marker.width / 2.0,
-            TextAnchor::End => marker.x - marker.width,
-        };
-
+        let (left, _) = marker.horizontal_bounds();
         let shift = (right_edge + gap - left).max(0.0);
 
         marker.x += shift;
@@ -100,25 +88,6 @@ pub fn label_at(
             && marker.pulse == pulse
             && (marker.unit - unit).abs() < FLOAT_ERROR
     })
-}
-
-pub fn marker_bounds(marker: &PlacedMarker) -> (f32, f32) {
-    match marker.anchor {
-        TextAnchor::Start => (marker.x, marker.x + marker.width),
-        TextAnchor::Middle => (marker.x - marker.width / 2.0, marker.x + marker.width / 2.0),
-        TextAnchor::End => (marker.x - marker.width, marker.x),
-    }
-}
-
-#[derive(Debug)]
-enum MarkerStack {
-    Continuous {
-        bottom: f32,
-    },
-    Split {
-        above_bottom: f32,
-        below_bottom: f32,
-    },
 }
 
 #[derive(Debug)]
@@ -162,38 +131,15 @@ impl MarkerColumn {
             .sum()
     }
 
-    fn overlaps(&self, spans: &[(f32, f32)]) -> bool {
-        self.ranks.iter().flatten().any(|marker| {
-            let (left, right) = match marker.anchor {
-                TextAnchor::Start => (marker.x, marker.x + marker.width),
-                TextAnchor::Middle => {
-                    (marker.x - marker.width / 2.0, marker.x + marker.width / 2.0)
-                }
-                TextAnchor::End => (marker.x - marker.width, marker.x),
-            };
-
-            spans
-                .iter()
-                .any(|(start, end)| left < *end && right > *start)
-        })
-    }
-
-    fn place(&mut self, fonts: &Fonts, rank_heights: &[f32; 4], stack: &MarkerStack) {
+    fn place(&mut self, fonts: &Fonts, rank_heights: &[f32; 4], bottom: f32) {
         for rank in 0..self.ranks.len() {
             if self.ranks[rank].is_empty() {
                 continue;
             }
 
             let height = rank_heights[rank];
-
-            let (group_start, base) = match stack {
-                MarkerStack::Continuous { bottom } => (0, *bottom),
-                MarkerStack::Split { above_bottom, .. } if rank >= 2 => (2, *above_bottom),
-                MarkerStack::Split { below_bottom, .. } => (0, *below_bottom),
-            };
-
-            let offset = self.band_height(group_start..rank, rank_heights);
-            let top = base - offset - height;
+            let offset = self.band_height(0..rank, rank_heights);
+            let top = bottom - offset - height;
 
             for marker in &mut self.ranks[rank] {
                 let font = marker_font(marker.kind, fonts);
@@ -212,47 +158,19 @@ struct MarkerStacker<'a, 'b> {
     fonts: &'a Fonts,
     options: &'a RenderOptions,
     geometry: SystemGeometry<'a, 'b>,
-    volta_height: f32,
-    volta_line: f32,
-    volta_spans: Vec<(f32, f32)>,
 }
 
 impl<'a, 'b> MarkerStacker<'a, 'b> {
-    fn new(
-        system: &'a System<'b>,
-        fonts: &'a Fonts,
-        lead: f32,
-        options: &'a RenderOptions,
-        voltas: &[PlacedVolta],
-        volta_height: f32,
-    ) -> Self {
-        let volta_line = voltas.first().map(|volta| volta.line_y).unwrap_or(0.0);
-
-        let volta_spans = voltas
-            .iter()
-            .map(|volta| (volta.start_x, volta.end_x))
-            .collect();
-
+    fn new(ctx: &LayoutContext<'a, 'b>) -> Self {
         Self {
-            system,
-            fonts,
-            options,
-            geometry: SystemGeometry::new(system, fonts, lead),
-            volta_height,
-            volta_line,
-            volta_spans,
+            system: ctx.system,
+            fonts: ctx.fonts,
+            options: ctx.options,
+            geometry: SystemGeometry::new(ctx.system, ctx.fonts, ctx.lead),
         }
     }
 
     fn layout(&self) -> MarkerLayout {
-        if self.system.markers.is_empty() {
-            return MarkerLayout {
-                markers: Vec::new(),
-                height: self.volta_height,
-                volta_offset: 0.0,
-            };
-        }
-
         let global_voice = self.system.voices.first().map(|voice| voice.id);
 
         let (voice_dynamics, stacked): (Vec<_>, Vec<_>) =
@@ -263,14 +181,18 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
                         .is_some_and(|voice| Some(voice.id) != global_voice)
             });
 
-        let mut layout = if stacked.is_empty() {
+        let markers = stacked
+            .into_iter()
+            .map(|marker| self.place(marker))
+            .collect::<Vec<_>>();
+
+        let mut layout = if markers.is_empty() {
             MarkerLayout {
                 markers: Vec::new(),
-                height: self.volta_height,
-                volta_offset: 0.0,
+                height: 0.0,
             }
         } else {
-            self.stack(self.columns(stacked))
+            self.stack(self.columns(markers))
         };
 
         layout
@@ -280,7 +202,7 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
         layout
     }
 
-    fn columns(&self, mut markers: Vec<&SystemMarker>) -> Vec<Vec<PlacedMarker>> {
+    fn columns(&self, mut markers: Vec<PlacedMarker>) -> Vec<Vec<PlacedMarker>> {
         markers.sort_by(|lhs, rhs| {
             lhs.pulse
                 .cmp(&rhs.pulse)
@@ -289,9 +211,7 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
 
         let mut columns: Vec<Vec<PlacedMarker>> = Vec::new();
 
-        for marker in markers {
-            let placed = self.place(marker);
-
+        for placed in markers {
             match columns.last_mut() {
                 Some(column) if column[0].same_note(&placed) => column.push(placed),
                 _ => columns.push(vec![placed]),
@@ -364,69 +284,21 @@ impl<'a, 'b> MarkerStacker<'a, 'b> {
             column.spread(self.fonts);
         }
 
-        let max_below = columns
+        let bottom = columns
             .iter()
-            .map(|column| column.band_height(0..2, &rank_heights))
+            .map(|column| column.band_height(0..4, &rank_heights))
             .fold(0.0, f32::max);
-
-        let max_above = columns
-            .iter()
-            .map(|column| column.band_height(2..4, &rank_heights))
-            .fold(0.0, f32::max);
-
-        let volta_below = columns
-            .iter()
-            .filter(|column| column.overlaps(&self.volta_spans))
-            .map(|column| column.band_height(0..2, &rank_heights))
-            .fold(0.0, f32::max);
-
-        let has_volta = self.volta_height > 0.0;
-        let stack_height = max_above + max_below + if has_volta { self.volta_height } else { 0.0 };
-        let volta_gap = self.fonts.label.volta.size() * VOLTA_MARKER_GAP;
-
-        let volta_shift = if has_volta && max_above > 0.0 {
-            self.volta_line - volta_gap
-        } else {
-            0.0
-        };
-
-        let marker_bottom = if has_volta {
-            stack_height - volta_shift
-        } else {
-            stack_height
-        };
-
-        let stack = if has_volta {
-            MarkerStack::Split {
-                above_bottom: max_above,
-                below_bottom: marker_bottom,
-            }
-        } else {
-            MarkerStack::Continuous {
-                bottom: marker_bottom,
-            }
-        };
 
         let mut markers = Vec::new();
 
         for mut column in columns {
-            column.place(self.fonts, &rank_heights, &stack);
+            column.place(self.fonts, &rank_heights, bottom);
             markers.extend(column.into_markers());
         }
 
-        let height = marker_bottom + self.fonts.label.key.size() * MARKER_BOTTOM_GAP;
+        let height = bottom + self.fonts.label.key.size() * MARKER_BOTTOM_GAP;
 
-        let volta_offset = if has_volta {
-            max_above + max_below - volta_below - volta_shift
-        } else {
-            0.0
-        };
-
-        MarkerLayout {
-            markers,
-            height,
-            volta_offset,
-        }
+        MarkerLayout { markers, height }
     }
 
     fn rank_heights(&self, columns: &[Vec<PlacedMarker>]) -> [f32; 4] {
@@ -464,11 +336,41 @@ impl PlacedMarker {
     fn same_note(&self, other: &Self) -> bool {
         self.pulse == other.pulse && (self.unit - other.unit).abs() < FLOAT_ERROR
     }
+
+    pub fn horizontal_bounds(&self) -> (f32, f32) {
+        match self.anchor {
+            TextAnchor::Start => (self.x, self.x + self.width),
+            TextAnchor::Middle => (self.x - self.width / 2.0, self.x + self.width / 2.0),
+            TextAnchor::End => (self.x - self.width, self.x),
+        }
+    }
+
+    pub fn vertical_bounds(&self, fonts: &Fonts) -> (f32, f32) {
+        let font = marker_font(self.kind, fonts);
+        (self.y - font.ascent(), self.y + font.descent())
+    }
 }
 
 #[derive(Debug)]
 pub struct MarkerLayout {
     pub markers: Vec<PlacedMarker>,
     pub height: f32,
-    pub volta_offset: f32,
+}
+
+impl MarkerLayout {
+    pub fn shift(&mut self, offset: f32) {
+        for marker in &mut self.markers {
+            marker.y += offset;
+        }
+
+        self.height += offset;
+    }
+
+    pub fn ensure_height(&mut self, height: f32) {
+        self.height = self.height.max(height);
+    }
+
+    pub fn bottom_baseline(&self) -> Option<f32> {
+        self.markers.iter().map(|marker| marker.y).reduce(f32::max)
+    }
 }

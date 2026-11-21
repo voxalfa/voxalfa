@@ -98,13 +98,11 @@ pub enum EventKind {
     Key(Key),
     TimeSignature(TimeSignature),
     Tempo(StaticTempo),
+    ProgressiveTempo(ProgressiveTempo),
     Jump(JumpEvent),
     Mark(Mark),
     Touch(Touch),
-    EndingStart(u8),
-    EndingEnd(u8),
-    TempoStart(ProgressiveTempo),
-    TempoEnd(ProgressiveTempo),
+    Ending(u8),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

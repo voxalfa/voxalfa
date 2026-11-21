@@ -54,7 +54,7 @@ impl SectionIr {
 
         if let Some(tempo) = &self.params.tempo {
             let event = match tempo.value {
-                ExtendedTempo::Progressive(kind) => Event::new(EventKind::TempoStart(kind)),
+                ExtendedTempo::Progressive(kind) => Event::start(EventKind::ProgressiveTempo(kind)),
                 ExtendedTempo::Static(tempo) => Event::with(tempo),
             };
 
@@ -72,7 +72,7 @@ impl SectionIr {
         }
 
         if let Some(ending) = &params.ending {
-            result.push(Event::new(EventKind::EndingStart(ending.value as u8)));
+            result.push(Event::start(EventKind::Ending(ending.value as u8)));
         }
 
         result
@@ -91,11 +91,11 @@ impl SectionIr {
         if let Some(tempo) = &self.params.tempo
             && let ExtendedTempo::Progressive(kind) = tempo.value
         {
-            result.push(Event::new(EventKind::TempoEnd(kind)));
+            result.push(Event::end(EventKind::ProgressiveTempo(kind)));
         }
 
         if let Some(ending) = &params.ending {
-            result.push(Event::new(EventKind::EndingEnd(ending.value as u8)));
+            result.push(Event::end(EventKind::Ending(ending.value as u8)));
         }
 
         if let Some(jump) = &params.jump {

@@ -6,10 +6,7 @@ pub const HEADER_TIME_RIGHT_MARGIN: f32 = 2.5;
 pub const MARKER_BOTTOM_GAP: f32 = 0.35;
 pub const MARKER_HORIZONTAL_GAP: f32 = 0.55;
 
-pub const VOLTA_TEXT_GAP: f32 = 0.2;
-pub const VOLTA_BOTTOM_GAP: f32 = 0.35;
-pub const VOLTA_END_TICK: f32 = 0.45;
-pub const VOLTA_TEXT_INSET: f32 = 0.20;
+pub const VOLTA_TEXT_INSET: f32 = 0.50;
 pub const VOLTA_MARKER_GAP: f32 = 0.25;
 
 pub const TOUCH_SYMBOL_SCALE: f32 = 0.75;
