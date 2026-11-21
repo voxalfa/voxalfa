@@ -6,7 +6,7 @@ use voxalfa_core::{
     },
     ir::solfa::NoteKind,
     output::{
-        event::{Event, EventKind, JumpEvent},
+        event::{Event, EventKind, EventRole, JumpEvent},
         voice::VoiceLine,
     },
 };
@@ -23,6 +23,7 @@ pub struct MeasureTask {
     items: Vec<MeasureItem>,
     pending_time: Option<TimeSignature>,
     pending_wedge: bool,
+    pending_ending: Option<u8>,
     pending_notation: Option<Notations>,
     result: Vec<Measure>,
     last_note: Option<CoreNote>,
@@ -38,6 +39,7 @@ impl MeasureTask {
             pending_time: None,
             pending_wedge: false,
             pending_notation: None,
+            pending_ending: None,
             items: Vec::new(),
             result: Vec::new(),
         }
@@ -52,11 +54,7 @@ impl MeasureTask {
             }
 
             if note.measure_start && note_id > 0 {
-                self.result.push(Measure {
-                    number: self.result.len() + 1,
-                    implicit: Choice::No,
-                    items: std::mem::take(&mut self.items),
-                });
+                self.insert_measure(false);
             }
 
             self.handle_events(events);
@@ -78,11 +76,7 @@ impl MeasureTask {
         }
 
         if !self.items.is_empty() {
-            self.result.push(Measure {
-                number: self.result.len() + 1,
-                implicit: Choice::No,
-                items: std::mem::take(&mut self.items),
-            });
+            self.insert_measure(true);
         }
 
         self.result
@@ -102,6 +96,26 @@ impl MeasureTask {
         }));
     }
 
+    fn insert_measure(&mut self, is_last: bool) {
+        if !is_last && let Some(ending) = self.pending_ending.take() {
+            self.items.push(MeasureItem::Barline(Barline {
+                location: "right".to_string(),
+                ending: Ending {
+                    r#type: "stop".to_string(),
+                    number: ending.to_string(),
+                    content: None,
+                    default_y: 40,
+                },
+            }));
+        }
+
+        self.result.push(Measure {
+            number: self.result.len() + 1,
+            implicit: Choice::No, // FIXME: todo
+            items: std::mem::take(&mut self.items),
+        });
+    }
+
     fn handle_events<'a>(&'a mut self, events: impl Iterator<Item = &'a Event>) {
         for event in events {
             match event.kind {
@@ -110,12 +124,10 @@ impl MeasureTask {
                 EventKind::Mark(mark) => self.handle_mark_event(mark),
                 EventKind::Dynamic(dynamic) => self.handle_dynamics_event(dynamic),
                 EventKind::Tempo(tempo) => self.handle_tempo_event(tempo),
-                EventKind::TimeSignature(time) => self.pending_time = Some(time),
                 EventKind::Touch(touch) => self.handle_touch(touch),
-                // EventKind::EndingStart(_) => todo!(),
-                // EventKind::EndingEnd(_) => todo!(),
-                // EventKind::TempoStart(progressive_tempo) => todo!(),
-                // EventKind::TempoEnd(progressive_tempo) => todo!(),
+                EventKind::Ending(id) => self.handle_ending(id, event.role),
+                EventKind::TimeSignature(time) => self.pending_time = Some(time),
+                // EventKind::ProgressiveTempo(tempo) => todo!(),
                 _ => {}
             }
         }
@@ -200,6 +212,25 @@ impl MeasureTask {
             notations.fermata = Some(());
         } else {
             notations.articulations = Some(Articulations::from(touch).into());
+        }
+    }
+
+    fn handle_ending(&mut self, id: u8, role: EventRole) {
+        if role == EventRole::Start {
+            self.items.insert(
+                0,
+                MeasureItem::Barline(Barline {
+                    location: "left".to_string(),
+                    ending: Ending {
+                        r#type: "start".to_string(),
+                        number: id.to_string(),
+                        content: format!("{id}.").into(),
+                        default_y: 40,
+                    },
+                }),
+            );
+
+            self.pending_ending = Some(id);
         }
     }
 
