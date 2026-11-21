@@ -1,49 +1,35 @@
 use crate::{
+    RenderOptions,
     fonts::Fonts,
-    model::{MarkerKind, System, VoiceInstance},
-    options::RenderOptions,
+    model::{System, VoiceInstance},
 };
 
 use super::{
     constants::*,
-    dynamics::{PlacedDynamicSpan, layout_dynamic_spans},
-    markers::{PlacedMarker, layout_markers},
-    voltas::{PlacedVolta, layout_voltas},
+    dynamics::{PlacedDynamicSpan, has_voice_dynamic, layout_dynamic_spans, place_voice_dynamics},
+    markers::{MarkerLayout, PlacedMarker, layout_markers},
+    voltas::{PlacedVolta, layout_voltas, place_voltas},
 };
 
-pub fn layout_system(
-    system: &System,
-    fonts: &Fonts,
-    lead: f32,
-    options: &RenderOptions,
-) -> SystemLayout {
-    let (mut voltas, volta_height) = layout_voltas(system, fonts, lead, options);
-    let mut marker_layout = layout_markers(system, fonts, lead, options, &voltas, volta_height);
+pub struct LayoutContext<'a, 'b> {
+    pub system: &'a System<'b>,
+    pub fonts: &'a Fonts,
+    pub lead: f32,
+    pub options: &'a RenderOptions,
+}
 
-    shift_voltas(&mut voltas, marker_layout.volta_offset);
+pub fn layout_system(ctx: &LayoutContext) -> SystemLayout {
+    let mut marker_layout = layout_markers(ctx);
+    let mut voltas = layout_voltas(ctx);
 
-    let lyric_rows = collect_lyric_rows(system);
+    place_voltas(ctx, &mut marker_layout, &mut voltas);
 
-    let (rows, column) = layout_rows(
-        system,
-        fonts,
-        options,
-        &marker_layout.markers,
-        &lyric_rows,
-        marker_layout.height,
-    );
+    let lyric_rows = collect_lyric_rows(ctx.system);
+    let (rows, column) = layout_rows(ctx, &marker_layout, &lyric_rows);
 
-    place_voice_dynamics(&mut marker_layout.markers, &rows, system, fonts);
+    place_voice_dynamics(ctx, &mut marker_layout, &rows);
 
-    let dynamic_spans = layout_dynamic_spans(
-        system,
-        fonts,
-        lead,
-        marker_layout.height,
-        &marker_layout.markers,
-        options,
-    );
-
+    let dynamic_spans = layout_dynamic_spans(ctx, &marker_layout);
     let height = column.height + marker_layout.height;
 
     SystemLayout {
@@ -52,13 +38,6 @@ pub fn layout_system(
         dynamic_spans,
         voltas,
         height,
-    }
-}
-
-fn shift_voltas(voltas: &mut [PlacedVolta], offset: f32) {
-    for volta in voltas {
-        volta.text_y += offset;
-        volta.line_y += offset;
     }
 }
 
@@ -85,35 +64,33 @@ fn collect_lyric_rows(system: &System) -> Vec<Vec<(usize, usize)>> {
 }
 
 fn layout_rows(
-    system: &System,
-    fonts: &Fonts,
-    options: &RenderOptions,
-    markers: &[PlacedMarker],
+    ctx: &LayoutContext,
+    marker_layout: &MarkerLayout,
     lyric_rows: &[Vec<(usize, usize)>],
-    top: f32,
 ) -> (Vec<SystemRow>, ColumnLayout) {
-    let elements = &options.elements;
-    let note_scale = fonts.text.note.size() / options.solfa_font_size.max(1.0);
-    let lyric_scale = fonts.text.lyric.size() / options.lyric_font_size.max(1.0);
+    let elements = &ctx.options.elements;
+    let note_scale = ctx.fonts.text.note.size() / ctx.options.solfa_font_size.max(1.0);
+    let lyric_scale = ctx.fonts.text.lyric.size() / ctx.options.lyric_font_size.max(1.0);
 
     let voice_height =
-        options.voice_row_height * note_scale + elements.note.top() + elements.note.bottom();
+        ctx.options.voice_row_height * note_scale + elements.note.top() + elements.note.bottom();
 
-    let lyric_height =
-        options.lyric_row_height * lyric_scale + elements.lyrics.top() + elements.lyrics.bottom();
+    let lyric_height = ctx.options.lyric_row_height * lyric_scale
+        + elements.lyrics.top()
+        + elements.lyrics.bottom();
 
-    let dynamic_height = fonts.label.dynamic.line_height()
+    let dynamic_height = ctx.fonts.label.dynamic.line_height()
         + elements.dynamic.top()
         + elements.dynamic.bottom()
-        + fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
+        + ctx.fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
 
-    let global_voice = system.voices.first().map(|voice| voice.id);
+    let global_voice = ctx.system.voices.first().map(|voice| voice.id);
 
     let mut specs = Vec::new();
     let mut kinds = Vec::new();
 
-    for (voice_index, voice) in system.voices.iter().enumerate() {
-        let has_dynamic = has_voice_dynamic(markers, *voice, global_voice);
+    for (voice_index, voice) in ctx.system.voices.iter().enumerate() {
+        let has_dynamic = has_voice_dynamic(&marker_layout.markers, *voice, global_voice);
 
         specs.push(RowSpec {
             height: voice_height,
@@ -141,7 +118,7 @@ fn layout_rows(
         .into_iter()
         .enumerate()
         .map(|(index, kind)| SystemRow {
-            y: column.ys[index] + top,
+            y: column.row_offsets[index] + marker_layout.height,
             height: specs[index].height,
             kind,
         })
@@ -150,60 +127,20 @@ fn layout_rows(
     (rows, column)
 }
 
-fn has_voice_dynamic(
-    markers: &[PlacedMarker],
-    voice: VoiceInstance,
-    global_voice: Option<usize>,
-) -> bool {
-    Some(voice.id) != global_voice
-        && markers.iter().any(|marker| {
-            marker.kind == MarkerKind::Dynamic && marker.voice.map(|item| item.id) == Some(voice.id)
-        })
-}
-
-fn place_voice_dynamics(
-    markers: &mut [PlacedMarker],
-    rows: &[SystemRow],
-    system: &System,
-    fonts: &Fonts,
-) {
-    let global_voice = system.voices.first().map(|voice| voice.id);
-    let offset = fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
-
-    let dynamics_markers = markers
-        .iter_mut()
-        .filter(|marker| marker.kind == MarkerKind::Dynamic);
-
-    for marker in dynamics_markers {
-        let Some(voice) = marker.voice else {
-            continue;
-        };
-
-        if Some(voice.id) == global_voice {
-            continue;
-        }
-
-        let Some(row) = rows.iter().find(
-            |row| matches!(row.kind, SystemRowKind::Voice(current) if current.id == voice.id),
-        ) else {
-            continue;
-        };
-
-        marker.y = row.y - offset;
-    }
-}
-
 fn layout_column(specs: &[RowSpec]) -> ColumnLayout {
-    let mut ys = Vec::with_capacity(specs.len());
+    let mut row_offsets = Vec::with_capacity(specs.len());
     let mut y = 0.0;
 
     for spec in specs {
         y += spec.gap_before;
-        ys.push(y);
+        row_offsets.push(y);
         y += spec.height;
     }
 
-    ColumnLayout { ys, height: y }
+    ColumnLayout {
+        row_offsets,
+        height: y,
+    }
 }
 
 #[derive(Debug)]
@@ -239,6 +176,6 @@ pub enum SystemRowKind {
 
 #[derive(Debug)]
 pub struct ColumnLayout {
-    pub ys: Vec<f32>,
+    pub row_offsets: Vec<f32>,
     pub height: f32,
 }

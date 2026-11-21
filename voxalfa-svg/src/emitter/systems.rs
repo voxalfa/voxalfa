@@ -98,31 +98,6 @@ impl<'a> SystemRender<'a> {
         let style = &self.fonts.text;
         let y = self.y;
 
-        for volta in &layout.voltas {
-            let start_x = self.origin_x + volta.start_x;
-            let end_x = self.origin_x + volta.end_x;
-            let line_y = y + volta.line_y;
-
-            emit_line(self.svg, start_x, line_y, end_x, line_y, "volta")?;
-
-            let tick = self.fonts.label.volta.size() * VOLTA_END_TICK;
-
-            emit_line(self.svg, start_x, line_y, start_x, line_y + tick, "volta")?;
-
-            if !volta.open_end {
-                emit_line(self.svg, end_x, line_y, end_x, line_y + tick, "volta")?;
-            }
-
-            emit_text(
-                self.svg,
-                self.origin_x + volta.text_x,
-                y + volta.text_y,
-                &volta.text,
-                "volta-label",
-                "start",
-            )?;
-        }
-
         for marker in &layout.markers {
             let x = self.origin_x + marker.x;
             let baseline = y + marker.y;
@@ -242,6 +217,29 @@ impl<'a> SystemRender<'a> {
 
             self.emit_barlines(top, bottom)?;
             self.emit_voice_braces(y + first_voice.y, y + layout.height, !self.is_last_system)?;
+        }
+
+        for volta in &layout.voltas {
+            let start_x = self.origin_x + volta.start_x;
+            let end_x = self.origin_x + volta.end_x;
+            let line_y = y + volta.line_y;
+            let tick = volta.label_baseline - volta.line_y;
+
+            emit_text(
+                self.svg,
+                self.origin_x + volta.label_x,
+                y + volta.label_baseline,
+                &volta.label,
+                "volta-label",
+                "start",
+            )?;
+
+            emit_line(self.svg, start_x, line_y, end_x, line_y, "volta")?;
+            emit_line(self.svg, start_x, line_y, start_x, line_y + tick, "volta")?;
+
+            if !volta.open_end {
+                emit_line(self.svg, end_x, line_y, end_x, line_y + tick, "volta")?;
+            }
         }
 
         Ok(())
