@@ -106,23 +106,27 @@ impl TimelineEvaluator {
             EventKind::Touch(touch) => self.pending_touch = Some(touch),
             EventKind::Mark(mark) => self.handle_mark_event(mark),
             EventKind::Jump(jump) => self.handle_jump_event(jump),
+
             EventKind::Dynamic(dynamic) => match event.role {
                 EventRole::Point => self.dynamic.current = dynamic,
                 EventRole::Start => self.handle_dynamic_start(dynamic),
                 EventRole::End => self.handle_dynamic_end(dynamic),
             },
-            EventKind::TempoStart(kind) => self.handle_tempo_start(kind),
-            EventKind::TempoEnd(kind) => self.handle_tempo_end(kind),
 
-            EventKind::EndingStart(id) => {
-                if let Some(address) = self.endings_jump.get(&id) {
+            EventKind::ProgressiveTempo(kind) => match event.role {
+                EventRole::Start => self.handle_tempo_start(kind),
+                _ => self.handle_tempo_end(kind),
+            },
+
+            EventKind::Ending(id) => match event.role {
+                EventRole::Start if let Some(address) = self.endings_jump.get(&id) => {
                     self.index = *address;
                 }
-            }
-
-            EventKind::EndingEnd(id) => {
-                self.endings_jump.insert(id, self.index);
-            }
+                EventRole::End => {
+                    self.endings_jump.insert(id, self.index);
+                }
+                _ => {}
+            },
         }
     }
 
