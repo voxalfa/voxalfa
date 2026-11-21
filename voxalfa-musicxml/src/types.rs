@@ -1,5 +1,17 @@
 use serde::Serialize;
-use voxalfa_core::data_types::{Dynamic as CoreDynamics, Voice};
+use voxalfa_core::data_types::{Dynamic as CoreDynamics, Touch, Voice};
+
+#[derive(Debug, Serialize)]
+pub struct TagEnum<T> {
+    #[serde(rename = "$value")]
+    pub value: T,
+}
+
+impl<T> From<T> for TagEnum<T> {
+    fn from(value: T) -> Self {
+        Self { value }
+    }
+}
 
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -141,16 +153,38 @@ impl Note {
     }
 }
 
+#[derive(Debug, Default, Serialize)]
+pub struct Notations {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tied: Vec<Tie>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fermata: Option<()>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub articulations: Option<TagEnum<Articulations>>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct Tie {
     #[serde(rename = "@type")]
     pub r#type: Position,
 }
 
-#[derive(Debug, Default, Serialize)]
-pub struct Notations {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tied: Vec<Tie>,
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Articulations {
+    // Accent,
+    Staccato,
+    StrongAccent,
+}
+
+impl From<Touch> for Articulations {
+    fn from(value: Touch) -> Self {
+        match value {
+            Touch::Staccato => Self::Staccato,
+            Touch::Marcato => Self::StrongAccent,
+            Touch::Fermata => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -268,9 +302,11 @@ pub struct DirectionType {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub words: Option<Words>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub dynamics: Option<DynamicsWrapper>,
+    pub dynamics: Option<TagEnum<Dynamics>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metronome: Option<Metronome>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wedge: Option<Wedge>,
 }
 
 impl DirectionType {
@@ -300,16 +336,10 @@ impl DirectionType {
 
     pub fn dynamics(value: Dynamics) -> Self {
         Self {
-            dynamics: Some(DynamicsWrapper { value }),
+            dynamics: Some(TagEnum { value }),
             ..Default::default()
         }
     }
-}
-
-#[derive(Debug, Serialize)]
-pub struct DynamicsWrapper {
-    #[serde(rename = "$value")]
-    pub value: Dynamics,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -360,7 +390,7 @@ impl Dynamics {
 pub struct Words {
     #[serde(rename = "$text")]
     pub content: String,
-    #[serde(rename = "@font-style")]
+    #[serde(rename = "@font-style", skip_serializing_if = "Option::is_none")]
     pub font_style: Option<FontStyle>,
 }
 
@@ -448,6 +478,20 @@ impl Sound {
             ..self
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+pub struct Wedge {
+    #[serde(rename = "@type")]
+    pub r#type: WedgeType,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WedgeType {
+    Crescendo,
+    Decrescendo,
+    Stop,
 }
 
 #[derive(Debug, Serialize)]

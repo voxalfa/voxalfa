@@ -2,7 +2,7 @@ use voxalfa_core::{
     ast::solfa::{BaseNote, Note as CoreNote},
     data_types::{
         BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature, KeyAccidental, Mark,
-        StaticTempo, TimeSignature, Voice,
+        StaticTempo, TimeSignature, Touch, Voice,
     },
     ir::solfa::NoteKind,
     output::{
@@ -11,10 +11,7 @@ use voxalfa_core::{
     },
 };
 
-use crate::types::{
-    Attributes, Choice, Clef, Direction, DirectionType, Dynamics, FontStyle, Key, Measure,
-    MeasureItem, Metronome, Note, NoteType, Pitch, Position, Rest, Sound, Step, Time, Words,
-};
+use crate::types::*;
 
 const MIDDLE_C: i8 = 60;
 const MEASURE_DIVISION: u16 = 480;
@@ -25,6 +22,8 @@ pub struct MeasureTask {
     time: TimeSignature,
     items: Vec<MeasureItem>,
     pending_time: Option<TimeSignature>,
+    pending_wedge: bool,
+    pending_notation: Option<Notations>,
     result: Vec<Measure>,
     last_note: Option<CoreNote>,
 }
@@ -37,6 +36,8 @@ impl MeasureTask {
             time: initial_time,
             last_note: None,
             pending_time: None,
+            pending_wedge: false,
+            pending_notation: None,
             items: Vec::new(),
             result: Vec::new(),
         }
@@ -107,12 +108,10 @@ impl MeasureTask {
                 EventKind::Key(key) => self.handle_key_change(key),
                 EventKind::Jump(jump) => self.handle_jump_event(jump),
                 EventKind::Mark(mark) => self.handle_mark_event(mark),
-                EventKind::Dynamic(CoreDynamics::Cre) => {}
-                EventKind::Dynamic(CoreDynamics::Dec) => {}
                 EventKind::Dynamic(dynamic) => self.handle_dynamics_event(dynamic),
                 EventKind::Tempo(tempo) => self.handle_tempo_event(tempo),
                 EventKind::TimeSignature(time) => self.pending_time = Some(time),
-                // EventKind::Touch(touch) => todo!(),
+                EventKind::Touch(touch) => self.handle_touch(touch),
                 // EventKind::EndingStart(_) => todo!(),
                 // EventKind::EndingEnd(_) => todo!(),
                 // EventKind::TempoStart(progressive_tempo) => todo!(),
@@ -160,19 +159,48 @@ impl MeasureTask {
     }
 
     fn handle_dynamics_event(&mut self, dynamics: CoreDynamics) {
-        let dynamics = Dynamics::from(dynamics);
-        let velocity = dynamics.velocity();
+        if matches!(dynamics, CoreDynamics::Cre | CoreDynamics::Dec) {
+            let wedge_type = match dynamics {
+                _ if self.pending_wedge => WedgeType::Stop,
+                CoreDynamics::Cre => WedgeType::Crescendo,
+                _ => WedgeType::Decrescendo,
+            };
 
-        let direction = Direction {
-            direction_type: vec![DirectionType::dynamics(dynamics)],
-            sound: Some(Sound {
-                dynamics: Some(velocity),
+            let direction = Direction {
+                direction_type: vec![DirectionType {
+                    wedge: Some(Wedge { r#type: wedge_type }),
+                    ..Default::default()
+                }],
                 ..Default::default()
-            }),
-            ..Default::default()
-        };
+            };
 
-        self.items.push(MeasureItem::Direction(direction));
+            self.items.push(MeasureItem::Direction(direction));
+            self.pending_wedge = !self.pending_wedge;
+        } else {
+            let dynamics = Dynamics::from(dynamics);
+            let velocity = dynamics.velocity();
+
+            let direction = Direction {
+                direction_type: vec![DirectionType::dynamics(dynamics)],
+                sound: Some(Sound {
+                    dynamics: Some(velocity),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+
+            self.items.push(MeasureItem::Direction(direction));
+        }
+    }
+
+    fn handle_touch(&mut self, touch: Touch) {
+        let notations = self.pending_notation.get_or_insert_default();
+
+        if touch == Touch::Fermata {
+            notations.fermata = Some(());
+        } else {
+            notations.articulations = Some(Articulations::from(touch).into());
+        }
     }
 
     fn handle_pending_updates(&mut self) {
@@ -235,6 +263,8 @@ impl MeasureTask {
             duration,
             ..Default::default()
         };
+
+        note_item.notations = self.pending_notation.take();
 
         if tied {
             note_item.add_tie(Position::Stop);
