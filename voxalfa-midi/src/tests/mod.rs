@@ -101,7 +101,7 @@ fn test_inclusive_dynamic_range() {
 
 ---
 
-[$] dynamics={p:0, cre:0.5..1}
+[$] dynamics={p:0, cresc:0.5..1}
 
 [A] |d ,r .m ,f :s .l !d :r ||
 
@@ -119,7 +119,7 @@ fn test_explicit_dynamic_target() {
 
 ---
 
-[$] dynamics={p:0, cre:0.5..1, f:1}
+[$] dynamics={p:0, cresc:0.5..1, f:1}
 
 [A] |d ,r .m ,f :s .l !d :r ||
 
@@ -137,7 +137,7 @@ fn test_adjacent_dynamic_ranges() {
 
 ---
 
-[$] dynamics={p:0, cre:0..2, dec:2..4}
+[$] dynamics={p:0, cresc:0..2, decresc:2..4}
 
 [A] |d :r !m :f |s :l !t :d+1 ||"#;
 

@@ -6,7 +6,7 @@ expression: output_str
 [$] key={C} | time={3,4} | tempo={70} | voices={A}
 ---
 
-[$] dynamics={cre:0..6}
+[$] dynamics={cresc:0..6}
 
 [A] |d :- .d :d ||
 
@@ -18,5 +18,5 @@ expression: output_str
 error[E032]: timestamp is unmatched
   ┌─ inclusive_range_out_of_bounds_error.vfa:5:15
   │
-5 │ [$] dynamics={cre:0..6}
-  │               ^^^^^^^^
+5 │ [$] dynamics={cresc:0..6}
+  │               ^^^^^^^^^^

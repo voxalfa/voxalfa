@@ -9,7 +9,7 @@ FILE: test_inclusive_dynamic_range
 
 ---
 
-[$] dynamics={p:0, cre:0.5..1}
+[$] dynamics={p:0, cresc:0.5..1}
 
 [A] |d ,r .m ,f :s .l !d :r ||
 

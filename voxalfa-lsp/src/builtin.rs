@@ -137,6 +137,21 @@ pub const TEMPO_BUILTINS: &[BuiltinValueSpec] = &[
         detail: "presto",
         doc: "Very fast tempo (~180 BPM).",
     },
+    BuiltinValueSpec {
+        label: "rit",
+        detail: "ritardando",
+        doc: "Gradually slow down.",
+    },
+    BuiltinValueSpec {
+        label: "rall",
+        detail: "rallentando",
+        doc: "Gradually slow down.",
+    },
+    BuiltinValueSpec {
+        label: "accel",
+        detail: "accelerando",
+        doc: "Gradually speed up.",
+    },
 ];
 
 pub const MARK_BUILTINS: &[BuiltinValueSpec] = &[
@@ -164,17 +179,17 @@ pub const MARK_BUILTINS: &[BuiltinValueSpec] = &[
 
 pub const TOUCHES_BUILTINS: &[BuiltinValueSpec] = &[
     BuiltinValueSpec {
-        label: "stc",
+        label: "staccato",
         detail: "Staccato",
         doc: "Short, detached note articulation.",
     },
     BuiltinValueSpec {
-        label: "mrc",
+        label: "marcato",
         detail: "Marcato",
         doc: "Louder note articulation.",
     },
     BuiltinValueSpec {
-        label: "frm",
+        label: "fermata",
         detail: "Fermata",
         doc: "Sustain / hold note beyond standard duration.",
     },
@@ -220,6 +235,21 @@ pub const DYNAMICS_BUILTINS: &[BuiltinValueSpec] = &[
         label: "fff",
         detail: "Fortississimo",
         doc: "Extremely loud dynamic mark.",
+    },
+    BuiltinValueSpec {
+        label: "cresc",
+        detail: "Crescendo",
+        doc: "Gradually grow louder.",
+    },
+    BuiltinValueSpec {
+        label: "decresc",
+        detail: "Decrescendo",
+        doc: "Gradually grow softer.",
+    },
+    BuiltinValueSpec {
+        label: "dim",
+        detail: "Diminuendo",
+        doc: "Gradually grow softer.",
     },
 ];
 
