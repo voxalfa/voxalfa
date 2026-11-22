@@ -18,7 +18,7 @@
 
 ---
 
-[$] dynamics={p, cre:4..7}
+[$] dynamics={p, cresc:4..7}
 
 [S] |d    :r    !m    :f    |`s   :l`   !t    :-    |da+1 :-    !     :     ||
 ;                                                     ^ type.qualifier

@@ -99,57 +99,57 @@ pub const KEY_BUILTINS: &[BuiltinValueSpec] = &[
 pub const TEMPO_BUILTINS: &[BuiltinValueSpec] = &[
     BuiltinValueSpec {
         label: "grave",
-        detail: "grave",
+        detail: "Grave",
         doc: "Extremely slow tempo (~40 BPM).",
     },
     BuiltinValueSpec {
         label: "largo",
-        detail: "largo",
+        detail: "Largo",
         doc: "Broad, slow tempo (~50 BPM).",
     },
     BuiltinValueSpec {
         label: "adagio",
-        detail: "adagio",
+        detail: "Adagio",
         doc: "Slow tempo with expression (~70 BPM).",
     },
     BuiltinValueSpec {
         label: "andante",
-        detail: "adante",
+        detail: "Andante",
         doc: "Walking tempo (~90 BPM).",
     },
     BuiltinValueSpec {
         label: "moderato",
-        detail: "moderato",
+        detail: "Moderato",
         doc: "Moderate speed (~110 BPM).",
     },
     BuiltinValueSpec {
         label: "allegro",
-        detail: "allegro",
+        detail: "Allegro",
         doc: "Fast, lively tempo (~130 BPM).",
     },
     BuiltinValueSpec {
         label: "vivace",
-        detail: "vivace",
+        detail: "Vivace",
         doc: "Brisk, lively tempo (~160 BPM).",
     },
     BuiltinValueSpec {
         label: "presto",
-        detail: "presto",
+        detail: "Presto",
         doc: "Very fast tempo (~180 BPM).",
     },
     BuiltinValueSpec {
         label: "rit",
-        detail: "ritardando",
+        detail: "Ritardando",
         doc: "Gradually slow down.",
     },
     BuiltinValueSpec {
         label: "rall",
-        detail: "rallentando",
+        detail: "Rallentando",
         doc: "Gradually slow down.",
     },
     BuiltinValueSpec {
         label: "accel",
-        detail: "accelerando",
+        detail: "Accelerando",
         doc: "Gradually speed up.",
     },
 ];
@@ -184,14 +184,14 @@ pub const TOUCHES_BUILTINS: &[BuiltinValueSpec] = &[
         doc: "Short, detached note articulation.",
     },
     BuiltinValueSpec {
-        label: "marcato",
-        detail: "Marcato",
-        doc: "Louder note articulation.",
-    },
-    BuiltinValueSpec {
         label: "fermata",
         detail: "Fermata",
         doc: "Sustain / hold note beyond standard duration.",
+    },
+    BuiltinValueSpec {
+        label: "marcato",
+        detail: "Marcato",
+        doc: "Strongly accented note articulation.",
     },
 ];
 
@@ -244,12 +244,12 @@ pub const DYNAMICS_BUILTINS: &[BuiltinValueSpec] = &[
     BuiltinValueSpec {
         label: "decresc",
         detail: "Decrescendo",
-        doc: "Gradually grow softer.",
+        doc: "Gradually grow softer (same as dim).",
     },
     BuiltinValueSpec {
         label: "dim",
         detail: "Diminuendo",
-        doc: "Gradually grow softer.",
+        doc: "Gradually grow softer (same as decresc).",
     },
 ];
 
