@@ -72,8 +72,15 @@ pub enum MeasureItem {
 #[derive(Debug, Serialize)]
 pub struct Barline {
     #[serde(rename = "@location")]
-    pub location: String,
+    pub location: BarlineLocation,
     pub ending: Ending,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BarlineLocation {
+    Left,
+    Right,
 }
 
 #[derive(Debug, Serialize)]
@@ -81,11 +88,16 @@ pub struct Ending {
     #[serde(rename = "@number")]
     pub number: String,
     #[serde(rename = "@type")]
-    pub r#type: String,
-    #[serde(rename = "@default-y")]
-    pub default_y: i16,
+    pub r#type: EndingType,
     #[serde(rename = "$text")]
     pub content: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EndingType {
+    Start,
+    Stop,
 }
 
 #[derive(Debug, Default, Serialize)]

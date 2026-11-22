@@ -2,7 +2,7 @@ use voxalfa_core::{
     ast::solfa::{BaseNote, Note as CoreNote},
     data_types::{
         BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature, KeyAccidental, Mark,
-        StaticTempo, TimeSignature, Touch, Voice,
+        ProgressiveTempo, StaticTempo, TimeSignature, Touch, Voice,
     },
     ir::solfa::NoteKind,
     output::{
@@ -99,12 +99,11 @@ impl MeasureTask {
     fn insert_measure(&mut self, is_last: bool) {
         if !is_last && let Some(ending) = self.pending_ending.take() {
             self.items.push(MeasureItem::Barline(Barline {
-                location: "right".to_string(),
+                location: BarlineLocation::Right,
                 ending: Ending {
-                    r#type: "stop".to_string(),
+                    r#type: EndingType::Stop,
                     number: ending.to_string(),
                     content: None,
-                    default_y: 40,
                 },
             }));
         }
@@ -126,9 +125,9 @@ impl MeasureTask {
                 EventKind::Tempo(tempo) => self.handle_tempo_event(tempo),
                 EventKind::Touch(touch) => self.handle_touch(touch),
                 EventKind::Ending(id) => self.handle_ending(id, event.role),
+                EventKind::ProgressiveTempo(_) if event.role == EventRole::End => {}
+                EventKind::ProgressiveTempo(tempo) => self.handle_progressive_tempo(tempo),
                 EventKind::TimeSignature(time) => self.pending_time = Some(time),
-                // EventKind::ProgressiveTempo(tempo) => todo!(),
-                _ => {}
             }
         }
     }
@@ -217,21 +216,26 @@ impl MeasureTask {
 
     fn handle_ending(&mut self, id: u8, role: EventRole) {
         if role == EventRole::Start {
-            self.items.insert(
-                0,
-                MeasureItem::Barline(Barline {
-                    location: "left".to_string(),
-                    ending: Ending {
-                        r#type: "start".to_string(),
-                        number: id.to_string(),
-                        content: format!("{id}.").into(),
-                        default_y: 40,
-                    },
-                }),
-            );
+            self.items.push(MeasureItem::Barline(Barline {
+                location: BarlineLocation::Left,
+                ending: Ending {
+                    r#type: EndingType::Start,
+                    number: id.to_string(),
+                    content: format!("{id}.").into(),
+                },
+            }));
 
             self.pending_ending = Some(id);
         }
+    }
+
+    fn handle_progressive_tempo(&mut self, tempo: ProgressiveTempo) {
+        let label = format!("{tempo}.");
+
+        self.items.push(MeasureItem::Direction(Direction {
+            direction_type: vec![DirectionType::words(&label)],
+            ..Default::default()
+        }));
     }
 
     fn handle_pending_updates(&mut self) {
