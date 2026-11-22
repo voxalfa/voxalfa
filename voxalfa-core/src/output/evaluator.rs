@@ -159,8 +159,10 @@ impl TimelineEvaluator {
 
     fn handle_dynamic_start(&mut self, dynamic: Dynamic) {
         match dynamic {
-            Dynamic::Cre => self.start_dynamic_transition(DynamicTransitionKind::Cre),
-            Dynamic::Dec => self.start_dynamic_transition(DynamicTransitionKind::Dec),
+            Dynamic::Cresc => self.start_dynamic_transition(DynamicTransitionKind::Inc),
+            Dynamic::Decresc | Dynamic::Dim => {
+                self.start_dynamic_transition(DynamicTransitionKind::Dec)
+            }
             _ => self.dynamic.current = dynamic,
         }
     }
@@ -176,7 +178,7 @@ impl TimelineEvaluator {
 
     fn handle_dynamic_end(&mut self, dynamic: Dynamic) {
         let kind = match dynamic {
-            Dynamic::Cre => DynamicTransitionKind::Cre,
+            Dynamic::Cresc => DynamicTransitionKind::Inc,
             _ => DynamicTransitionKind::Dec,
         };
 

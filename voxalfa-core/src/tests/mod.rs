@@ -98,7 +98,7 @@ fn test_timestamp_range_exception_error() {
 [$] time={4,4} | voices={A}
 ---
 
-[$] dynamics={cre:1}
+[$] dynamics={cresc:1}
 
 [A] |d :r !m :f ||
 
@@ -128,7 +128,7 @@ fn test_range_out_of_bounds_error() {
 [$] key={C} | time={3,4} | tempo={70} | voices={A}
 ---
 
-[$] dynamics={cre:0..6}
+[$] dynamics={cresc:0..6}
 
 [A] |d :- .d :d ||
 

@@ -27,7 +27,7 @@ fn analyze(source: &str) -> FinalOutput {
 }
 
 #[test]
-fn renders_notes_and_lyrics() {
+fn test_notes_and_lyrics() {
     let output = analyze(
         r#"
 
@@ -54,7 +54,7 @@ fn renders_notes_and_lyrics() {
 }
 
 #[test]
-fn repeats_wildcard_lyrics_for_every_verse() {
+fn test_wildcard_lyrics() {
     let output = analyze(
         r#"
 
@@ -77,7 +77,7 @@ fn repeats_wildcard_lyrics_for_every_verse() {
 }
 
 #[test]
-fn repeats_per_voice_wildcard_lyrics_for_every_verse() {
+fn test_per_voice_wildcard_lyrics() {
     let output = analyze(
         r#"
 
@@ -105,7 +105,7 @@ fn repeats_per_voice_wildcard_lyrics_for_every_verse() {
 }
 
 #[test]
-fn appends_hyphen_to_concatenated_lyrics() {
+fn test_lyric_hyphen() {
     let output = analyze(
         r#"
 
@@ -128,7 +128,7 @@ fn appends_hyphen_to_concatenated_lyrics() {
     assert!(svg.contains(r#"class="lyrics-text">ny.</text>"#));
 }
 #[test]
-fn renders_header_in_requested_layout() {
+fn test_header_layout() {
     let output = analyze(
         r#"
 
@@ -161,7 +161,7 @@ fn renders_header_in_requested_layout() {
 }
 
 #[test]
-fn renders_header_tempo_label() {
+fn test_header_tempo() {
     let output = analyze(
         r#"
 
@@ -184,7 +184,7 @@ fn renders_header_tempo_label() {
 }
 
 #[test]
-fn renders_time_signature_and_jump_markers() {
+fn test_time_and_jumps() {
     let output = analyze(
         r#"
 
@@ -227,7 +227,7 @@ fn renders_time_signature_and_jump_markers() {
 }
 
 #[test]
-fn renders_accidentals() {
+fn test_accidentals() {
     let output = analyze(
         r#"
 
@@ -262,7 +262,7 @@ fn renders_accidentals() {
 }
 
 #[test]
-fn renders_fermata_staccato_and_marcato_touches() {
+fn test_touches() {
     let output = analyze(
         r#"
 
@@ -276,7 +276,7 @@ fn renders_fermata_staccato_and_marcato_touches() {
 
 --
 
-[$] touches={frm:0, stc:1, mrc:2}
+[$] touches={fermata:0, staccato:1, marcato:2}
 
 [S] |d :r !m :f ||
 "#,
@@ -290,7 +290,7 @@ fn renders_fermata_staccato_and_marcato_touches() {
 }
 
 #[test]
-fn renders_dynamic_hairpin_across_merged_sections() {
+fn test_hairpin_merged_sections() {
     let output = analyze(
         r#"
 
@@ -300,7 +300,7 @@ fn renders_dynamic_hairpin_across_merged_sections() {
 
 ---
 
-[$] dynamics={cre:0..5}
+[$] dynamics={cresc:0..5}
 
 [S] |d :- .d :d ||
 
@@ -317,7 +317,7 @@ fn renders_dynamic_hairpin_across_merged_sections() {
 }
 
 #[test]
-fn continues_hairpin_dash_without_repeating_label_across_systems() {
+fn test_hairpin_continuation() {
     let output = analyze(
         r#"
 
@@ -329,7 +329,7 @@ fn continues_hairpin_dash_without_repeating_label_across_systems() {
 
 ---
 
-[$] dynamics={cre:0..5}
+[$] dynamics={cresc:0..5}
 
 [S] |d :- .d :d ||
 
@@ -350,7 +350,7 @@ fn continues_hairpin_dash_without_repeating_label_across_systems() {
 }
 
 #[test]
-fn renders_key_tempo_and_dynamics_labels() {
+fn test_key_tempo_dynamics() {
     let output = analyze(
         r#"
 
@@ -366,7 +366,7 @@ fn renders_key_tempo_and_dynamics_labels() {
 --
 
 [$] key={D} | tempo={allegro}
-[$] dynamics={p:0, mf:2, cre:1..2}
+[$] dynamics={p:0, mf:2, cresc:1..2}
 
 [S] |d :r !m :f ||
 
@@ -388,11 +388,11 @@ fn renders_key_tempo_and_dynamics_labels() {
     ));
     assert!(svg.contains(r#"class="dynamic-label">p</text>"#));
     assert!(svg.contains(r#"class="dynamic-label">mf</text>"#));
-    assert!(!svg.contains(r#"class="dynamic-label">cre</text>"#));
+    assert!(!svg.contains(r#"class="dynamic-label">cresc</text>"#));
 }
 
 #[test]
-fn renders_volta_endings_with_labels() {
+fn test_volta_endings() {
     let output = analyze(
         r#"
 
@@ -426,7 +426,7 @@ fn renders_volta_endings_with_labels() {
 }
 
 #[test]
-fn resolves_multi_voice_lyrics_per_subsection() {
+fn test_multi_voice_lyrics() {
     let output = analyze(
         r#"
 
@@ -459,7 +459,7 @@ fn resolves_multi_voice_lyrics_per_subsection() {
 }
 
 #[test]
-fn skips_dividers_for_expanded_virtual_columns() {
+fn test_virtual_columns() {
     let output = analyze(
         r#"
 
@@ -485,7 +485,7 @@ fn skips_dividers_for_expanded_virtual_columns() {
 }
 
 #[test]
-fn applies_per_element_font_directives() {
+fn test_element_fonts() {
     let output = analyze(
         r#"
 ;; @note-text font-family={"Custom Note"} | font-size={18}
@@ -526,7 +526,7 @@ fn applies_per_element_font_directives() {
 }
 
 #[test]
-fn applies_element_color_directives() {
+fn test_element_colors() {
     let output = analyze(
         r##"
 ;; @title-text color={"#ff0000"}
@@ -568,7 +568,7 @@ fn applies_element_color_directives() {
 }
 
 #[test]
-fn applies_font_weight_and_style_directives() {
+fn test_font_weight_style() {
     let output = analyze(
         r#"
 ;; @title-text font-weight={"normal"}
@@ -608,7 +608,7 @@ fn applies_font_weight_and_style_directives() {
 }
 
 #[test]
-fn resolves_fonts_from_the_supplied_face_set() {
+fn test_face_set_fonts() {
     const CUSTOM_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Regular.ttf");
 
     let output = analyze(
@@ -643,7 +643,7 @@ fn resolves_fonts_from_the_supplied_face_set() {
 }
 
 #[test]
-fn applies_header_box_directives() {
+fn test_header_box() {
     let output = analyze(
         r#"
 ;; @page width={800} | height={1000} | margin-x={30} | margin-y={40}
@@ -684,7 +684,7 @@ fn applies_header_box_directives() {
 }
 
 #[test]
-fn applies_font_stretch_directive() {
+fn test_font_stretch() {
     let output = analyze(
         r#"
 ;; @note-text font-stretch={"condensed"}
@@ -716,7 +716,7 @@ fn applies_font_stretch_directive() {
 }
 
 #[test]
-fn keeps_braces_inside_the_printable_width() {
+fn test_printable_width() {
     let output = analyze(
         r#"
 ;; @page width={800} | height={1000} | margin-x={30} | margin-y={40}
@@ -757,7 +757,7 @@ fn keeps_braces_inside_the_printable_width() {
 }
 
 #[test]
-fn renders_footer_as_page_number_only() {
+fn test_footer_page_number() {
     let output = analyze(
         r#"
 
@@ -804,7 +804,7 @@ fn renders_footer_as_page_number_only() {
 }
 
 #[test]
-fn renders_curly_for_a_single_voice() {
+fn test_single_voice_curly() {
     let output = analyze(
         r#"
 

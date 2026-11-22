@@ -140,10 +140,11 @@ pub fn layout_dynamic_spans(ctx: &LayoutContext, layout: &MarkerLayout) -> Vec<P
             None => end_x,
         };
 
-        let label = (!span.fits && !span.continued).then(|| match span.kind {
-            DynamicSpanKind::Crescendo => "cresc.".to_string(),
-            DynamicSpanKind::Decrescendo => "decresc.".to_string(),
-        });
+        let label = if !span.fits && !span.continued {
+            Some(format!("{:?}.", span.kind).to_lowercase())
+        } else {
+            None
+        };
 
         let label_width = label
             .as_ref()

@@ -9,7 +9,7 @@ FILE: test_adjacent_dynamic_ranges
 
 ---
 
-[$] dynamics={p:0, cre:0..2, dec:2..4}
+[$] dynamics={p:0, cresc:0..2, decresc:2..4}
 
 [A] |d :r !m :f |s :l !t :d+1 ||
 
