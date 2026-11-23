@@ -9,7 +9,7 @@ use voxalfa_core::{
     },
     ir::solfa::NoteKind,
     output::{
-        event::{Event, EventKind, EventRole, JumpEvent, NoteId},
+        event::{EndingEvent, Event, EventKind, EventRole, JumpEvent, NoteId},
         lyrics::LyricsMap,
         voice::{LyricContext, LyricMatch, NoteContext, VoiceLine},
     },
@@ -27,7 +27,6 @@ pub struct MeasureTask<'a> {
     items: Vec<MeasureItem>,
     pending_time: Option<TimeSignature>,
     pending_wedge: bool,
-    pending_ending: Option<u8>,
     pending_notation: Option<Notations>,
     result: Vec<Measure>,
     last_note: Option<CoreNote>,
@@ -49,7 +48,6 @@ impl<'a> MeasureTask<'a> {
             pending_time: None,
             pending_wedge: false,
             pending_notation: None,
-            pending_ending: None,
             items: Vec::new(),
             result: Vec::new(),
             lyrics_map,
@@ -58,17 +56,29 @@ impl<'a> MeasureTask<'a> {
 
     pub fn process(mut self, voice_line: VoiceLine<'_>) -> Vec<Measure> {
         for (note_id, note) in voice_line.notes.iter().enumerate() {
-            let events = voice_line.timeline.get_events(note_id);
-
             if note_id == 0 {
                 self.set_initial_attributes();
             }
 
+            // Section-end events belong to the previous measure, so handle them
+            // before the new measure is inserted.
+            let tail_events = voice_line
+                .timeline
+                .get_events(note_id)
+                .filter(|event| event.is_tail_event());
+
+            self.handle_events(tail_events);
+
             if note.measure_start && note_id > 0 {
-                self.insert_measure(false);
+                self.insert_measure();
             }
 
-            self.handle_events(events);
+            let head_events = voice_line
+                .timeline
+                .get_events(note_id)
+                .filter(|event| !event.is_tail_event());
+
+            self.handle_events(head_events);
 
             let duration = ((MEASURE_DIVISION * note.column.duration as u16) / note.factor as u16)
                 / (4 / self.time.bottom as u16);
@@ -89,7 +99,7 @@ impl<'a> MeasureTask<'a> {
         }
 
         if !self.items.is_empty() {
-            self.insert_measure(true);
+            self.insert_measure();
         }
 
         self.result
@@ -109,18 +119,7 @@ impl<'a> MeasureTask<'a> {
         }));
     }
 
-    fn insert_measure(&mut self, is_last: bool) {
-        if !is_last && let Some(ending) = self.pending_ending.take() {
-            self.items.push(MeasureItem::Barline(Barline {
-                location: BarlineLocation::Right,
-                ending: Ending {
-                    r#type: Position::Stop,
-                    number: ending.to_string(),
-                    content: None,
-                },
-            }));
-        }
-
+    fn insert_measure(&mut self) {
         self.result.push(Measure {
             number: self.result.len() + 1,
             implicit: Choice::No, // FIXME: todo
@@ -137,7 +136,7 @@ impl<'a> MeasureTask<'a> {
                 EventKind::Dynamic(dynamic) => self.handle_dynamics_event(dynamic),
                 EventKind::Tempo(tempo) => self.handle_tempo_event(tempo),
                 EventKind::Touch(touch) => self.handle_touch(touch),
-                EventKind::Ending(id) => self.handle_ending(id, event.role),
+                EventKind::Ending(ending) => self.handle_ending(ending, event.role),
                 EventKind::ProgressiveTempo(_) if event.role == EventRole::End => {}
                 EventKind::ProgressiveTempo(tempo) => self.handle_progressive_tempo(tempo),
                 EventKind::TimeSignature(time) => self.pending_time = Some(time),
@@ -227,19 +226,35 @@ impl<'a> MeasureTask<'a> {
         }
     }
 
-    fn handle_ending(&mut self, id: u8, role: EventRole) {
-        if role == EventRole::Start {
-            self.items.push(MeasureItem::Barline(Barline {
-                location: BarlineLocation::Left,
-                ending: Ending {
-                    r#type: Position::Start,
-                    number: id.to_string(),
-                    content: format!("{id}.").into(),
-                },
-            }));
+    fn handle_ending(&mut self, ending: EndingEvent, role: EventRole) {
+        let id = ending.id;
 
-            self.pending_ending = Some(id);
-        }
+        let (location, r#type, content) = match role {
+            EventRole::Start => (
+                BarlineLocation::Left,
+                Position::Start,
+                Some(format!("{id}.")),
+            ),
+            EventRole::End => {
+                let r#type = if ending.is_last {
+                    Position::Discontinue
+                } else {
+                    Position::Stop
+                };
+
+                (BarlineLocation::Right, r#type, None)
+            }
+            EventRole::Point => return,
+        };
+
+        self.items.push(MeasureItem::Barline(Barline {
+            location,
+            ending: Ending {
+                r#type,
+                number: id.to_string(),
+                content,
+            },
+        }));
     }
 
     fn handle_progressive_tempo(&mut self, tempo: ProgressiveTempo) {
@@ -278,6 +293,7 @@ impl<'a> MeasureTask<'a> {
                 words: Some(Words {
                     content: named_tempo.to_string(),
                     font_style: Some(FontStyle::Italic),
+                    ..Default::default()
                 }),
                 ..Default::default()
             },

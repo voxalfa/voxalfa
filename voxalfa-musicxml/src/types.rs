@@ -282,6 +282,7 @@ pub enum Choice {
 pub enum Position {
     Start,
     Stop,
+    Discontinue,
 }
 
 impl From<bool> for Choice {

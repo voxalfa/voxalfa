@@ -118,12 +118,12 @@ impl TimelineEvaluator {
                 _ => self.handle_tempo_end(kind),
             },
 
-            EventKind::Ending(id) => match event.role {
-                EventRole::Start if let Some(address) = self.endings_jump.get(&id) => {
+            EventKind::Ending(ending) => match event.role {
+                EventRole::Start if let Some(address) = self.endings_jump.get(&ending.id) => {
                     self.index = *address;
                 }
                 EventRole::End => {
-                    self.endings_jump.insert(id, self.index);
+                    self.endings_jump.insert(ending.id, self.index);
                 }
                 _ => {}
             },
