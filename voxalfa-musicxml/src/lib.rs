@@ -14,7 +14,7 @@ use crate::{
     error::{Error, Result},
     lyric::LyricFormatter,
     task::MeasureTask,
-    types::{Part, ScorePart, ScorePartwise},
+    types::{Credit, Part, ScorePart, ScorePartwise},
 };
 
 const HEADER: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -42,7 +42,10 @@ impl<'a> Converter<'a> {
         let lyrics_builder = LyricsBuilder::new(DummyMeasurer {});
         let (_, lyrics_map) = lyrics_builder.build_map::<LyricFormatter>(self.source, 0);
 
-        let mut score = ScorePartwise::default();
+        let mut score = ScorePartwise {
+            credit: self.build_credits(),
+            ..Default::default()
+        };
 
         for (voice_id, voice) in voices.iter().enumerate() {
             score.part_list.score_part.push(ScorePart {
@@ -66,6 +69,25 @@ impl<'a> Converter<'a> {
         Ok(xml)
     }
 
+    fn build_credits(&self) -> Vec<Credit> {
+        let header = &self.source.header;
+        let mut credits = Vec::new();
+
+        if let Some(title) = header.get_metadata(|m| &m.title) {
+            credits.push(Credit::new("title", title));
+        }
+
+        if let Some(composers) = header.get_metadata(|m| &m.composer) {
+            credits.push(Credit::new("composer", join_metadata(composers)));
+        }
+
+        if let Some(authors) = header.get_metadata(|m| &m.author) {
+            credits.push(Credit::new("lyricist", join_metadata(authors)));
+        }
+
+        credits
+    }
+
     fn extract_field<T>(
         &self,
         name: &'static str,
@@ -75,4 +97,12 @@ impl<'a> Converter<'a> {
             .map(|p| &p.value)
             .ok_or(Error::MissingHeaderField(name))
     }
+}
+
+fn join_metadata(values: &[SymbolRef<String>]) -> String {
+    values
+        .iter()
+        .map(|item| item.value.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
 }

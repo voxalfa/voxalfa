@@ -18,6 +18,7 @@ impl<T> From<T> for TagEnum<T> {
 pub struct ScorePartwise {
     #[serde(rename = "@version")]
     pub version: MusicXmlVersion,
+    pub credit: Vec<Credit>,
     pub part_list: PartList,
     pub part: Vec<Part>,
 }
@@ -27,6 +28,25 @@ pub enum MusicXmlVersion {
     #[serde(rename = "4.0")]
     #[default]
     V4,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Credit {
+    #[serde(rename = "@page")]
+    pub page: u8,
+    pub credit_type: String,
+    pub credit_words: String,
+}
+
+impl Credit {
+    pub fn new(credit_type: &str, credit_words: impl Into<String>) -> Self {
+        Self {
+            page: 1,
+            credit_type: credit_type.to_string(),
+            credit_words: credit_words.into(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Serialize)]
