@@ -15,10 +15,10 @@ use crate::{
         symbols::{SymbolTree, VoiceId},
     },
     diagnostics::types::Diagnostic,
-    ir::BodyIr,
+    ir::{BodyIr, PulseView, lyrics::LyricLineIr},
     output::{
         event::TimelineMap,
-        voice::{NoteContext, VoiceLine},
+        voice::{LyricContext, NoteContext, VoiceLine},
     },
 };
 
@@ -76,17 +76,20 @@ impl FinalOutput {
                     timeline.extend(partial);
                 }
 
-                let mut lyric_id = 0;
+                let lyrics = &sub_section.lyrics;
+                let mut lyric_id: usize = 0;
 
                 for (id, pulse) in solfa.pulses.iter().enumerate() {
                     let view = &sub_section.views[id];
 
                     for (col_id, note) in pulse.columns.iter().enumerate() {
                         let measure_start = pulse.accent == PulseAccent::Strong && col_id == 0;
+                        let lyrics = resolve_note_lyrics(col_id, lyric_id, &lyrics, &view);
 
                         notes.push(NoteContext {
                             column: note,
                             factor: pulse.factor,
+                            lyrics,
                             measure_start,
                             lyric_id,
                             section_id,
@@ -109,4 +112,41 @@ impl FinalOutput {
 
         VoiceLine::new(voice_id, notes, timeline)
     }
+}
+
+fn resolve_note_lyrics(
+    col_id: usize,
+    lyric_id: usize,
+    lyrics: &[LyricLineIr],
+    view: &PulseView,
+) -> Vec<LyricContext> {
+    let mut result = Vec::new();
+
+    if view.factor == 1 && col_id > 0 {
+        return result; // skip duplicates
+    }
+
+    for (verse_id, line) in lyrics.iter().enumerate() {
+        let mut span = 0;
+
+        for col in &line.columns {
+            let diff = lyric_id.checked_sub(span);
+
+            if diff.is_none() {
+                break; // no exact match
+            }
+
+            if lyric_id == 0 || diff == Some(0) {
+                result.push(LyricContext {
+                    sid: col.sid,
+                    verse: verse_id + 1,
+                    operator: line.operators.get(lyric_id).map(|op| op.value),
+                });
+            }
+
+            span += col.span;
+        }
+    }
+
+    result
 }

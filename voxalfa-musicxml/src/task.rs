@@ -7,7 +7,8 @@ use voxalfa_core::{
     ir::solfa::NoteKind,
     output::{
         event::{Event, EventKind, EventRole, JumpEvent},
-        voice::VoiceLine,
+        lyrics::LyricsMap,
+        voice::{LyricContext, VoiceLine},
     },
 };
 
@@ -16,7 +17,7 @@ use crate::types::*;
 const MIDDLE_C: i8 = 60;
 const MEASURE_DIVISION: u16 = 480;
 
-pub struct MeasureTask {
+pub struct MeasureTask<'a> {
     voice: Voice,
     key: KeySignature,
     time: TimeSignature,
@@ -27,10 +28,16 @@ pub struct MeasureTask {
     pending_notation: Option<Notations>,
     result: Vec<Measure>,
     last_note: Option<CoreNote>,
+    lyrics_map: &'a LyricsMap<()>,
 }
 
-impl MeasureTask {
-    pub fn new(voice: Voice, initial_key: KeySignature, initial_time: TimeSignature) -> Self {
+impl<'a> MeasureTask<'a> {
+    pub fn new(
+        voice: Voice,
+        initial_key: KeySignature,
+        initial_time: TimeSignature,
+        lyrics_map: &'a LyricsMap<()>,
+    ) -> Self {
         Self {
             voice,
             key: initial_key,
@@ -42,6 +49,7 @@ impl MeasureTask {
             pending_ending: None,
             items: Vec::new(),
             result: Vec::new(),
+            lyrics_map,
         }
     }
 
@@ -62,10 +70,12 @@ impl MeasureTask {
             let duration = ((MEASURE_DIVISION * note.column.duration as u16) / note.factor as u16)
                 / (4 / self.time.bottom as u16);
 
+            let lyrics = &note.lyrics;
+
             match note.column.note {
-                NoteKind::Note(note) => self.handle_note(note, duration, false),
+                NoteKind::Note(note) => self.handle_note(note, duration, lyrics, false),
+                NoteKind::ProlongedNote => self.handle_prolonged_note(duration, lyrics),
                 NoteKind::EmptyNote => self.handle_empty_note(duration),
-                NoteKind::ProlongedNote => self.handle_prolonged_note(duration),
             }
 
             self.handle_pending_updates();
@@ -115,7 +125,7 @@ impl MeasureTask {
         });
     }
 
-    fn handle_events<'a>(&'a mut self, events: impl Iterator<Item = &'a Event>) {
+    fn handle_events<'b>(&mut self, events: impl Iterator<Item = &'b Event>) {
         for event in events {
             match event.kind {
                 EventKind::Key(key) => self.handle_key_change(key),
@@ -170,11 +180,11 @@ impl MeasureTask {
     }
 
     fn handle_dynamics_event(&mut self, dynamics: CoreDynamics) {
-        if matches!(dynamics, CoreDynamics::Cre | CoreDynamics::Dec) {
+        if dynamics.is_range() {
             let wedge_type = match dynamics {
                 _ if self.pending_wedge => WedgeType::Stop,
-                CoreDynamics::Cre => WedgeType::Crescendo,
-                _ => WedgeType::Decrescendo,
+                CoreDynamics::Cresc => WedgeType::Crescendo,
+                _ => WedgeType::Diminuendo,
             };
 
             let direction = Direction {
@@ -280,7 +290,7 @@ impl MeasureTask {
         }));
     }
 
-    fn handle_note(&mut self, note: CoreNote, duration: u16, tied: bool) {
+    fn handle_note(&mut self, note: CoreNote, duration: u16, lyrics: &[LyricContext], tied: bool) {
         let semitones = MIDDLE_C + note.offset() + self.key.offset() + self.voice.offset();
         let octave = (semitones / 12) - 1;
         let step = self.resolve_step(note.base);
@@ -293,9 +303,18 @@ impl MeasureTask {
             octave: octave as u8,
         };
 
+        let lyric = lyrics
+            .iter()
+            .map(|ctx| Lyric {
+                number: ctx.verse,
+                text: self.lyrics_map[&ctx.sid].content.clone(),
+            })
+            .collect();
+
         let mut note_item = Note {
             pitch: Some(pitch),
             duration,
+            lyric,
             ..Default::default()
         };
 
@@ -326,7 +345,7 @@ impl MeasureTask {
         }
     }
 
-    fn handle_prolonged_note(&mut self, duration: u16) {
+    fn handle_prolonged_note(&mut self, duration: u16, lyrics: &[LyricContext]) {
         let last_note = self.items.iter_mut().rev().find_map(|i| match i {
             MeasureItem::Note(note) => Some(note),
             _ => None,
@@ -342,7 +361,7 @@ impl MeasureTask {
 
             if let Some((prev_note, source)) = prev_note.zip(self.last_note) {
                 prev_note.add_tie(Position::Start);
-                self.handle_note(source, duration, true);
+                self.handle_note(source, duration, lyrics, true);
             }
         }
     }

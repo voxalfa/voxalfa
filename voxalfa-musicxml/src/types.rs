@@ -171,6 +171,7 @@ pub struct Note {
     pub tie: Vec<Tie>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notations: Option<Notations>,
+    pub lyric: Vec<Lyric>,
     // pub r#type: NoteType,
 }
 
@@ -199,6 +200,13 @@ pub struct Notations {
 pub struct Tie {
     #[serde(rename = "@type")]
     pub r#type: Position,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Lyric {
+    #[serde(rename = "@number")]
+    pub number: usize,
+    pub text: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -522,7 +530,7 @@ pub struct Wedge {
 #[serde(rename_all = "lowercase")]
 pub enum WedgeType {
     Crescendo,
-    Decrescendo,
+    Diminuendo,
     Stop,
 }
 

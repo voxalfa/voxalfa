@@ -39,6 +39,10 @@ impl Dynamic {
             .copied()
             .find(|d| self as usize > *d as usize)
     }
+
+    pub fn is_range(&self) -> bool {
+        matches!(self, Self::Cresc | Self::Decresc | Self::Dim)
+    }
 }
 
 impl TryFrom<String> for Dynamic {

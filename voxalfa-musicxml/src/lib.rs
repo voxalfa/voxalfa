@@ -1,13 +1,18 @@
 pub mod error;
 
+mod lyric;
 mod task;
 mod types;
 
 use quick_xml::se::to_string_with_root;
-use voxalfa_core::{ast::symbols::SymbolRef, output::FinalOutput};
+use voxalfa_core::{
+    ast::symbols::SymbolRef,
+    output::{FinalOutput, lyrics::LyricsBuilder, metrics::DummyMeasurer},
+};
 
 use crate::{
     error::{Error, Result},
+    lyric::LyricFormatter,
     task::MeasureTask,
     types::{Part, ScorePart, ScorePartwise},
 };
@@ -34,6 +39,9 @@ impl<'a> Converter<'a> {
         let time = *self.extract_field("time", params.time.as_ref())?;
         let voices = self.extract_field("voice", params.voices.as_ref())?;
 
+        let lyrics_builder = LyricsBuilder::new(DummyMeasurer {});
+        let (_, lyrics_map) = lyrics_builder.build_map::<LyricFormatter>(&self.source, 0);
+
         let mut score = ScorePartwise::default();
 
         for (voice_id, voice) in voices.iter().enumerate() {
@@ -43,7 +51,7 @@ impl<'a> Converter<'a> {
             });
 
             let voice_line = self.source.build_voice_line(voice_id);
-            let task = MeasureTask::new(voice.value, key, time);
+            let task = MeasureTask::new(voice.value, key, time, &lyrics_map);
             let measures = task.process(voice_line);
 
             score.part.push(Part {
