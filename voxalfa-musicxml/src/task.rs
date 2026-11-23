@@ -280,7 +280,6 @@ impl<'a> MeasureTask<'a> {
                 words: Some(Words {
                     content: named_tempo.to_string(),
                     font_style: Some(FontStyle::Italic),
-                    ..Default::default()
                 }),
                 ..Default::default()
             },

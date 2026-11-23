@@ -416,6 +416,7 @@ impl DirectionType {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Dynamics {
