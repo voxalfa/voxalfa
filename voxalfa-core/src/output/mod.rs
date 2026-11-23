@@ -18,7 +18,7 @@ use crate::{
     ir::{BodyIr, PulseView, lyrics::LyricLineIr},
     output::{
         event::TimelineMap,
-        voice::{LyricContext, NoteContext, VoiceLine},
+        voice::{LyricContext, LyricMatch, NoteContext, VoiceLine},
     },
 };
 
@@ -84,7 +84,7 @@ impl FinalOutput {
 
                     for (col_id, note) in pulse.columns.iter().enumerate() {
                         let measure_start = pulse.accent == PulseAccent::Strong && col_id == 0;
-                        let lyrics = resolve_note_lyrics(col_id, lyric_id, &lyrics, &view);
+                        let lyrics = resolve_note_lyrics(col_id, lyric_id, lyrics, view);
 
                         notes.push(NoteContext {
                             column: note,
@@ -122,29 +122,36 @@ fn resolve_note_lyrics(
 ) -> Vec<LyricContext> {
     let mut result = Vec::new();
 
-    if view.factor == 1 && col_id > 0 {
-        return result; // skip duplicates
-    }
-
     for (verse_id, line) in lyrics.iter().enumerate() {
         let mut span = 0;
 
-        for col in &line.columns {
+        for (index, lyric) in line.columns.iter().enumerate() {
             let diff = lyric_id.checked_sub(span);
 
-            if diff.is_none() {
-                break; // no exact match
-            }
+            let match_kind = if diff.is_none() {
+                Some(LyricMatch::Extended)
+            } else if lyric_id == 0 || diff == Some(0) {
+                if view.factor == 1 && col_id > 0 {
+                    Some(LyricMatch::Implicit)
+                } else {
+                    Some(LyricMatch::Exact)
+                }
+            } else {
+                None
+            };
 
-            if lyric_id == 0 || diff == Some(0) {
+            if let Some(match_kind) = match_kind {
                 result.push(LyricContext {
-                    sid: col.sid,
+                    sid: lyric.sid,
                     verse: verse_id + 1,
-                    operator: line.operators.get(lyric_id).map(|op| op.value),
+                    operator: line.operators.get(index).map(|op| op.value),
+                    match_kind,
                 });
+
+                break;
             }
 
-            span += col.span;
+            span += lyric.span;
         }
     }
 

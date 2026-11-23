@@ -40,7 +40,7 @@ impl<'a> Converter<'a> {
         let voices = self.extract_field("voice", params.voices.as_ref())?;
 
         let lyrics_builder = LyricsBuilder::new(DummyMeasurer {});
-        let (_, lyrics_map) = lyrics_builder.build_map::<LyricFormatter>(&self.source, 0);
+        let (_, lyrics_map) = lyrics_builder.build_map::<LyricFormatter>(self.source, 0);
 
         let mut score = ScorePartwise::default();
 

@@ -1,14 +1,17 @@
 use voxalfa_core::{
-    ast::solfa::{BaseNote, Note as CoreNote},
+    ast::{
+        lyrics::LyricOperatorKind,
+        solfa::{BaseNote, Note as CoreNote},
+    },
     data_types::{
         BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature, KeyAccidental, Mark,
         ProgressiveTempo, StaticTempo, TimeSignature, Touch, Voice,
     },
     ir::solfa::NoteKind,
     output::{
-        event::{Event, EventKind, EventRole, JumpEvent},
+        event::{Event, EventKind, EventRole, JumpEvent, NoteId},
         lyrics::LyricsMap,
-        voice::{LyricContext, VoiceLine},
+        voice::{LyricContext, LyricMatch, NoteContext, VoiceLine},
     },
 };
 
@@ -70,7 +73,7 @@ impl<'a> MeasureTask<'a> {
             let duration = ((MEASURE_DIVISION * note.column.duration as u16) / note.factor as u16)
                 / (4 / self.time.bottom as u16);
 
-            let lyrics = &note.lyrics;
+            let lyrics = self.resole_lyrics(note_id, &voice_line.notes);
 
             match note.column.note {
                 NoteKind::Note(note) => self.handle_note(note, duration, lyrics, false),
@@ -111,7 +114,7 @@ impl<'a> MeasureTask<'a> {
             self.items.push(MeasureItem::Barline(Barline {
                 location: BarlineLocation::Right,
                 ending: Ending {
-                    r#type: EndingType::Stop,
+                    r#type: Position::Stop,
                     number: ending.to_string(),
                     content: None,
                 },
@@ -229,7 +232,7 @@ impl<'a> MeasureTask<'a> {
             self.items.push(MeasureItem::Barline(Barline {
                 location: BarlineLocation::Left,
                 ending: Ending {
-                    r#type: EndingType::Start,
+                    r#type: Position::Start,
                     number: id.to_string(),
                     content: format!("{id}.").into(),
                 },
@@ -290,7 +293,7 @@ impl<'a> MeasureTask<'a> {
         }));
     }
 
-    fn handle_note(&mut self, note: CoreNote, duration: u16, lyrics: &[LyricContext], tied: bool) {
+    fn handle_note(&mut self, note: CoreNote, duration: u16, lyric: Vec<Lyric>, tied: bool) {
         let semitones = MIDDLE_C + note.offset() + self.key.offset() + self.voice.offset();
         let octave = (semitones / 12) - 1;
         let step = self.resolve_step(note.base);
@@ -302,14 +305,6 @@ impl<'a> MeasureTask<'a> {
             alter,
             octave: octave as u8,
         };
-
-        let lyric = lyrics
-            .iter()
-            .map(|ctx| Lyric {
-                number: ctx.verse,
-                text: self.lyrics_map[&ctx.sid].content.clone(),
-            })
-            .collect();
 
         let mut note_item = Note {
             pitch: Some(pitch),
@@ -345,7 +340,7 @@ impl<'a> MeasureTask<'a> {
         }
     }
 
-    fn handle_prolonged_note(&mut self, duration: u16, lyrics: &[LyricContext]) {
+    fn handle_prolonged_note(&mut self, duration: u16, lyric: Vec<Lyric>) {
         let last_note = self.items.iter_mut().rev().find_map(|i| match i {
             MeasureItem::Note(note) => Some(note),
             _ => None,
@@ -361,9 +356,42 @@ impl<'a> MeasureTask<'a> {
 
             if let Some((prev_note, source)) = prev_note.zip(self.last_note) {
                 prev_note.add_tie(Position::Start);
-                self.handle_note(source, duration, lyrics, true);
+                self.handle_note(source, duration, lyric, true);
             }
         }
+    }
+
+    fn resole_lyrics(&self, note_id: NoteId, notes: &[NoteContext]) -> Vec<Lyric> {
+        let note = &notes[note_id];
+        let mut result = Vec::new();
+
+        for (verse_id, current) in note.lyrics.iter().enumerate() {
+            let text = &self.lyrics_map[&current.sid].content;
+
+            // TODO: Explicit extend
+            if current.match_kind != LyricMatch::Exact || text.is_empty() {
+                continue;
+            }
+
+            let prev = notes.get(..note_id).and_then(|slice| {
+                slice.iter().rev().find_map(|ctx| {
+                    ctx.lyrics
+                        .get(verse_id)
+                        .and_then(|l| (l.match_kind != LyricMatch::Extended).then_some(l))
+                })
+            });
+
+            let syllabic = resolve_syllabic(current, prev);
+
+            result.push(Lyric {
+                number: current.verse,
+                syllabic: Some(syllabic),
+                text: Some(text.clone()),
+                extend: None,
+            });
+        }
+
+        result
     }
 
     fn resolve_step(&self, note_base: BaseNote) -> Step {
@@ -388,6 +416,22 @@ impl<'a> MeasureTask<'a> {
         };
 
         Step::from(key_index + note_index)
+    }
+}
+
+fn resolve_syllabic(current: &LyricContext, prev: Option<&LyricContext>) -> Syllabic {
+    if let Some(prev) = prev
+        && prev.operator == Some(LyricOperatorKind::Concat)
+    {
+        match current.operator {
+            Some(LyricOperatorKind::Concat) => Syllabic::Middle,
+            _ => Syllabic::End,
+        }
+    } else {
+        match current.operator {
+            Some(LyricOperatorKind::Concat) => Syllabic::Begin,
+            _ => Syllabic::Single,
+        }
     }
 }
 

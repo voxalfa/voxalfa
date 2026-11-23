@@ -58,5 +58,13 @@ pub struct NoteContext<'a> {
 pub struct LyricContext {
     pub verse: usize,
     pub sid: usize,
+    pub match_kind: LyricMatch,
     pub operator: Option<LyricOperatorKind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LyricMatch {
+    Exact,
+    Implicit,
+    Extended,
 }

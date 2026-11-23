@@ -88,16 +88,9 @@ pub struct Ending {
     #[serde(rename = "@number")]
     pub number: String,
     #[serde(rename = "@type")]
-    pub r#type: EndingType,
+    pub r#type: Position,
     #[serde(rename = "$text")]
     pub content: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum EndingType {
-    Start,
-    Stop,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -206,7 +199,27 @@ pub struct Tie {
 pub struct Lyric {
     #[serde(rename = "@number")]
     pub number: usize,
-    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub syllabic: Option<Syllabic>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extend: Option<Extend>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Syllabic {
+    Begin,
+    End,
+    Middle,
+    Single,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Extend {
+    #[serde(rename = "@type")]
+    pub r#type: Position,
 }
 
 #[derive(Debug, Serialize)]
