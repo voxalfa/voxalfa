@@ -197,11 +197,8 @@ impl<'a> IrValidator<'a> {
         events: &TimedList<T>,
         buffer: &mut EventBuffer,
     ) {
-        for (id, symbol) in events.iter().enumerate() {
-            let event = &symbol.value;
-            let kind = event.value.to_event_kind();
-
-            if !buffer.has_processed(kind, id) {
+        for symbol in events.iter() {
+            if !buffer.has_processed(symbol.sid) {
                 self.reporter.error(
                     self.tree.get_symbol_range(symbol.sid),
                     DiagnosticKind::UnmatchedTimestamp,

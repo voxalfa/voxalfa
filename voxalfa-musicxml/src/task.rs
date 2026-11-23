@@ -9,7 +9,7 @@ use voxalfa_core::{
     },
     ir::solfa::NoteKind,
     output::{
-        event::{EndingEvent, Event, EventKind, EventRole, JumpEvent, NoteId},
+        event::{EndingEvent, EventAnchor, EventKind, EventRole, JumpEvent, NoteId, NoteTimeline},
         lyrics::LyricsMap,
         voice::{LyricContext, LyricMatch, NoteContext, VoiceLine},
     },
@@ -60,25 +60,11 @@ impl<'a> MeasureTask<'a> {
                 self.set_initial_attributes();
             }
 
-            // Section-end events belong to the previous measure, so handle them
-            // before the new measure is inserted.
-            let tail_events = voice_line
-                .timeline
-                .get_events(note_id)
-                .filter(|event| event.is_tail_event());
-
-            self.handle_events(tail_events);
-
             if note.measure_start && note_id > 0 {
                 self.insert_measure();
             }
 
-            let head_events = voice_line
-                .timeline
-                .get_events(note_id)
-                .filter(|event| !event.is_tail_event());
-
-            self.handle_events(head_events);
+            self.handle_events(&voice_line.timeline, note_id, EventAnchor::Before);
 
             let duration = ((MEASURE_DIVISION * note.column.duration as u16) / note.factor as u16)
                 / (4 / self.time.bottom as u16);
@@ -91,11 +77,8 @@ impl<'a> MeasureTask<'a> {
                 NoteKind::EmptyNote => self.handle_empty_note(duration),
             }
 
+            self.handle_events(&voice_line.timeline, note_id, EventAnchor::After);
             self.handle_pending_updates();
-
-            if note_id + 1 == voice_line.notes.len() {
-                self.handle_events(voice_line.timeline.get_events(note_id + 1));
-            }
         }
 
         if !self.items.is_empty() {
@@ -127,7 +110,11 @@ impl<'a> MeasureTask<'a> {
         });
     }
 
-    fn handle_events<'b>(&mut self, events: impl Iterator<Item = &'b Event>) {
+    fn handle_events(&mut self, timeline: &NoteTimeline, note_id: NoteId, anchor: EventAnchor) {
+        let events = timeline
+            .get_events(note_id)
+            .filter(|event| event.anchor == anchor);
+
         for event in events {
             match event.kind {
                 EventKind::Key(key) => self.handle_key_change(key),

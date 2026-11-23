@@ -1,4 +1,5 @@
 use crate::{
+    ast::symbols::SymbolId,
     data_types::TimedList,
     ir::{BodyIr, PulseView, SectionIr, SubSectionIr},
     output::event::{
@@ -14,7 +15,7 @@ pub struct EventBuffer {
     elapsed: usize,
     offset: usize,
     results: Vec<BufferedEvent>,
-    processed: Vec<(EventKind, usize)>,
+    processed: Vec<SymbolId>,
     last_ending: Option<u8>,
 }
 
@@ -39,8 +40,8 @@ impl EventBuffer {
         self.processed.clear();
     }
 
-    pub fn has_processed(&self, kind: EventKind, id: usize) -> bool {
-        self.processed.contains(&(kind, id))
+    pub fn has_processed(&self, sid: SymbolId) -> bool {
+        self.processed.contains(&sid)
     }
 
     pub fn add_offset(&mut self, offset: usize) {
@@ -112,7 +113,7 @@ impl EventBuffer {
         params: &EventMatchParams,
         last_index: f32,
     ) {
-        for (id, symbol) in events.iter().enumerate() {
+        for symbol in events.iter() {
             let current = &symbol.value;
             let kind = current.value.to_event_kind();
             let anchor = current.value.anchor();
@@ -122,7 +123,7 @@ impl EventBuffer {
                 current.start
             };
 
-            if self.has_processed(kind, id) {
+            if self.has_processed(symbol.sid) {
                 continue;
             }
 
@@ -151,7 +152,7 @@ impl EventBuffer {
                             anchor: EventAnchor::Before,
                         },
                     );
-                    self.mark_event(kind, id);
+                    self.mark_event(symbol.sid);
                 }
 
                 continue;
@@ -167,7 +168,7 @@ impl EventBuffer {
                         anchor,
                     },
                 );
-                self.mark_event(kind, id);
+                self.mark_event(symbol.sid);
             };
         }
     }
@@ -206,8 +207,8 @@ impl EventBuffer {
         (lhs - rhs).abs() < FLOAT_ERROR
     }
 
-    fn mark_event(&mut self, kind: EventKind, id: usize) {
-        self.processed.push((kind, id));
+    fn mark_event(&mut self, sid: SymbolId) {
+        self.processed.push(sid);
     }
 
     fn push_event(&mut self, sub_id: SubSectonId, timestamp: Timestamp, event: Event) {
