@@ -54,6 +54,7 @@ impl<'a> IrValidator<'a> {
 
             buffer.process_section_events(section);
 
+            let tempo = section.params.tempo.as_ref();
             let touches = section.params.touches.as_ref();
             let key = section.params.key.as_ref();
             let mark = section.params.mark.as_ref();
@@ -67,6 +68,7 @@ impl<'a> IrValidator<'a> {
                 let is_last = next_section.is_some_and(|s| !s.merge) || next_section.is_none();
 
                 self.process_events(dynamics, sub_section, is_last, &mut buffer);
+                self.process_events(tempo, sub_section, is_last, &mut buffer);
                 self.process_events(touches, sub_section, is_last, &mut buffer);
                 self.process_events(key, sub_section, is_last, &mut buffer);
                 self.process_events(mark, sub_section, is_last, &mut buffer);
@@ -220,7 +222,7 @@ impl<'a> IrValidator<'a> {
     fn validate_timed_value<T: ToEventKind>(&mut self, symbol: &SymbolRef<TimedValue<T>>) {
         let event = &symbol.value;
 
-        if event.value.is_range() && event.end.is_none() {
+        if event.value.is_range() && event.end.is_none() && !event.implicit {
             let sid = self.tree.get_symbol_range(symbol.sid);
 
             self.reporter

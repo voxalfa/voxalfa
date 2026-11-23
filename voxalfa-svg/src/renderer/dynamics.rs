@@ -1,5 +1,5 @@
 use crate::{
-    model::{DynamicSpanKind, MarkerKind, VoiceInstance},
+    model::{MarkerKind, SpanKind, VoiceInstance},
     renderer::systems::LayoutContext,
 };
 
@@ -52,8 +52,8 @@ fn voice_row(rows: &[SystemRow], id: usize) -> Option<&SystemRow> {
         .find(|row| matches!(row.kind, SystemRowKind::Voice(current) if current.id == id))
 }
 
-pub fn layout_dynamic_spans(ctx: &LayoutContext, layout: &MarkerLayout) -> Vec<PlacedDynamicSpan> {
-    if ctx.system.dynamic_spans.is_empty() {
+pub fn layout_spans(ctx: &LayoutContext, layout: &MarkerLayout) -> Vec<PlacedSpan> {
+    if ctx.system.spans.is_empty() {
         return Vec::new();
     }
 
@@ -95,7 +95,7 @@ pub fn layout_dynamic_spans(ctx: &LayoutContext, layout: &MarkerLayout) -> Vec<P
     let mut spans = Vec::new();
     let label_gap = ctx.fonts.label.dynamic.size() * DYNAMIC_SPAN_LABEL_GAP;
 
-    for span in &ctx.system.dynamic_spans {
+    for span in &ctx.system.spans {
         let center_y = span
             .voice
             .and_then(|voice| {
@@ -107,8 +107,13 @@ pub fn layout_dynamic_spans(ctx: &LayoutContext, layout: &MarkerLayout) -> Vec<P
             .or(dynamic_center)
             .unwrap_or(fallback_center);
 
-        let baseline =
-            center_y + (ctx.fonts.label.dynamic.ascent() - ctx.fonts.label.dynamic.descent()) / 2.0;
+        let label_font = if span.kind.is_tempo() {
+            &ctx.fonts.label.tempo
+        } else {
+            &ctx.fonts.label.dynamic
+        };
+
+        let baseline = center_y + (label_font.ascent() - label_font.descent()) / 2.0;
 
         let fallback_start_x = geometry.note_x(span.start, span.start_unit) + style.left();
 
@@ -140,18 +145,18 @@ pub fn layout_dynamic_spans(ctx: &LayoutContext, layout: &MarkerLayout) -> Vec<P
             None => end_x,
         };
 
-        let label = if !span.fits && !span.continued {
-            Some(format!("{:?}.", span.kind).to_lowercase())
+        let label = if span.kind.is_tempo() || (!span.fits && !span.continued) {
+            Some(format!("{}.", span.kind.label()))
         } else {
             None
         };
 
         let label_width = label
             .as_ref()
-            .map(|label| ctx.fonts.label.dynamic.width(label))
+            .map(|label| label_font.width(label))
             .unwrap_or_default();
 
-        spans.push(PlacedDynamicSpan {
+        spans.push(PlacedSpan {
             kind: span.kind,
             start_x,
             end_x: end_x.max(start_x + 1.0),
@@ -167,8 +172,8 @@ pub fn layout_dynamic_spans(ctx: &LayoutContext, layout: &MarkerLayout) -> Vec<P
 }
 
 #[derive(Debug)]
-pub struct PlacedDynamicSpan {
-    pub kind: DynamicSpanKind,
+pub struct PlacedSpan {
+    pub kind: SpanKind,
     pub start_x: f32,
     pub end_x: f32,
     pub center_y: f32,

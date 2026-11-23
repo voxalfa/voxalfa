@@ -140,7 +140,12 @@ impl EventBuffer {
                     );
                 }
 
-                if let Some(end) = current.end
+                let end = if current.implicit {
+                    current.value.implicit_range_end(last_index)
+                } else {
+                    current.end
+                };
+                if let Some(end) = end
                     && let Some(timestamp) = self.get_timestamp(end, params, EventAnchor::Before)
                 {
                     self.push_event(

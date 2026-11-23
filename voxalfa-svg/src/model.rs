@@ -1,6 +1,6 @@
 use voxalfa_core::{
     ast::{directives::ElementStyle, solfa::PulseAccent, symbols::VoiceId},
-    data_types::{TimeSignature, Touch, Voice},
+    data_types::{ProgressiveTempo, TimeSignature, Touch, Voice},
     ir::solfa::PulseIr,
 };
 
@@ -113,7 +113,7 @@ pub struct Measure {
 
 pub struct PulseResolverData<'a> {
     pub pulses: Vec<PulseStack<'a>>,
-    pub dynamic_spans: Vec<FlatDynamicSpan>,
+    pub spans: Vec<FlatSpan>,
     pub verses: usize,
 }
 
@@ -124,21 +124,37 @@ pub struct System<'a> {
     pub voices: Vec<VoiceInstance>,
     pub lyric_groups: Vec<SystemLyricGroup>,
     pub markers: Vec<SystemMarker>,
-    pub dynamic_spans: Vec<SystemDynamicSpan>,
+    pub spans: Vec<SystemSpan>,
     pub voltas: Vec<SystemVolta>,
     pub pulse_offset: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DynamicSpanKind {
+pub enum SpanKind {
     Cresc,
     Decresc,
     Dim,
+    Progressive(ProgressiveTempo),
+}
+
+impl SpanKind {
+    pub fn is_tempo(&self) -> bool {
+        matches!(self, Self::Progressive(_))
+    }
+
+    pub fn label(&self) -> String {
+        match self {
+            Self::Cresc => "cresc".to_string(),
+            Self::Decresc => "decresc".to_string(),
+            Self::Dim => "dim".to_string(),
+            Self::Progressive(tempo) => tempo.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct FlatDynamicSpan {
-    pub kind: DynamicSpanKind,
+pub struct FlatSpan {
+    pub kind: SpanKind,
     pub voice: Option<VoiceInstance>,
     pub start_pulse: usize,
     pub start_unit: f32,
@@ -147,8 +163,8 @@ pub struct FlatDynamicSpan {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct SystemDynamicSpan {
-    pub kind: DynamicSpanKind,
+pub struct SystemSpan {
+    pub kind: SpanKind,
     pub voice: Option<VoiceInstance>,
     pub start: usize,
     pub start_unit: f32,

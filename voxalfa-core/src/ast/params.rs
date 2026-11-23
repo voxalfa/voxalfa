@@ -43,7 +43,7 @@ impl FieldAssign for InitialParams {
 #[derive(Debug, Default, Clone)]
 pub struct SectionParams {
     pub time: Field<TimeSignature>,
-    pub tempo: Field<ExtendedTempo>,
+    pub tempo: Field<TimedList<ExtendedTempo>>,
     pub label: Field<String>,
     pub ending: Field<usize>,
     pub key: Field<TimedList<Key>>,

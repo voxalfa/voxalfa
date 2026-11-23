@@ -11,7 +11,7 @@ use crate::{
         params::{SectionParams, SubSectionParams},
         symbols::ScopeId,
     },
-    data_types::{ExtendedTempo, Voice},
+    data_types::Voice,
     ir::solfa::PulseIr,
     output::event::{EndingEvent, Event, EventKind, get_note_ticks},
 };
@@ -52,15 +52,6 @@ impl SectionIr {
             result.push(Event::with(time.value));
         }
 
-        if let Some(tempo) = &self.params.tempo {
-            let event = match tempo.value {
-                ExtendedTempo::Progressive(kind) => Event::start(EventKind::ProgressiveTempo(kind)),
-                ExtendedTempo::Static(tempo) => Event::with(tempo),
-            };
-
-            result.push(event);
-        }
-
         if let Some(ending) = &params.ending {
             result.push(Event::start(EventKind::Ending(EndingEvent {
                 id: ending.value as u8,
@@ -74,12 +65,6 @@ impl SectionIr {
     pub fn end_events(&self) -> Vec<Event> {
         let mut result = Vec::new();
         let params = &self.params;
-
-        if let Some(tempo) = &self.params.tempo
-            && let ExtendedTempo::Progressive(kind) = tempo.value
-        {
-            result.push(Event::end(EventKind::ProgressiveTempo(kind)));
-        }
 
         if let Some(ending) = &params.ending {
             result.push(Event::end(EventKind::Ending(EndingEvent {

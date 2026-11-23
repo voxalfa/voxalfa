@@ -84,7 +84,7 @@ struct PulseResolver<'a, 'd> {
     locale: &'d Locale,
     lyrics_map: LyricsMap<f32>,
     pulses: Vec<PulseStack<'a>>,
-    dynamic_spans: Vec<FlatDynamicSpan>,
+    spans: Vec<FlatSpan>,
     pending_markers: Vec<(usize, FlatMarker)>,
     current_time: TimeSignature,
     verses: usize,
@@ -120,7 +120,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             locale,
             lyrics_map,
             pulses: Vec::new(),
-            dynamic_spans: Vec::new(),
+            spans: Vec::new(),
             pending_markers: Vec::new(),
             current_time: default_time,
         }
@@ -141,7 +141,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
 
         PulseResolverData {
             pulses: self.pulses,
-            dynamic_spans: self.dynamic_spans,
+            spans: self.spans,
             verses: self.verses,
         }
     }
@@ -186,6 +186,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
 
         self.add_start_markers(&context);
         self.add_dynamic_markers(section_id, &context);
+        self.add_tempo_spans(&context);
         self.add_touch_markers(context.start, section);
         self.add_jump_markers(&context);
         self.mark_section_end(section_id, &context);
@@ -375,20 +376,34 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             }
         }
 
-        if let Some(tempo) = section.params.tempo.as_ref().map(|tempo| tempo.value) {
-            let (kind, label) = match tempo {
-                ExtendedTempo::Static(StaticTempo::Custom(t)) => {
-                    (MarkerKind::Bpm, format!("M. {t}."))
-                }
-                _ => (MarkerKind::Tempo, format!("{tempo}.")),
-            };
+        if let Some(tempos) = &section.params.tempo {
+            let positions = section_positions(context);
 
-            self.pulses[start].markers.push(FlatMarker {
-                kind,
-                glyph: MarkerGlyph::Text(label),
-                index: 0.0,
-                voice: None,
-            });
+            for tempo in &tempos.value {
+                let timed = &tempo.value;
+                let tempo = &timed.value;
+                let index = if timed.implicit { 0.0 } else { timed.start };
+                let Some((pulse, index)) =
+                    resolve_section_position(&positions, context, index, false)
+                else {
+                    continue;
+                };
+
+                let (kind, label) = match tempo {
+                    ExtendedTempo::Progressive(_) => continue,
+                    ExtendedTempo::Static(StaticTempo::Custom(t)) => {
+                        (MarkerKind::Bpm, format!("M. {t}."))
+                    }
+                    ExtendedTempo::Static(_) => (MarkerKind::Tempo, format!("{tempo}.")),
+                };
+
+                self.pulses[pulse].markers.push(FlatMarker {
+                    kind,
+                    glyph: MarkerGlyph::Text(label),
+                    index,
+                    voice: None,
+                });
+            }
         }
     }
 
@@ -423,9 +438,9 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             let dynamic = event.value;
 
             let span_kind = match dynamic {
-                Dynamic::Cresc => Some(DynamicSpanKind::Cresc),
-                Dynamic::Decresc => Some(DynamicSpanKind::Decresc),
-                Dynamic::Dim => Some(DynamicSpanKind::Dim),
+                Dynamic::Cresc => Some(SpanKind::Cresc),
+                Dynamic::Decresc => Some(SpanKind::Decresc),
+                Dynamic::Dim => Some(SpanKind::Dim),
                 _ => None,
             };
 
@@ -438,7 +453,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                     continue;
                 };
 
-                self.dynamic_spans.push(FlatDynamicSpan {
+                self.spans.push(FlatSpan {
                     kind,
                     voice,
                     start_pulse: offset + start.pulse,
@@ -459,6 +474,47 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         }
     }
 
+    fn add_tempo_spans(&mut self, context: &SectionContext) {
+        let Some(tempos) = &context.section.params.tempo else {
+            return;
+        };
+
+        let positions = section_positions(context);
+        let last_index = positions.last().map(|note| note.abs_index).unwrap_or(0.0);
+
+        for tempo in &tempos.value {
+            let timed = &tempo.value;
+
+            let ExtendedTempo::Progressive(kind) = timed.value else {
+                continue;
+            };
+
+            let start_index = if timed.implicit { 0.0 } else { timed.start };
+
+            let end_index = if timed.implicit {
+                last_index
+            } else {
+                timed.end.unwrap_or_default()
+            };
+
+            let Some(start) = resolve_event(&positions, start_index, false) else {
+                continue;
+            };
+            let Some(end) = resolve_event(&positions, end_index, false) else {
+                continue;
+            };
+
+            self.spans.push(FlatSpan {
+                kind: SpanKind::Progressive(kind),
+                voice: None,
+                start_pulse: context.start + start.pulse,
+                start_unit: start.unit,
+                end_pulse: context.start + end.pulse,
+                end_unit: end.unit,
+            });
+        }
+    }
+
     fn add_jump_markers(&mut self, context: &SectionContext) {
         let section = context.section;
         let positions = section_positions(context);
@@ -467,6 +523,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         if let Some(jumps) = &section.params.jump {
             for jump in &jumps.value {
                 let jump = &jump.value;
+
                 let index = if jump.implicit {
                     last_index
                 } else {
@@ -981,7 +1038,7 @@ fn make_system<'a>(
         pulses,
         pulse_offsets,
         markers: layout.markers(),
-        dynamic_spans: layout.dynamic_spans(&resolver_data.dynamic_spans),
+        spans: layout.spans(&resolver_data.spans),
         voltas: layout.voltas(),
         pulse_offset: grid_offset,
         lyric_groups,
@@ -1023,14 +1080,14 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
         self.measures.iter().flat_map(|m| m.start..m.end)
     }
 
-    fn dynamic_spans(&self, spans: &[FlatDynamicSpan]) -> Vec<SystemDynamicSpan> {
+    fn spans(&self, spans: &[FlatSpan]) -> Vec<SystemSpan> {
         spans
             .iter()
             .filter(|span| span.end_pulse >= self.start && span.start_pulse < self.end)
             .map(|span| {
                 let ends_after = span.end_pulse >= self.end;
 
-                SystemDynamicSpan {
+                SystemSpan {
                     kind: span.kind,
                     voice: span.voice,
                     start: span.start_pulse.saturating_sub(self.start),

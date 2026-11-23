@@ -7,8 +7,8 @@ use crate::{
     error::Result,
     fonts::Fonts,
     model::{
-        DynamicSpanKind, MarkerGlyph, MarkerKind, ResolvedScore, System, SystemLyricToken,
-        SystemPulse, VoiceInstance,
+        MarkerGlyph, MarkerKind, ResolvedScore, SpanKind, System, SystemLyricToken, SystemPulse,
+        VoiceInstance,
     },
     options::RenderOptions,
     renderer::{
@@ -118,9 +118,10 @@ impl<'a> SystemRender<'a> {
             }
         }
 
-        for span in &layout.dynamic_spans {
+        for span in &layout.spans {
             let start_x = self.origin_x + span.start_x;
             let end_x = self.origin_x + span.end_x;
+            let is_tempo = span.kind.is_tempo();
 
             if span.continuation {
                 emit_line(
@@ -132,17 +133,27 @@ impl<'a> SystemRender<'a> {
                     "dynamic-dash",
                 )?;
             } else if let Some(label) = &span.label {
+                let label_class = if is_tempo {
+                    "tempo-label"
+                } else {
+                    "dynamic-label"
+                };
+
                 emit_text(
                     self.svg,
                     start_x,
                     y + span.baseline,
                     label,
-                    "dynamic-label",
+                    label_class,
                     "start",
                 )?;
 
-                let dash_start =
-                    start_x + span.label_width + self.fonts.label.dynamic.size() * DYNAMIC_DASH_GAP;
+                let label_size = if is_tempo {
+                    self.fonts.label.tempo.size()
+                } else {
+                    self.fonts.label.dynamic.size()
+                };
+                let dash_start = start_x + span.label_width + label_size * DYNAMIC_DASH_GAP;
 
                 if dash_start < end_x {
                     emit_line(
@@ -159,9 +170,7 @@ impl<'a> SystemRender<'a> {
                 let half = self.fonts.label.dynamic.size() * DYNAMIC_HAIRPIN_HEIGHT / 2.0;
 
                 let (left_top, left_bottom, right_top, right_bottom) = match span.kind {
-                    DynamicSpanKind::Cresc => {
-                        (center_y, center_y, center_y - half, center_y + half)
-                    }
+                    SpanKind::Cresc => (center_y, center_y, center_y - half, center_y + half),
                     _ => (center_y - half, center_y + half, center_y, center_y),
                 };
 

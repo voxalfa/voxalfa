@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Jump, Key, Mark, ProgressiveTempo, StaticTempo, TimeSignature, Touch},
+    data_types::{
+        Dynamic, ExtendedTempo, Jump, Key, Mark, ProgressiveTempo, StaticTempo, TimeSignature,
+        Touch,
+    },
     validation::event::EventBuffer,
 };
 
@@ -76,6 +79,10 @@ pub trait TimedPlacement {
     fn anchor(&self) -> EventAnchor;
 
     fn implicit_index(&self, last_index: f32) -> f32;
+
+    fn implicit_range_end(&self, _last_index: f32) -> Option<f32> {
+        None
+    }
 }
 
 impl TimedPlacement for Dynamic {
@@ -105,6 +112,20 @@ impl TimedPlacement for Key {
 
     fn implicit_index(&self, _last_index: f32) -> f32 {
         0.0
+    }
+}
+
+impl TimedPlacement for ExtendedTempo {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+
+    fn implicit_index(&self, _last_index: f32) -> f32 {
+        0.0
+    }
+
+    fn implicit_range_end(&self, last_index: f32) -> Option<f32> {
+        matches!(self, ExtendedTempo::Progressive(_)).then_some(last_index)
     }
 }
 
@@ -241,6 +262,19 @@ impl ToEventKind for Key {
 impl ToEventKind for StaticTempo {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Tempo(*self)
+    }
+}
+
+impl ToEventKind for ExtendedTempo {
+    fn to_event_kind(&self) -> EventKind {
+        match self {
+            ExtendedTempo::Static(tempo) => EventKind::Tempo(*tempo),
+            ExtendedTempo::Progressive(tempo) => EventKind::ProgressiveTempo(*tempo),
+        }
+    }
+
+    fn is_range(&self) -> bool {
+        matches!(self, ExtendedTempo::Progressive(_))
     }
 }
 
