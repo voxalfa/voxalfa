@@ -37,7 +37,7 @@ Sample Partition
 ; we can override the global parameters inside sections
 ; [$] bpm={80}
 
-[$] dynamics={p:0, cre:4..7}
+[$] dynamics={p:0, cresc:4..7}
 
 ;   [0]   [1]   [2]   [3]    [4]  [5]  [6]
 ;    p                       <<<<<<<<<<<<<

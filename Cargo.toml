@@ -36,3 +36,10 @@ voxalfa-midi = { version = "0.1.0-alpha.3", path = "./voxalfa-midi" }
 voxalfa-musicxml = { version = "0.1.0-alpha.3", path = "./voxalfa-musicxml" }
 voxalfa-pdf = { version = "0.1.0-alpha.3", path = "./voxalfa-pdf" }
 voxalfa-svg = { version = "0.1.0-alpha.3", path = "./voxalfa-svg" }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = false

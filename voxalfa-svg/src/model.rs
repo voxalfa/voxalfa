@@ -131,8 +131,9 @@ pub struct System<'a> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DynamicSpanKind {
-    Crescendo,
-    Decrescendo,
+    Cresc,
+    Decresc,
+    Dim,
 }
 
 #[derive(Debug, Clone, Copy)]

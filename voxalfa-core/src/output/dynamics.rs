@@ -30,7 +30,7 @@ impl DynamicTransition {
         }
 
         let target = match self.kind {
-            DynamicTransitionKind::Cre => self.level.get_next(),
+            DynamicTransitionKind::Inc => self.level.get_next(),
             DynamicTransitionKind::Dec => self.level.get_prev(),
         };
 
@@ -40,6 +40,6 @@ impl DynamicTransition {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DynamicTransitionKind {
-    Cre,
+    Inc,
     Dec,
 }

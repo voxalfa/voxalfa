@@ -85,13 +85,14 @@ impl TryFrom<String> for StaticTempo {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProgressiveTempo {
     Rit,
+    Rall,
     Accel,
 }
 
 impl ProgressiveTempo {
     pub fn ratio(self) -> f32 {
         match self {
-            ProgressiveTempo::Rit => 0.8,
+            ProgressiveTempo::Rit | ProgressiveTempo::Rall => 0.8,
             ProgressiveTempo::Accel => 1.2,
         }
     }
@@ -103,6 +104,7 @@ impl TryFrom<&str> for ProgressiveTempo {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "rit" => Ok(Self::Rit),
+            "rall" => Ok(Self::Rall),
             "accel" => Ok(Self::Accel),
             _ => Err(()),
         }

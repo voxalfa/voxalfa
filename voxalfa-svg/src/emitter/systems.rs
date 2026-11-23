@@ -159,12 +159,10 @@ impl<'a> SystemRender<'a> {
                 let half = self.fonts.label.dynamic.size() * DYNAMIC_HAIRPIN_HEIGHT / 2.0;
 
                 let (left_top, left_bottom, right_top, right_bottom) = match span.kind {
-                    DynamicSpanKind::Crescendo => {
+                    DynamicSpanKind::Cresc => {
                         (center_y, center_y, center_y - half, center_y + half)
                     }
-                    DynamicSpanKind::Decrescendo => {
-                        (center_y - half, center_y + half, center_y, center_y)
-                    }
+                    _ => (center_y - half, center_y + half, center_y, center_y),
                 };
 
                 emit_line(
@@ -175,6 +173,7 @@ impl<'a> SystemRender<'a> {
                     right_top,
                     "dynamic-hairpin",
                 )?;
+
                 emit_line(
                     self.svg,
                     start_x,

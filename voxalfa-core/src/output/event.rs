@@ -138,7 +138,7 @@ impl ToEventKind for Dynamic {
     }
 
     fn is_range(&self) -> bool {
-        matches!(self, Dynamic::Cre | Dynamic::Dec)
+        matches!(self, Dynamic::Cresc | Dynamic::Decresc | Dynamic::Dim)
     }
 }
 

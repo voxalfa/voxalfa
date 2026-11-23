@@ -142,7 +142,7 @@ pub const SECTION_PARAMS: &[ParamSpec] = &[
     ParamSpec {
         name: "touches",
         type_str: "{touch...}",
-        snippet: "touches={${1:stc}}",
+        snippet: "touches={${1:staccato}}",
         doc: "Applies articulation patterns across notes.",
     },
     ParamSpec {

@@ -19,8 +19,9 @@ pub enum Dynamic {
     F,
     FF,
     FFF,
-    Cre,
-    Dec,
+    Cresc,
+    Decresc,
+    Dim,
 }
 
 impl Dynamic {
@@ -53,8 +54,9 @@ impl TryFrom<String> for Dynamic {
             "mf" => Ok(Self::MF),
             "ff" => Ok(Self::FF),
             "fff" => Ok(Self::FFF),
-            "cre" => Ok(Self::Cre),
-            "dec" => Ok(Self::Dec),
+            "cresc" => Ok(Self::Cresc),
+            "decresc" => Ok(Self::Decresc),
+            "dim" => Ok(Self::Dim),
             _ => Err(()),
         }
     }
@@ -71,8 +73,9 @@ impl std::fmt::Display for Dynamic {
             Dynamic::MF => write!(f, "mf"),
             Dynamic::FF => write!(f, "ff"),
             Dynamic::FFF => write!(f, "fff"),
-            Dynamic::Cre => write!(f, "cre"),
-            Dynamic::Dec => write!(f, "dec"),
+            Dynamic::Cresc => write!(f, "cresc"),
+            Dynamic::Decresc => write!(f, "decresc"),
+            Dynamic::Dim => write!(f, "dim"),
         }
     }
 }

@@ -411,8 +411,9 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             let dynamic = event.value;
 
             let span_kind = match dynamic {
-                Dynamic::Cre => Some(DynamicSpanKind::Crescendo),
-                Dynamic::Dec => Some(DynamicSpanKind::Decrescendo),
+                Dynamic::Cresc => Some(DynamicSpanKind::Cresc),
+                Dynamic::Decresc => Some(DynamicSpanKind::Decresc),
+                Dynamic::Dim => Some(DynamicSpanKind::Dim),
                 _ => None,
             };
 
