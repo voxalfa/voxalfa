@@ -9,7 +9,7 @@ use voxalfa_core::{
     output::{
         dynamics::DynamicTransition,
         evaluator::{PlaybackParams, TimelineEvaluator},
-        event::NoteTimeline,
+        event::{EventAnchor, NoteTimeline},
         tempo::TempoTransition,
         voice::{NoteContext, VoiceLine},
     },
@@ -71,15 +71,7 @@ impl ConverterTask {
         self.init_meta_track();
 
         while let Some(ctx) = voice_line.notes.get(self.context.index()) {
-            self.handle_events(&voice_line.timeline);
-
-            if self.context.done() {
-                break;
-            }
-
-            if self.context.jump() {
-                continue;
-            }
+            self.handle_events(&voice_line.timeline, EventAnchor::Before);
 
             if !self.context.is_waiting() {
                 match ctx.column.note {
@@ -91,11 +83,17 @@ impl ConverterTask {
                 self.handle_meta_events();
             }
 
-            self.context.step();
+            self.handle_events(&voice_line.timeline, EventAnchor::After);
 
-            if self.context.index() >= voice_line.notes.len() {
-                self.handle_pending_events(&voice_line.timeline);
+            if self.context.done() {
+                break;
             }
+
+            if self.context.jump() {
+                continue;
+            }
+
+            self.context.step();
         }
 
         Ok(self.finalize())
@@ -203,17 +201,12 @@ impl ConverterTask {
         }
     }
 
-    fn handle_events(&mut self, timeline: &NoteTimeline) {
-        self.context.handle_events(timeline);
+    fn handle_events(&mut self, timeline: &NoteTimeline, anchor: EventAnchor) {
+        self.context.handle_events(timeline, anchor);
 
         if let Some(transition) = self.context.poll_dynamic_update() {
             self.handle_pending_notes(transition);
         }
-    }
-
-    fn handle_pending_events(&mut self, timeline: &NoteTimeline) {
-        self.handle_events(timeline);
-        self.context.jump();
     }
 
     fn handle_active_note(&mut self) {

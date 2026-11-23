@@ -7,7 +7,7 @@ use crate::{
     },
     output::{
         dynamics::{DynamicState, DynamicTransition, DynamicTransitionKind},
-        event::{Event, EventKind, EventRole, JumpEvent, NoteTimeline},
+        event::{Event, EventAnchor, EventKind, EventRole, JumpEvent, NoteTimeline},
         tempo::{TempoState, TempoTransition},
     },
 };
@@ -71,8 +71,10 @@ impl TimelineEvaluator {
         self.index += 1;
     }
 
-    pub fn handle_events(&mut self, timeline: &NoteTimeline) {
-        let events = timeline.get_events(self.index);
+    pub fn handle_events(&mut self, timeline: &NoteTimeline, anchor: EventAnchor) {
+        let events = timeline
+            .get_events(self.index)
+            .filter(|event| event.anchor == anchor);
 
         for event in events {
             self.handle_event(event);
@@ -123,7 +125,13 @@ impl TimelineEvaluator {
                     self.index = *address;
                 }
                 EventRole::End => {
-                    self.endings_jump.insert(ending.id, self.index);
+                    let address = if event.anchor == EventAnchor::After {
+                        self.index + 1
+                    } else {
+                        self.index
+                    };
+
+                    self.endings_jump.insert(ending.id, address);
                 }
                 _ => {}
             },

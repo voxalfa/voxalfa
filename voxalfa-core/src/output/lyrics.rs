@@ -12,6 +12,7 @@ use crate::{
     output::{
         FinalOutput,
         evaluator::{PlaybackParams, TimelineEvaluator},
+        event::EventAnchor,
         metrics::{SpanWidth, StringMetric},
         voice::{NoteContext, VoiceLine},
     },
@@ -255,7 +256,7 @@ impl LyricsResolver {
         let mut evaluator = TimelineEvaluator::new(PlaybackParams::dummy());
 
         while let Some(context) = voice_line.notes.get(evaluator.index()) {
-            evaluator.handle_events(&voice_line.timeline);
+            evaluator.handle_events(&voice_line.timeline, EventAnchor::Before);
 
             if evaluator.done() {
                 break;
@@ -277,12 +278,21 @@ impl LyricsResolver {
                 tokens.push(token);
             }
 
-            evaluator.step();
+            evaluator.handle_events(&voice_line.timeline, EventAnchor::After);
 
-            if evaluator.index() >= voice_line.notes.len() {
-                evaluator.handle_events(&voice_line.timeline);
-                evaluator.jump();
+            if evaluator.done() {
+                break;
             }
+
+            if evaluator.jump() {
+                if let Some(last) = tokens.last_mut() {
+                    last.operator = Some(LyricOperatorKind::Newline);
+                }
+
+                continue;
+            }
+
+            evaluator.step();
         }
 
         tokens

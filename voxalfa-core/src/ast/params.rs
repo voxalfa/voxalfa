@@ -46,9 +46,9 @@ pub struct SectionParams {
     pub tempo: Field<ExtendedTempo>,
     pub label: Field<String>,
     pub ending: Field<usize>,
-    pub key: Field<Key>,
-    pub jump: Field<Jump>,
-    pub mark: Field<Mark>,
+    pub key: Field<TimedList<Key>>,
+    pub jump: Field<TimedList<Jump>>,
+    pub mark: Field<TimedList<Mark>>,
     pub touches: Field<TimedList<Touch>>,
     pub repeat: Field<usize>,
 }

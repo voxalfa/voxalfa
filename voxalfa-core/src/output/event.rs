@@ -63,6 +63,75 @@ impl NoteTimeline {
 pub struct Event {
     pub kind: EventKind,
     pub role: EventRole,
+    pub anchor: EventAnchor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventAnchor {
+    Before,
+    After,
+}
+
+pub trait TimedPlacement {
+    fn anchor(&self) -> EventAnchor;
+
+    fn implicit_index(&self, last_index: f32) -> f32;
+}
+
+impl TimedPlacement for Dynamic {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+
+    fn implicit_index(&self, _last_index: f32) -> f32 {
+        0.0
+    }
+}
+
+impl TimedPlacement for Touch {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+
+    fn implicit_index(&self, _last_index: f32) -> f32 {
+        0.0
+    }
+}
+
+impl TimedPlacement for Key {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+
+    fn implicit_index(&self, _last_index: f32) -> f32 {
+        0.0
+    }
+}
+
+impl TimedPlacement for Mark {
+    fn anchor(&self) -> EventAnchor {
+        match self {
+            Mark::Segno | Mark::Coda => EventAnchor::Before,
+            Mark::Fine | Mark::ToCoda => EventAnchor::After,
+        }
+    }
+
+    fn implicit_index(&self, last_index: f32) -> f32 {
+        match self {
+            Mark::Segno | Mark::Coda => 0.0,
+            Mark::Fine | Mark::ToCoda => last_index,
+        }
+    }
+}
+
+impl TimedPlacement for JumpEvent {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::After
+    }
+
+    fn implicit_index(&self, last_index: f32) -> f32 {
+        last_index
+    }
 }
 
 impl Event {
@@ -70,6 +139,7 @@ impl Event {
         Self {
             kind,
             role: EventRole::Point,
+            anchor: EventAnchor::Before,
         }
     }
 
@@ -77,6 +147,7 @@ impl Event {
         Self {
             kind,
             role: EventRole::Start,
+            anchor: EventAnchor::Before,
         }
     }
 
@@ -84,6 +155,15 @@ impl Event {
         Self {
             kind,
             role: EventRole::End,
+            anchor: EventAnchor::After,
+        }
+    }
+
+    pub fn after(kind: EventKind) -> Self {
+        Self {
+            kind,
+            role: EventRole::Point,
+            anchor: EventAnchor::After,
         }
     }
 
@@ -92,11 +172,7 @@ impl Event {
     }
 
     pub fn is_tail_event(&self) -> bool {
-        self.role == EventRole::End
-            || matches!(
-                self.kind,
-                EventKind::Jump(_) | EventKind::Mark(Mark::Fine | Mark::ToCoda)
-            )
+        self.anchor == EventAnchor::After
     }
 }
 

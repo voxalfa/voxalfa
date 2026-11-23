@@ -341,12 +341,12 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
 
     fn add_start_markers(&mut self, context: &SectionContext) {
         let section = context.section;
-        let pulse = &mut self.pulses[context.start];
+        let start = context.start;
 
         if context.time_changed
             && let Some(time) = section.params.time.as_ref().map(|time| time.value)
         {
-            pulse.markers.push(FlatMarker {
+            self.pulses[start].markers.push(FlatMarker {
                 kind: MarkerKind::TimeSignature,
                 glyph: MarkerGlyph::Text(format!("{}/{}", time.top, time.bottom)),
                 index: 0.0,
@@ -354,13 +354,25 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             });
         }
 
-        if let Some(key) = section.params.key.as_ref().map(|key| key.value) {
-            pulse.markers.push(FlatMarker {
-                kind: MarkerKind::Key,
-                glyph: MarkerGlyph::Text(self.locale.key_label(&key_text(key))),
-                index: 0.0,
-                voice: None,
-            });
+        if let Some(keys) = &section.params.key {
+            let positions = section_positions(context);
+
+            for key in &keys.value {
+                let key = &key.value;
+                let index = if key.implicit { 0.0 } else { key.start };
+                let Some((pulse, index)) =
+                    resolve_section_position(&positions, context, index, false)
+                else {
+                    continue;
+                };
+
+                self.pulses[pulse].markers.push(FlatMarker {
+                    kind: MarkerKind::Key,
+                    glyph: MarkerGlyph::Text(self.locale.key_label(&key_text(key.value))),
+                    index,
+                    voice: None,
+                });
+            }
         }
 
         if let Some(tempo) = section.params.tempo.as_ref().map(|tempo| tempo.value) {
@@ -371,7 +383,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                 _ => (MarkerKind::Tempo, format!("{tempo}.")),
             };
 
-            pulse.markers.push(FlatMarker {
+            self.pulses[start].markers.push(FlatMarker {
                 kind,
                 glyph: MarkerGlyph::Text(label),
                 index: 0.0,
@@ -418,11 +430,11 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             };
 
             if let Some(kind) = span_kind {
-                let Some(start) = resolve_event(&positions, event.start) else {
+                let Some(start) = resolve_event(&positions, event.start, false) else {
                     continue;
                 };
 
-                let Some(end) = event.end.and_then(|e| resolve_event(&positions, e)) else {
+                let Some(end) = event.end.and_then(|e| resolve_event(&positions, e, false)) else {
                     continue;
                 };
 
@@ -434,7 +446,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                     end_pulse: offset + end.pulse,
                     end_unit: end.unit,
                 });
-            } else if let Some(resolved) = resolve_event(&positions, event.start) {
+            } else if let Some(resolved) = resolve_event(&positions, event.start, false) {
                 let marker = FlatMarker {
                     kind: MarkerKind::Dynamic,
                     glyph: MarkerGlyph::Text(dynamic.to_string()),
@@ -449,31 +461,63 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
 
     fn add_jump_markers(&mut self, context: &SectionContext) {
         let section = context.section;
-        let last = context.start + context.pulse_count - 1;
+        let positions = section_positions(context);
+        let last_index = positions.last().map(|note| note.abs_index).unwrap_or(0.0);
 
-        if let Some(jump) = &section.params.jump {
-            self.pulses[last].markers.push(FlatMarker {
-                kind: MarkerKind::Jump,
-                glyph: MarkerGlyph::Text(jump_label(jump.value, section.get_repeat())),
-                index: 1.0,
-                voice: None,
-            });
+        if let Some(jumps) = &section.params.jump {
+            for jump in &jumps.value {
+                let jump = &jump.value;
+                let index = if jump.implicit {
+                    last_index
+                } else {
+                    jump.start
+                };
+
+                let Some((pulse, index)) =
+                    resolve_section_position(&positions, context, index, true)
+                else {
+                    continue;
+                };
+
+                self.pulses[pulse].markers.push(FlatMarker {
+                    kind: MarkerKind::Jump,
+                    glyph: MarkerGlyph::Text(jump_label(jump.value, section.get_repeat())),
+                    index,
+                    voice: None,
+                });
+            }
         }
 
-        if let Some(mark) = &section.params.mark {
-            let (glyph, pulse, unit) = match mark.value {
-                Mark::Segno => (MarkerGlyph::Segno, context.start, 0.0),
-                Mark::Coda => (MarkerGlyph::Text("Coda".to_string()), context.start, 0.0),
-                Mark::ToCoda => (MarkerGlyph::Text("To Coda".to_string()), last, 1.0),
-                Mark::Fine => (MarkerGlyph::Text("Fine".to_string()), last, 1.0),
-            };
+        if let Some(marks) = &section.params.mark {
+            for mark in &marks.value {
+                let mark = &mark.value;
+                let after = matches!(mark.value, Mark::ToCoda | Mark::Fine);
+                let glyph = match mark.value {
+                    Mark::Segno => MarkerGlyph::Segno,
+                    Mark::Coda => MarkerGlyph::Text("Coda".to_string()),
+                    Mark::ToCoda => MarkerGlyph::Text("To Coda".to_string()),
+                    Mark::Fine => MarkerGlyph::Text("Fine".to_string()),
+                };
 
-            self.pulses[pulse].markers.push(FlatMarker {
-                kind: MarkerKind::Mark,
-                glyph,
-                index: unit,
-                voice: None,
-            });
+                let index = if mark.implicit {
+                    if after { last_index } else { 0.0 }
+                } else {
+                    mark.start
+                };
+
+                let Some((pulse, unit)) =
+                    resolve_section_position(&positions, context, index, after)
+                else {
+                    continue;
+                };
+
+                self.pulses[pulse].markers.push(FlatMarker {
+                    kind: MarkerKind::Mark,
+                    glyph,
+                    index: unit,
+                    voice: None,
+                });
+            }
         }
     }
 
@@ -503,7 +547,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         for timed in &touches.value {
             let event = &timed.value;
 
-            let Some(resolved) = resolve_event(&positions, event.start) else {
+            let Some(resolved) = resolve_event(&positions, event.start, false) else {
                 continue;
             };
 
@@ -642,25 +686,33 @@ fn make_indexed_notes(views: &[PulseView]) -> Vec<IndexedNote> {
     positions
 }
 
-fn resolve_event(positions: &[IndexedNote], target: f32) -> Option<ResolvedEvent> {
-    positions
-        .iter()
-        .find_map(|note| {
-            ((note.abs_index - target).abs() < FLOAT_ERROR).then_some(ResolvedEvent {
-                pulse: note.pulse,
-                unit: note.rel_index,
-            })
+fn section_positions(context: &SectionContext) -> Vec<IndexedNote> {
+    context
+        .section
+        .items
+        .first()
+        .map(|sub| make_indexed_notes(&sub.views))
+        .unwrap_or_default()
+}
+
+fn resolve_section_position(
+    positions: &[IndexedNote],
+    context: &SectionContext,
+    target: f32,
+    after: bool,
+) -> Option<(usize, f32)> {
+    let resolved = resolve_event(positions, target, after)?;
+
+    Some((context.start + resolved.pulse, resolved.unit))
+}
+
+fn resolve_event(positions: &[IndexedNote], target: f32, after: bool) -> Option<ResolvedEvent> {
+    positions.iter().find_map(|note| {
+        ((note.abs_index - target).abs() < FLOAT_ERROR).then_some(ResolvedEvent {
+            pulse: note.pulse,
+            unit: note.rel_index + if after { note.duration } else { 0.0 },
         })
-        .or_else(|| {
-            positions.iter().find_map(|note| {
-                ((note.abs_index + note.duration - target).abs() < FLOAT_ERROR).then_some(
-                    ResolvedEvent {
-                        pulse: note.pulse,
-                        unit: note.rel_index + note.duration,
-                    },
-                )
-            })
-        })
+    })
 }
 
 fn combined_views(sections: &[SectionIr], section_id: usize, sub_id: usize) -> Vec<PulseView> {

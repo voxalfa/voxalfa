@@ -24,4 +24,5 @@ pub struct TimedValue<T> {
     pub start: f32,
     pub end: Option<f32>,
     pub value: T,
+    pub implicit: bool,
 }

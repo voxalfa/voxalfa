@@ -11,9 +11,9 @@ use crate::{
         params::{SectionParams, SubSectionParams},
         symbols::ScopeId,
     },
-    data_types::{ExtendedTempo, Mark, Voice},
+    data_types::{ExtendedTempo, Voice},
     ir::solfa::PulseIr,
-    output::event::{EndingEvent, Event, EventKind, JumpEvent, get_note_ticks},
+    output::event::{EndingEvent, Event, EventKind, get_note_ticks},
 };
 
 #[derive(Debug, Default)]
@@ -61,16 +61,6 @@ impl SectionIr {
             result.push(event);
         }
 
-        if let Some(makr) = &self.params.mark
-            && matches!(makr.value, Mark::Coda | Mark::Segno)
-        {
-            result.push(Event::with(makr.value));
-        }
-
-        if let Some(key) = &params.key {
-            result.push(Event::with(key.value));
-        }
-
         if let Some(ending) = &params.ending {
             result.push(Event::start(EventKind::Ending(EndingEvent {
                 id: ending.value as u8,
@@ -85,12 +75,6 @@ impl SectionIr {
         let mut result = Vec::new();
         let params = &self.params;
 
-        if let Some(symbol) = &params.mark
-            && matches!(symbol.value, Mark::ToCoda | Mark::Fine)
-        {
-            result.push(Event::with(symbol.value));
-        }
-
         if let Some(tempo) = &self.params.tempo
             && let ExtendedTempo::Progressive(kind) = tempo.value
         {
@@ -101,13 +85,6 @@ impl SectionIr {
             result.push(Event::end(EventKind::Ending(EndingEvent {
                 id: ending.value as u8,
                 is_last: false,
-            })));
-        }
-
-        if let Some(jump) = &params.jump {
-            result.push(Event::new(EventKind::Jump(JumpEvent {
-                kind: jump.value,
-                repeat: params.repeat.as_ref().map(|r| r.value as u8).unwrap_or(1),
             })));
         }
 

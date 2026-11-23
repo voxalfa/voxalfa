@@ -239,7 +239,12 @@ impl<T: ParseNode> ParseNode for TimedValue<T> {
             let start = context.parse_node(start_node, scope_id)?;
             let end = end_node.and_then(|n| context.parse_node(n, scope_id));
 
-            Some(TimedValue { start, end, value })
+            Some(TimedValue {
+                start,
+                end,
+                value,
+                implicit: false,
+            })
         } else {
             let value = context.parse_node(node, scope_id)?;
 
@@ -247,6 +252,7 @@ impl<T: ParseNode> ParseNode for TimedValue<T> {
                 start: 0.,
                 end: None,
                 value,
+                implicit: true,
             })
         }
     }

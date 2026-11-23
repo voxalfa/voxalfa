@@ -4,13 +4,13 @@ use crate::{
         params::SubSectionParams,
         symbols::{SymbolRef, SymbolTree},
     },
-    data_types::TimedList,
+    data_types::{TimedList, TimedValue},
     diagnostics::{
         reporter::DiagnosticReporter,
         types::{DiagnosticKind, ReportStage},
     },
     ir::{BodyIr, SectionIr, SubSectionIr},
-    output::event::{TimelineMap, ToEventKind},
+    output::event::{JumpEvent, TimedPlacement, TimelineMap, ToEventKind},
     validation::event::EventBuffer,
 };
 
@@ -54,17 +54,26 @@ impl<'a> IrValidator<'a> {
 
             buffer.process_section_events(section);
 
+            let touches = section.params.touches.as_ref();
+            let key = section.params.key.as_ref();
+            let mark = section.params.mark.as_ref();
+
             for (sub_id, sub_section) in section.items.iter().enumerate() {
                 let dynamics = self
                     .resolve_root_params(section_id, sub_id, &body.sections)
                     .and_then(|p| p.dynamics.as_ref());
 
-                let touches = section.params.touches.as_ref();
                 let next_section = body.sections.get(section_id + 1);
                 let is_last = next_section.is_some_and(|s| !s.merge) || next_section.is_none();
 
                 self.process_events(dynamics, sub_section, is_last, &mut buffer);
                 self.process_events(touches, sub_section, is_last, &mut buffer);
+                self.process_events(key, sub_section, is_last, &mut buffer);
+                self.process_events(mark, sub_section, is_last, &mut buffer);
+
+                if let Some(jumps) = self.build_jump_events(section) {
+                    self.process_events_value(&jumps, sub_section, is_last, &mut buffer);
+                }
 
                 if sub_id == section.items.len() - 1 {
                     buffer.add_offset(sub_section.views.len());
@@ -80,7 +89,7 @@ impl<'a> IrValidator<'a> {
         }
     }
 
-    fn process_events<T: ToEventKind>(
+    fn process_events<T: ToEventKind + TimedPlacement>(
         &mut self,
         events: Option<&SymbolRef<TimedList<T>>>,
         sub_section: &SubSectionIr,
@@ -90,11 +99,21 @@ impl<'a> IrValidator<'a> {
         self.validate_timestamps(events);
 
         if let Some(events) = events {
-            buffer.process_local_events(sub_section, &events.value);
+            self.process_events_value(&events.value, sub_section, is_last, buffer);
+        }
+    }
 
-            if is_last {
-                self.validate_event_buffer(&events.value, buffer);
-            }
+    fn process_events_value<T: ToEventKind + TimedPlacement>(
+        &mut self,
+        events: &TimedList<T>,
+        sub_section: &SubSectionIr,
+        is_last: bool,
+        buffer: &mut EventBuffer,
+    ) {
+        buffer.process_local_events(sub_section, events);
+
+        if is_last {
+            self.validate_event_buffer(events, buffer);
         }
     }
 
@@ -197,21 +216,53 @@ impl<'a> IrValidator<'a> {
         let Some(events) = events else { return };
 
         for symbol in &events.value {
-            let event = &symbol.value;
-
-            if event.value.is_range() && event.end.is_none() {
-                let sid = self.tree.get_symbol_range(symbol.sid);
-
-                self.reporter
-                    .error(sid, DiagnosticKind::ExpectedTimestampRange);
-            }
-
-            if !event.value.is_range() && event.end.is_some() {
-                let sid = self.tree.get_symbol_range(symbol.sid);
-
-                self.reporter.error(sid, DiagnosticKind::RangeNotAllowed);
-            }
+            self.validate_timed_value(symbol);
         }
+    }
+
+    fn validate_timed_value<T: ToEventKind>(&mut self, symbol: &SymbolRef<TimedValue<T>>) {
+        let event = &symbol.value;
+
+        if event.value.is_range() && event.end.is_none() {
+            let sid = self.tree.get_symbol_range(symbol.sid);
+
+            self.reporter
+                .error(sid, DiagnosticKind::ExpectedTimestampRange);
+        }
+
+        if !event.value.is_range() && event.end.is_some() {
+            let sid = self.tree.get_symbol_range(symbol.sid);
+
+            self.reporter.error(sid, DiagnosticKind::RangeNotAllowed);
+        }
+    }
+
+    fn build_jump_events(&self, section: &SectionIr) -> Option<TimedList<JumpEvent>> {
+        let repeat = section
+            .params
+            .repeat
+            .as_ref()
+            .map(|repeat| repeat.value as u8)
+            .unwrap_or(1);
+
+        section.params.jump.as_ref().map(|jumps| {
+            jumps
+                .value
+                .iter()
+                .map(|event| SymbolRef {
+                    sid: event.sid,
+                    value: TimedValue {
+                        start: event.value.start,
+                        end: event.value.end,
+                        value: JumpEvent {
+                            kind: event.value.value,
+                            repeat,
+                        },
+                        implicit: event.value.implicit,
+                    },
+                })
+                .collect()
+        })
     }
 
     fn resolve_root_params<'b>(

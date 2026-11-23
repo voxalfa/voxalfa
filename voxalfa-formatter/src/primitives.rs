@@ -147,10 +147,13 @@ impl<T: Formattable> Formattable for TimedValue<T> {
     fn format(&self, embedded: bool) -> String {
         let inner = self.value.format(true);
 
-        let value = match (self.start, self.end) {
-            (0., None) => inner,
-            (start, None) => format!("{inner}:{start}"),
-            (start, Some(end)) => format!("{inner}:{start}..{end}"),
+        let value = if self.implicit {
+            inner
+        } else {
+            match self.end {
+                Some(end) => format!("{inner}:{}..{end}", self.start),
+                None => format!("{inner}:{}", self.start),
+            }
         };
 
         if embedded {
