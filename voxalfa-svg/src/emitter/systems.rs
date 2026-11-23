@@ -224,21 +224,24 @@ impl<'a> SystemRender<'a> {
             let line_y = y + volta.line_y;
             let tick = volta.label_baseline - volta.line_y;
 
-            emit_text(
-                self.svg,
-                self.origin_x + volta.label_x,
-                y + volta.label_baseline,
-                &volta.label,
-                "volta-label",
-                "start",
-            )?;
+            if !volta.open_start {
+                emit_text(
+                    self.svg,
+                    self.origin_x + volta.label_x,
+                    y + volta.label_baseline,
+                    &volta.label,
+                    "volta-label",
+                    "start",
+                )?;
 
-            emit_line(self.svg, start_x, line_y, end_x, line_y, "volta")?;
-            emit_line(self.svg, start_x, line_y, start_x, line_y + tick, "volta")?;
+                emit_line(self.svg, start_x, line_y, start_x, line_y + tick, "volta")?;
+            }
 
             if !volta.open_end {
                 emit_line(self.svg, end_x, line_y, end_x, line_y + tick, "volta")?;
             }
+
+            emit_line(self.svg, start_x, line_y, end_x, line_y, "volta")?;
         }
 
         Ok(())

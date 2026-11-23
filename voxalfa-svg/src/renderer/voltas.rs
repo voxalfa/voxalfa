@@ -21,9 +21,13 @@ pub fn layout_voltas(ctx: &LayoutContext) -> Vec<PlacedVolta> {
         let end_x =
             ctx.system.pulse_offsets[volta.end - 1] + ctx.system.pulses[volta.end - 1].pulse_width;
 
-        let text = match &volta.label {
-            Some(label) => format!("{}. {label}", volta.number),
-            None => format!("{}.", volta.number),
+        let text = if volta.open_start {
+            String::new()
+        } else {
+            match &volta.label {
+                Some(label) => format!("{}. {label}", volta.number),
+                None => format!("{}.", volta.number),
+            }
         };
 
         let text_width = ctx.fonts.label.volta.width(&text);
@@ -40,6 +44,7 @@ pub fn layout_voltas(ctx: &LayoutContext) -> Vec<PlacedVolta> {
             label_width: text_width,
             label_baseline: 0.0,
             line_y: 0.0,
+            open_start: volta.open_start,
             open_end: volta.open_end,
         });
     }
@@ -111,6 +116,10 @@ fn resolve_label_baseline(
                 offset = offset.min(top - label_top); // vertical marker collision
             }
 
+            if volta.open_start {
+                continue;
+            }
+
             if right < label_left || left > label_right {
                 continue; // no horizontal label collision
             }
@@ -157,5 +166,6 @@ pub struct PlacedVolta {
     pub label_width: f32,
     pub label_baseline: f32,
     pub line_y: f32,
+    pub open_start: bool,
     pub open_end: bool,
 }

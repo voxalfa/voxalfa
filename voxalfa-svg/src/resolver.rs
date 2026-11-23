@@ -1042,10 +1042,28 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
         let mut voltas = Vec::new();
         let mut current: Option<(usize, FlatVolta)> = None;
 
+        let first = self
+            .pulses
+            .get(self.start)
+            .and_then(|pulse| pulse.volta.as_ref());
+
+        let previous = self
+            .start
+            .checked_sub(1)
+            .and_then(|pulse| self.pulses.get(pulse))
+            .and_then(|pulse| pulse.volta.as_ref());
+
+        let continues_previous = first.is_some() && first == previous;
+
         for (local, global) in self.pulses().enumerate() {
             let Some(volta) = &self.pulses[global].volta else {
                 if let Some((start, volta)) = current.take() {
-                    voltas.push(SystemVolta::new(start, local, volta));
+                    voltas.push(SystemVolta::new(
+                        start,
+                        local,
+                        volta,
+                        continues_previous && start == 0,
+                    ));
                 }
 
                 continue;
@@ -1058,14 +1076,24 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
             }
 
             if let Some((start, active)) = current.take() {
-                voltas.push(SystemVolta::new(start, local, active));
+                voltas.push(SystemVolta::new(
+                    start,
+                    local,
+                    active,
+                    continues_previous && start == 0,
+                ));
             }
 
             current = Some((local, volta.clone()));
         }
 
         if let Some((start, volta)) = current {
-            voltas.push(SystemVolta::new(start, self.len(), volta));
+            voltas.push(SystemVolta::new(
+                start,
+                self.len(),
+                volta,
+                continues_previous && start == 0,
+            ));
         }
 
         if let Some(last) = voltas.last_mut() {

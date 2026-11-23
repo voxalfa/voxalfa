@@ -164,16 +164,18 @@ pub struct SystemVolta {
     pub end: usize,   // last pulse + 1
     pub number: usize,
     pub label: Option<String>,
+    pub open_start: bool,
     pub open_end: bool,
 }
 
 impl SystemVolta {
-    pub fn new(start: usize, end: usize, volta: FlatVolta) -> Self {
+    pub fn new(start: usize, end: usize, volta: FlatVolta, open_start: bool) -> Self {
         SystemVolta {
             start,
             end,
             number: volta.number,
             label: volta.label,
+            open_start,
             open_end: false,
         }
     }
