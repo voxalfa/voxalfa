@@ -90,6 +90,14 @@ impl Event {
     pub fn with<T: ToEventKind>(value: T) -> Self {
         Self::new(value.to_event_kind())
     }
+
+    pub fn is_tail_event(&self) -> bool {
+        self.role == EventRole::End
+            || matches!(
+                self.kind,
+                EventKind::Jump(_) | EventKind::Mark(Mark::Fine | Mark::ToCoda)
+            )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -102,7 +110,13 @@ pub enum EventKind {
     Jump(JumpEvent),
     Mark(Mark),
     Touch(Touch),
-    Ending(u8),
+    Ending(EndingEvent),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EndingEvent {
+    pub id: u8,
+    pub is_last: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

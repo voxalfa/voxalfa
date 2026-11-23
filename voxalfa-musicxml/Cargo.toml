@@ -1,0 +1,13 @@
+[package]
+name = "voxalfa-musicxml"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+quick-xml = { version = "0.42.0", features = ["serialize"] }
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = { workspace = true }
+voxalfa-core = { workspace = true }

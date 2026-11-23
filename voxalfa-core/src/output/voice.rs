@@ -1,5 +1,5 @@
 use crate::{
-    ast::symbols::VoiceId,
+    ast::{lyrics::LyricOperatorKind, symbols::VoiceId},
     ir::solfa::PulseColumn,
     output::event::{Event, NoteTimeline, Timestamp, get_note_ticks},
 };
@@ -47,8 +47,24 @@ impl<'a> VoiceLine<'a> {
 pub struct NoteContext<'a> {
     pub column: &'a PulseColumn,
     pub factor: u8,
-    pub lyric_id: usize,
+    pub lyric_id: usize, // TODO: remove
+    pub lyrics: Vec<LyricContext>,
     pub section_id: usize,
     pub sub_section_id: usize,
     pub measure_start: bool,
+}
+
+#[derive(Debug)]
+pub struct LyricContext {
+    pub verse: usize,
+    pub sid: usize,
+    pub match_kind: LyricMatch,
+    pub operator: Option<LyricOperatorKind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LyricMatch {
+    Exact,
+    Implicit,
+    Extended,
 }

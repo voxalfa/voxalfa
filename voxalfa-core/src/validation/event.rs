@@ -1,7 +1,9 @@
 use crate::{
     data_types::TimedList,
-    ir::{SectionIr, SubSectionIr},
-    output::event::{Event, EventKind, SubSectonId, Timestamp, ToEventKind, get_note_ticks},
+    ir::{BodyIr, SectionIr, SubSectionIr},
+    output::event::{
+        EndingEvent, Event, EventKind, SubSectonId, Timestamp, ToEventKind, get_note_ticks,
+    },
 };
 
 pub const FLOAT_ERROR: f32 = 0.05; // allow 0.3 and 0.7 to match 1/3 and 2/3
@@ -12,9 +14,25 @@ pub struct EventBuffer {
     offset: usize,
     results: Vec<BufferedEvent>,
     processed: Vec<(EventKind, usize)>,
+    last_ending: Option<u8>,
 }
 
 impl EventBuffer {
+    pub fn new(body: &BodyIr) -> Self {
+        let last_ending = body.sections.iter().rev().find_map(|section| {
+            section
+                .params
+                .ending
+                .as_ref()
+                .map(|ending| ending.value as u8)
+        });
+
+        Self {
+            last_ending,
+            ..Default::default()
+        }
+    }
+
     pub fn init_section(&mut self) {
         self.offset = 0;
         self.processed.clear();
@@ -147,6 +165,20 @@ impl EventBuffer {
     }
 
     fn push_event(&mut self, sub_id: SubSectonId, timestamp: Timestamp, event: Event) {
+        let event = match event {
+            Event {
+                kind: EventKind::Ending(ending),
+                role,
+            } => Event {
+                kind: EventKind::Ending(EndingEvent {
+                    is_last: self.last_ending == Some(ending.id),
+                    ..ending
+                }),
+                role,
+            },
+            event => event,
+        };
+
         // TODO: watch out repeat flows using seg and DS
         self.results.push(BufferedEvent {
             sub_id,

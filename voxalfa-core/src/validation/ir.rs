@@ -39,7 +39,7 @@ impl<'a> IrValidator<'a> {
     }
 
     pub fn validate(mut self, body: &BodyIr) -> IrValidatorOutput {
-        let mut buffer = EventBuffer::default();
+        let mut buffer = EventBuffer::new(body);
 
         for (section_id, section) in body.sections.iter().enumerate() {
             for sub_section in &section.items {

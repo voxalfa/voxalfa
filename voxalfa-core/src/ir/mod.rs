@@ -13,7 +13,7 @@ use crate::{
     },
     data_types::{ExtendedTempo, Mark, Voice},
     ir::solfa::PulseIr,
-    output::event::{Event, EventKind, JumpEvent, get_note_ticks},
+    output::event::{EndingEvent, Event, EventKind, JumpEvent, get_note_ticks},
 };
 
 #[derive(Debug, Default)]
@@ -72,7 +72,10 @@ impl SectionIr {
         }
 
         if let Some(ending) = &params.ending {
-            result.push(Event::start(EventKind::Ending(ending.value as u8)));
+            result.push(Event::start(EventKind::Ending(EndingEvent {
+                id: ending.value as u8,
+                is_last: false,
+            })));
         }
 
         result
@@ -95,7 +98,10 @@ impl SectionIr {
         }
 
         if let Some(ending) = &params.ending {
-            result.push(Event::end(EventKind::Ending(ending.value as u8)));
+            result.push(Event::end(EventKind::Ending(EndingEvent {
+                id: ending.value as u8,
+                is_last: false,
+            })));
         }
 
         if let Some(jump) = &params.jump {
