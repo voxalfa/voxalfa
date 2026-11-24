@@ -12,10 +12,6 @@
           "named": true
         },
         {
-          "type": "section_major_delimiter",
-          "named": true
-        },
-        {
           "type": "section_merge_delimiter",
           "named": true
         },
@@ -868,10 +864,6 @@
   },
   {
     "type": "prolonged_note",
-    "named": true
-  },
-  {
-    "type": "section_major_delimiter",
     "named": true
   },
   {

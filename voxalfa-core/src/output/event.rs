@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     data_types::{
-        Dynamic, ExtendedTempo, Jump, Key, Mark, ProgressiveTempo, StaticTempo, TimeSignature,
-        Touch,
+        Barline, Dynamic, ExtendedTempo, Jump, Key, Mark, ProgressiveTempo, StaticTempo,
+        TimeSignature, Touch,
     },
     validation::event::EventBuffer,
 };
@@ -141,6 +141,12 @@ impl TimedPlacement for JumpEvent {
     }
 }
 
+impl TimedPlacement for Barline {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+}
+
 impl Event {
     pub fn new(kind: EventKind) -> Self {
         Self {
@@ -193,6 +199,7 @@ pub enum EventKind {
     Jump(JumpEvent),
     Mark(Mark),
     Touch(Touch),
+    Barline(Barline),
     Ending(EndingEvent),
 }
 
@@ -279,5 +286,11 @@ impl ToEventKind for Mark {
 impl ToEventKind for Touch {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Touch(*self)
+    }
+}
+
+impl ToEventKind for Barline {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Barline(*self)
     }
 }

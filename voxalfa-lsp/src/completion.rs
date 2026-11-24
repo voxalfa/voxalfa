@@ -201,6 +201,7 @@ pub enum Builtin {
     Mark,
     Jump,
     Touches,
+    Barline,
 }
 
 impl Builtin {
@@ -213,6 +214,7 @@ impl Builtin {
             Builtin::Touches => TOUCHES_BUILTINS,
             Builtin::Dynamics => DYNAMICS_BUILTINS,
             Builtin::Jump => JUMP_BUILTINS,
+            Builtin::Barline => BARLINE_BUILTINS,
         }
     }
 
@@ -389,6 +391,7 @@ fn get_builtin_context(target: Node<'_>, source: &str) -> Option<Builtin> {
         "jump" => Some(Builtin::Jump),
         "dynamics" => Some(Builtin::Dynamics),
         "touches" => Some(Builtin::Touches),
+        "barline" => Some(Builtin::Barline),
         _ => None,
     }
 }

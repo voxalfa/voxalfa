@@ -1,7 +1,7 @@
 use voxalfa_core::{
     ast::{lyrics::LyricOperatorKind, solfa::PulseAccent},
     data_types::{
-        Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature,
+        Barline, Dynamic, ExtendedTempo, Jump, Key, KeyAccidental, Mark, StaticTempo, TimeSignature,
     },
     ir::{
         PulseView, SectionIr, SubSectionIr,
@@ -189,6 +189,7 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
         self.add_tempo_spans(&context);
         self.add_touch_markers(context.start, section);
         self.add_jump_markers(&context);
+        self.add_barline_markers(&context);
         self.mark_section_end(section_id, &context);
     }
 
@@ -361,18 +362,16 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
             for key in &keys.value {
                 let key = &key.value;
                 let index = if key.implicit { 0.0 } else { key.start };
-                let Some((pulse, index)) =
-                    resolve_section_position(&positions, context, index, false)
-                else {
-                    continue;
-                };
+                let position = resolve_section_position(&positions, context, index, false);
 
-                self.pulses[pulse].markers.push(FlatMarker {
-                    kind: MarkerKind::Key,
-                    glyph: MarkerGlyph::Text(self.locale.key_label(&key_text(key.value))),
-                    index,
-                    voice: None,
-                });
+                if let Some((pulse, index)) = position {
+                    self.pulses[pulse].markers.push(FlatMarker {
+                        kind: MarkerKind::Key,
+                        glyph: MarkerGlyph::Text(self.locale.key_label(&key_text(key.value))),
+                        index,
+                        voice: None,
+                    });
+                }
             }
         }
 
@@ -383,26 +382,24 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                 let timed = &tempo.value;
                 let tempo = &timed.value;
                 let index = if timed.implicit { 0.0 } else { timed.start };
-                let Some((pulse, index)) =
-                    resolve_section_position(&positions, context, index, false)
-                else {
-                    continue;
-                };
+                let position = resolve_section_position(&positions, context, index, false);
 
-                let (kind, label) = match tempo {
-                    ExtendedTempo::Progressive(_) => continue,
-                    ExtendedTempo::Static(StaticTempo::Custom(t)) => {
-                        (MarkerKind::Bpm, format!("M. {t}."))
-                    }
-                    ExtendedTempo::Static(_) => (MarkerKind::Tempo, format!("{tempo}.")),
-                };
+                if let Some((pulse, index)) = position {
+                    let (kind, label) = match tempo {
+                        ExtendedTempo::Progressive(_) => continue,
+                        ExtendedTempo::Static(StaticTempo::Custom(t)) => {
+                            (MarkerKind::Bpm, format!("M. {t}."))
+                        }
+                        ExtendedTempo::Static(_) => (MarkerKind::Tempo, format!("{tempo}.")),
+                    };
 
-                self.pulses[pulse].markers.push(FlatMarker {
-                    kind,
-                    glyph: MarkerGlyph::Text(label),
-                    index,
-                    voice: None,
-                });
+                    self.pulses[pulse].markers.push(FlatMarker {
+                        kind,
+                        glyph: MarkerGlyph::Text(label),
+                        index,
+                        voice: None,
+                    });
+                }
             }
         }
     }
@@ -530,18 +527,16 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                     jump.start
                 };
 
-                let Some((pulse, index)) =
-                    resolve_section_position(&positions, context, index, true)
-                else {
-                    continue;
-                };
+                let position = resolve_section_position(&positions, context, index, true);
 
-                self.pulses[pulse].markers.push(FlatMarker {
-                    kind: MarkerKind::Jump,
-                    glyph: MarkerGlyph::Text(jump_label(jump.value, section.get_repeat())),
-                    index,
-                    voice: None,
-                });
+                if let Some((pulse, index)) = position {
+                    self.pulses[pulse].markers.push(FlatMarker {
+                        kind: MarkerKind::Jump,
+                        glyph: MarkerGlyph::Text(jump_label(jump.value, section.get_repeat())),
+                        index,
+                        voice: None,
+                    });
+                }
             }
         }
 
@@ -562,32 +557,49 @@ impl<'a, 'b> PulseResolver<'a, 'b> {
                     mark.start
                 };
 
-                let Some((pulse, unit)) =
-                    resolve_section_position(&positions, context, index, after)
-                else {
-                    continue;
-                };
+                let position = resolve_section_position(&positions, context, index, after);
 
-                self.pulses[pulse].markers.push(FlatMarker {
-                    kind: MarkerKind::Mark,
-                    glyph,
-                    index: unit,
-                    voice: None,
-                });
+                if let Some((pulse, unit)) = position {
+                    self.pulses[pulse].markers.push(FlatMarker {
+                        kind: MarkerKind::Mark,
+                        glyph,
+                        index: unit,
+                        voice: None,
+                    });
+                }
             }
         }
     }
 
+    fn add_barline_markers(&mut self, context: &SectionContext) {
+        let Some(barlines) = &context.section.params.barline else {
+            return;
+        };
+
+        let positions = section_positions(context);
+
+        for barline in &barlines.value {
+            let timed = &barline.value;
+            let index = if timed.implicit { 0.0 } else { timed.start };
+            let position = resolve_section_position(&positions, context, index, false);
+
+            if let Some((pulse, index)) = position {
+                match timed.value {
+                    Barline::Double if let Some(pulse) = self.pulses.get_mut(pulse) => {
+                        pulse.section_break = Some(index);
+                    }
+                    _ => {}
+                }
+            };
+        }
+    }
+
     fn mark_section_end(&mut self, section_id: usize, context: &SectionContext) {
-        let remaining = &self.data.body.sections[section_id + 1..];
-        let is_last = remaining.is_empty();
-        let next_is_major = remaining.first().is_some_and(|section| section.major_start);
+        let is_last = self.data.body.sections.len() == section_id + 1;
         let last = context.start + context.pulse_count - 1;
 
-        if (next_is_major || is_last)
-            && let Some(pulse) = self.pulses.get_mut(last)
-        {
-            pulse.section_end = true;
+        if is_last && let Some(pulse) = self.pulses.get_mut(last) {
+            pulse.section_break = Some(1.0);
         }
     }
 
@@ -674,7 +686,7 @@ fn build_pulse<'a>(context: &SectionContext<'a>, pulse_id: usize) -> PulseStack<
     PulseStack {
         time: context.time,
         measure_start: false,
-        section_end: false,
+        section_break: None,
         pulse_offset: 0,
         markers: Vec::new(),
         volta: context.volta.clone(),
@@ -1121,7 +1133,7 @@ impl<'a, 'b> SystemLayout<'a, 'b> {
                 SystemPulse {
                     accent: pulse.accent,
                     measure_start: pulse.measure_start,
-                    section_end: pulse.section_end,
+                    section_break: pulse.section_break,
                     pulse_width,
                     stack,
                 }

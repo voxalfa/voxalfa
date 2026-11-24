@@ -146,6 +146,12 @@ pub const SECTION_PARAMS: &[ParamSpec] = &[
         doc: "Applies articulation patterns across notes.",
     },
     ParamSpec {
+        name: "barline",
+        type_str: "barline",
+        snippet: "barline={${1:double}}",
+        doc: "Draws a section barline such as a major double barline.",
+    },
+    ParamSpec {
         name: "repeat",
         type_str: "integer",
         snippet: "repeat={${1:2}}",

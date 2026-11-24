@@ -312,8 +312,8 @@ impl<'a> SystemRender<'a> {
                 emit_line(self.svg, x, top, x, bottom, "barline")?;
             }
 
-            if pulse.section_end {
-                let end_x = x + pulse.pulse_width;
+            if let Some(unit) = pulse.section_break {
+                let end_x = x + pulse.pulse_width * unit;
                 let gap = self.fonts.text.note.size() * DOUBLE_BARLINE_GAP;
 
                 emit_line(self.svg, end_x - gap, top, end_x - gap, bottom, "barline")?;

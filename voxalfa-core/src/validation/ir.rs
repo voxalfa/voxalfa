@@ -58,6 +58,7 @@ impl<'a> IrValidator<'a> {
             let touches = section.params.touches.as_ref();
             let key = section.params.key.as_ref();
             let mark = section.params.mark.as_ref();
+            let barline = section.params.barline.as_ref();
 
             for (sub_id, sub_section) in section.items.iter().enumerate() {
                 let dynamics = self
@@ -72,6 +73,7 @@ impl<'a> IrValidator<'a> {
                 self.process_events(touches, sub_section, is_last, &mut buffer);
                 self.process_events(key, sub_section, is_last, &mut buffer);
                 self.process_events(mark, sub_section, is_last, &mut buffer);
+                self.process_events(barline, sub_section, is_last, &mut buffer);
 
                 if let Some(jumps) = self.build_jump_events(section) {
                     self.process_events_value(&jumps, sub_section, is_last, &mut buffer);

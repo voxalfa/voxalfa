@@ -26,7 +26,6 @@ pub struct Section {
     pub items: Vec<SubSection>,
     pub params: SectionParams,
     pub merge: bool,
-    pub major_start: bool,
 }
 
 impl Section {

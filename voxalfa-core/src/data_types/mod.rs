@@ -1,3 +1,4 @@
+mod barline;
 mod dynamics;
 mod key;
 mod navigation;
@@ -6,6 +7,7 @@ mod time_signature;
 mod touch;
 mod voice;
 
+pub use barline::Barline;
 pub use dynamics::Dynamic;
 pub use key::{BaseKey, Key, KeyAccidental};
 pub use navigation::{Jump, Mark};

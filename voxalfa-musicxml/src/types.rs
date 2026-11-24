@@ -93,7 +93,10 @@ pub enum MeasureItem {
 pub struct Barline {
     #[serde(rename = "@location")]
     pub location: BarlineLocation,
-    pub ending: Ending,
+    #[serde(rename = "bar-style", skip_serializing_if = "Option::is_none")]
+    pub bar_style: Option<BarStyle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ending: Option<Ending>,
 }
 
 #[derive(Debug, Serialize)]
@@ -101,6 +104,12 @@ pub struct Barline {
 pub enum BarlineLocation {
     Left,
     Right,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BarStyle {
+    LightLight,
 }
 
 #[derive(Debug, Serialize)]

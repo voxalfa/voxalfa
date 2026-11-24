@@ -108,6 +108,7 @@ impl TimelineEvaluator {
             EventKind::Touch(touch) => self.pending_touch = Some(touch),
             EventKind::Mark(mark) => self.handle_mark_event(mark),
             EventKind::Jump(jump) => self.handle_jump_event(jump),
+            EventKind::Barline(_) => {}
 
             EventKind::Dynamic(dynamic) => match event.role {
                 EventRole::Point => self.dynamic.current = dynamic,

@@ -4,8 +4,8 @@ use voxalfa_core::{
         solfa::{BaseNote, Note as CoreNote},
     },
     data_types::{
-        BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature, KeyAccidental, Mark,
-        ProgressiveTempo, StaticTempo, TimeSignature, Touch, Voice,
+        Barline as CoreBarline, BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature,
+        KeyAccidental, Mark, ProgressiveTempo, StaticTempo, TimeSignature, Touch, Voice,
     },
     ir::solfa::NoteKind,
     output::{
@@ -120,6 +120,7 @@ impl<'a> MeasureTask<'a> {
                 EventKind::Key(key) => self.handle_key_change(key),
                 EventKind::Jump(jump) => self.handle_jump_event(jump),
                 EventKind::Mark(mark) => self.handle_mark_event(mark),
+                EventKind::Barline(barline) => self.handle_barline_event(barline),
                 EventKind::Dynamic(dynamic) => self.handle_dynamics_event(dynamic),
                 EventKind::Tempo(tempo) => self.handle_tempo_event(tempo),
                 EventKind::Touch(touch) => self.handle_touch(touch),
@@ -213,6 +214,16 @@ impl<'a> MeasureTask<'a> {
         }
     }
 
+    fn handle_barline_event(&mut self, barline: CoreBarline) {
+        match barline {
+            CoreBarline::Double => self.items.push(MeasureItem::Barline(Barline {
+                location: BarlineLocation::Right,
+                bar_style: Some(BarStyle::LightLight),
+                ending: None,
+            })),
+        }
+    }
+
     fn handle_ending(&mut self, ending: EndingEvent, role: EventRole) {
         let id = ending.id;
 
@@ -236,11 +247,12 @@ impl<'a> MeasureTask<'a> {
 
         self.items.push(MeasureItem::Barline(Barline {
             location,
-            ending: Ending {
+            bar_style: None,
+            ending: Some(Ending {
                 r#type,
                 number: id.to_string(),
                 content,
-            },
+            }),
         }));
     }
 

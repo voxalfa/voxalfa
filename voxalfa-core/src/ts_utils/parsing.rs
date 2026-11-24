@@ -7,8 +7,8 @@ use crate::{
         symbols::{Primitive, ScopeId, ScopeKind, SymbolKind, SymbolRef, Value},
     },
     data_types::{
-        Dynamic, ExtendedTempo, Jump, Key, Mark, StaticTempo, TimeSignature, TimedValue, Touch,
-        Voice,
+        Barline, Dynamic, ExtendedTempo, Jump, Key, Mark, StaticTempo, TimeSignature, TimedValue,
+        Touch, Voice,
     },
     diagnostics::types::DiagnosticKind,
     ts_utils::{node_types, primitives::ToPrimitve},
@@ -292,6 +292,10 @@ impl ParseBuiltin for ExtendedTempo {
 
 impl ParseBuiltin for Touch {
     const KIND: Primitive = Primitive::Touch;
+}
+
+impl ParseBuiltin for Barline {
+    const KIND: Primitive = Primitive::Barline;
 }
 
 impl<T> ParseNode for T

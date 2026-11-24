@@ -4,8 +4,8 @@ use crate::{
         symbols::{Field, FieldAssign},
     },
     data_types::{
-        Dynamic, ExtendedTempo, Jump, Key, List, Mark, StaticTempo, TimeSignature, TimedList,
-        Touch, Voice,
+        Barline, Dynamic, ExtendedTempo, Jump, Key, List, Mark, StaticTempo, TimeSignature,
+        TimedList, Touch, Voice,
     },
     diagnostics::types::DiagnosticKind,
     ts_utils::{range::RangeUtil, types::AssignmentData},
@@ -50,6 +50,7 @@ pub struct SectionParams {
     pub jump: Field<TimedList<Jump>>,
     pub mark: Field<TimedList<Mark>>,
     pub touches: Field<TimedList<Touch>>,
+    pub barline: Field<TimedList<Barline>>,
     pub repeat: Field<usize>,
 }
 
@@ -75,6 +76,7 @@ impl FieldAssign for SectionParams {
             "jump" => context.assign_field(data, &mut self.jump),
             "mark" => context.assign_field(data, &mut self.mark),
             "touches" => context.assign_field(data, &mut self.touches),
+            "barline" => context.assign_field(data, &mut self.barline),
             "repeat" => context.assign_field(data, &mut self.repeat),
             "dynamics" => {}
             _ => {

@@ -29,7 +29,7 @@ pub struct PulseStack<'a> {
     pub time: TimeSignature,
     pub accent: PulseAccent,
     pub measure_start: bool,
-    pub section_end: bool,
+    pub section_break: Option<f32>,
     pub pulse_offset: usize,
     pub stack: Vec<PulseStackItem<'a>>,
     pub markers: Vec<FlatMarker>,
@@ -209,7 +209,7 @@ pub struct SystemMarker {
 pub struct SystemPulse<'a> {
     pub accent: PulseAccent,
     pub measure_start: bool,
-    pub section_end: bool,
+    pub section_break: Option<f32>,
     pub pulse_width: f32,
     pub stack: Vec<SystemPulseStackItem<'a>>,
 }

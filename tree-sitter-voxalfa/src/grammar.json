@@ -107,10 +107,6 @@
         {
           "type": "SYMBOL",
           "name": "section_merge_delimiter"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "section_major_delimiter"
         }
       ]
     },
@@ -121,10 +117,6 @@
     "section_merge_delimiter": {
       "type": "STRING",
       "value": "<<"
-    },
-    "section_major_delimiter": {
-      "type": "STRING",
-      "value": "=="
     },
     "sub_section_delimiter": {
       "type": "STRING",
