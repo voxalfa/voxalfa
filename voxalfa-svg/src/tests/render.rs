@@ -384,7 +384,7 @@ fn test_key_tempo_dynamics() {
     assert!(svg.contains(r#"class="tempo-label">allegro.</text>"#));
     assert!(svg.contains(r#"class="bpm-label">M. 120.</text>"#));
     assert!(svg.contains(
-        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 12.00px;\n      font-weight: 400;\n      font-style: normal;"
+        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: normal;"
     ));
     assert!(svg.contains(r#"class="dynamic-label">p</text>"#));
     assert!(svg.contains(r#"class="dynamic-label">mf</text>"#));
@@ -594,13 +594,13 @@ fn test_font_weight_style() {
         ".title-text {\n      font-family: 'Noto Sans', sans-serif;\n      font-size: 18.00px;\n      font-weight: 400;\n      font-style: normal;"
     ));
     assert!(svg.contains(
-        ".tempo-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 12.00px;\n      font-weight: 400;\n      font-style: normal;"
+        ".tempo-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: normal;"
     ));
     assert!(svg.contains(
-        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 12.00px;\n      font-weight: 400;\n      font-style: italic;"
+        ".bpm-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: italic;"
     ));
     assert!(svg.contains(
-        ".mark-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 12.00px;\n      font-weight: 400;\n      font-style: italic;"
+        ".mark-label {\n      font-family: 'Noto Serif', serif;\n      font-size: 11.00px;\n      font-weight: 400;\n      font-style: italic;"
     ));
     assert!(svg.contains(
         ".note-text {\n      font-family: 'Fira Sans', monospace;\n      font-size: 12.00px;\n      font-weight: 700;\n      font-style: normal;"
