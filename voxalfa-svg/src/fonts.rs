@@ -25,9 +25,6 @@ pub const MUSIC_FAMILY: &str = "Noto Sans Symbols";
 pub const TEXT_FAMILY: &str = "Noto Sans";
 pub const SERIF_FAMILY: &str = "Noto Serif";
 
-const SYMBOL_FONT_SCALE: f32 = 0.85;
-const DYNAMIC_FONT_SCALE: f32 = 0.9;
-
 #[derive(Debug, Clone)]
 pub struct FontFace {
     pub family: String,
@@ -429,11 +426,7 @@ impl TextFonts {
             time: builder.metric(FaceRole::TEXT, opts.marker_font_size, &styles.time)?,
             meter: builder.metric(FaceRole::TEXT, meta, &styles.meter)?,
             footer: builder.metric(FaceRole::TEXT, opts.footer_font_size, &styles.footer)?,
-            divider: builder.metric(
-                FaceRole::SOLFA,
-                opts.solfa_font_size * SYMBOL_FONT_SCALE,
-                &styles.divider,
-            )?,
+            divider: builder.metric(FaceRole::SOLFA, opts.solfa_font_size, &styles.divider)?,
         })
     }
 }
@@ -447,11 +440,7 @@ impl LabelFonts {
             key: builder.metric(FaceRole::TEXT_B, marker, &styles.key_label)?,
             jump: builder.metric(FaceRole::TEXT_B, marker, &styles.jump)?,
             mark: builder.metric(FaceRole::SERIF_I, marker, &styles.mark)?,
-            dynamic: builder.metric(
-                FaceRole::SERIF_BI,
-                marker * DYNAMIC_FONT_SCALE,
-                &styles.dynamic,
-            )?,
+            dynamic: builder.metric(FaceRole::SERIF_BI, marker, &styles.dynamic)?,
             tempo: builder.metric(FaceRole::SERIF_I, marker, &styles.tempo)?,
             bpm: builder.metric(FaceRole::SERIF, marker, &styles.bpm)?,
             time: builder.metric(FaceRole::TEXT, marker, &styles.time_label)?,

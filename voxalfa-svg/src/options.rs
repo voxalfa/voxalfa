@@ -70,7 +70,7 @@ impl Default for RenderOptions {
             title_font_size: 18.0,
             name_font_size: 13.0,
             meta_font_size: 13.0,
-            marker_font_size: 12.0,
+            marker_font_size: 11.0,
             footer_font_size: 11.0,
             encode_font: true,
             page_margin: EdgeValues::all(56.7),
