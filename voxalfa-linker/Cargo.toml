@@ -8,6 +8,6 @@ repository = { workspace = true }
 description = "Lyrics slot linking for Voxalfa partitions."
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = "1.0.154"
 thiserror = { workspace = true }

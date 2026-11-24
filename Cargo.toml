@@ -26,9 +26,9 @@ repository = "https://github.com/voxalfa/voxalfa"
 clap = { version = "4.6.2", features = ["derive"] }
 voxalfa-build-info = { version = "0.1.0-alpha.3", path = "./voxalfa-build-info" }
 insta = "1.48.0"
+serde = { version = "1.0.229", features = ["derive"] }
 thiserror = "2.0.18"
 tree-sitter-voxalfa = { version = "0.1.0-alpha.3", path = "./tree-sitter-voxalfa" }
-vergen-gitcl = "10.0.3"
 voxalfa-core = { version = "0.1.0-alpha.3", path = "./voxalfa-core" }
 voxalfa-formatter = { version = "0.1.0-alpha.3", path = "./voxalfa-formatter" }
 voxalfa-linker = { version = "0.1.0-alpha.3", path = "./voxalfa-linker" }
@@ -36,6 +36,7 @@ voxalfa-midi = { version = "0.1.0-alpha.3", path = "./voxalfa-midi" }
 voxalfa-musicxml = { version = "0.1.0-alpha.3", path = "./voxalfa-musicxml" }
 voxalfa-pdf = { version = "0.1.0-alpha.3", path = "./voxalfa-pdf" }
 voxalfa-svg = { version = "0.1.0-alpha.3", path = "./voxalfa-svg" }
+wasm-bindgen = "0.2.130"
 
 [profile.release]
 opt-level = "z"
