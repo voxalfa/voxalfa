@@ -63,6 +63,17 @@ pub enum MarkerKind {
     Mark,
 }
 
+impl MarkerKind {
+    pub fn rank(self) -> usize {
+        match self {
+            Self::Touch => 0,
+            Self::Dynamic => 1,
+            Self::Mark | Self::Jump => 2,
+            Self::TimeSignature | Self::Key | Self::Tempo | Self::Bpm => 3,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum MarkerGlyph {
     Text(String),
@@ -140,6 +151,10 @@ pub enum SpanKind {
 impl SpanKind {
     pub fn is_tempo(&self) -> bool {
         matches!(self, Self::Progressive(_))
+    }
+
+    pub fn rank(self) -> usize {
+        if self.is_tempo() { 3 } else { 1 }
     }
 
     pub fn label(&self) -> String {

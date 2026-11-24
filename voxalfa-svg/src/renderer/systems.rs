@@ -2,12 +2,14 @@ use crate::{
     RenderOptions,
     fonts::Fonts,
     model::{System, VoiceInstance},
+    renderer::markers::PlacedMarker,
 };
 
 use super::{
     constants::*,
-    dynamics::{PlacedSpan, has_voice_dynamic, layout_spans, place_voice_dynamics},
-    markers::{MarkerLayout, PlacedMarker, layout_markers},
+    dynamics::{has_voice_dynamic, place_voice_dynamics},
+    markers::{MarkerLayout, layout_markers},
+    spans::{PlacedSpan, SpanPlan, SpanPlanner, layout_spans},
     voltas::{PlacedVolta, layout_voltas, place_voltas},
 };
 
@@ -25,11 +27,16 @@ pub fn layout_system(ctx: &LayoutContext) -> SystemLayout {
     place_voltas(ctx, &mut marker_layout, &mut voltas);
 
     let lyric_rows = collect_lyric_rows(ctx.system);
-    let (rows, column) = layout_rows(ctx, &marker_layout, &lyric_rows);
+    let span_plan = SpanPlanner::new(ctx, &marker_layout).plan();
+    let span_offset = span_plan.global_height() + span_plan.top_height();
+
+    marker_layout.shift(span_offset);
+
+    let (rows, column) = layout_rows(ctx, &marker_layout, &lyric_rows, &span_plan);
 
     place_voice_dynamics(ctx, &mut marker_layout, &rows);
 
-    let spans = layout_spans(ctx, &marker_layout);
+    let spans = layout_spans(ctx, &marker_layout, &rows, &span_plan);
     let height = column.height + marker_layout.height;
 
     SystemLayout {
@@ -67,6 +74,7 @@ fn layout_rows(
     ctx: &LayoutContext,
     marker_layout: &MarkerLayout,
     lyric_rows: &[Vec<(usize, usize)>],
+    span_plan: &SpanPlan,
 ) -> (Vec<SystemRow>, ColumnLayout) {
     let elements = &ctx.options.elements;
     let note_scale = ctx.fonts.text.note.size() / ctx.options.solfa_font_size.max(1.0);
@@ -94,7 +102,8 @@ fn layout_rows(
 
         specs.push(RowSpec {
             height: voice_height,
-            gap_before: if has_dynamic { dynamic_height } else { 0.0 },
+            gap_before: if has_dynamic { dynamic_height } else { 0.0 }
+                + span_plan.local_height(voice.id),
         });
 
         kinds.push(SystemRowKind::Voice(*voice));

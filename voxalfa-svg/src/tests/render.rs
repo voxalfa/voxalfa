@@ -1,15 +1,15 @@
-use voxalfa_core::{output::FinalOutput, validation::Validator};
-use voxalfa_svg::{
+use crate::{
     RenderOptions,
     fonts::{FontFace, FontFaces},
     render_pages, render_pages_with, render_pages_with_fonts,
 };
+use voxalfa_core::{output::FinalOutput, validation::Validator};
 
-fn render(output: &FinalOutput) -> voxalfa_svg::Result<String> {
+fn render(output: &FinalOutput) -> crate::Result<String> {
     render_pages(output).map(|pages| pages.join("\n"))
 }
 
-fn render_with(output: &FinalOutput, options: RenderOptions) -> voxalfa_svg::Result<String> {
+fn render_with(output: &FinalOutput, options: RenderOptions) -> crate::Result<String> {
     render_pages_with(output, options).map(|pages| pages.join("\n"))
 }
 
@@ -609,7 +609,7 @@ fn test_font_weight_style() {
 
 #[test]
 fn test_face_set_fonts() {
-    const CUSTOM_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Regular.ttf");
+    const CUSTOM_FONT: &[u8] = include_bytes!("../../fonts/NotoSans-Regular.ttf");
 
     let output = analyze(
         r#"

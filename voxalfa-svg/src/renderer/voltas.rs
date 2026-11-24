@@ -1,15 +1,11 @@
-use crate::{
-    fonts::{FontMetrics, Fonts},
-    renderer::systems::LayoutContext,
-};
+use crate::{fonts::FontMetrics, renderer::systems::LayoutContext};
 
-use super::{
-    constants::*,
-    markers::{MarkerLayout, PlacedMarker},
-};
+use super::{collision::Rect, constants::*, markers::MarkerLayout};
 
 pub fn layout_voltas(ctx: &LayoutContext) -> Vec<PlacedVolta> {
     let style = &ctx.options.elements.volta;
+    let pulse_offsets = &ctx.system.pulse_offsets;
+
     let mut voltas = Vec::new();
 
     for volta in &ctx.system.voltas {
@@ -17,9 +13,8 @@ pub fn layout_voltas(ctx: &LayoutContext) -> Vec<PlacedVolta> {
             continue;
         }
 
-        let start_x = ctx.system.pulse_offsets[volta.start] + ctx.lead;
-        let end_x =
-            ctx.system.pulse_offsets[volta.end - 1] + ctx.system.pulses[volta.end - 1].pulse_width;
+        let start_x = pulse_offsets[volta.start] + ctx.lead;
+        let end_x = pulse_offsets[volta.end - 1] + ctx.system.pulses[volta.end - 1].pulse_width;
 
         let text = if volta.open_start {
             String::new()
@@ -59,84 +54,74 @@ pub fn place_voltas(ctx: &LayoutContext, layout: &mut MarkerLayout, voltas: &mut
 
     let font = &ctx.fonts.label.volta;
     let gap = font.size() * VOLTA_MARKER_GAP;
+    let bracket_half = font.size() * 0.05;
 
     pad_markers(layout, voltas, font.size() * VOLTA_TEXT_INSET);
 
     let start_y = layout.bottom_baseline().unwrap_or_else(|| font.ascent());
 
-    let label_baselines = voltas
+    let mut obstacles = layout
+        .markers
         .iter()
-        .map(|volta| resolve_label_baseline(volta, &layout.markers, ctx.fonts, gap, start_y))
+        .map(|marker| marker.rect(ctx.fonts))
         .collect::<Vec<_>>();
 
-    let shift = label_baselines
+    let mut baselines = Vec::with_capacity(voltas.len());
+    let mut placed_rects = Vec::new();
+
+    for volta in voltas.iter() {
+        let mut baseline = start_y;
+
+        loop {
+            let (label_rect, bracket_rect) = volta.rects(baseline, font, gap, bracket_half);
+            let mut shift: f32 = 0.0;
+
+            for obstacle in &obstacles {
+                if label_rect.intersects(obstacle) {
+                    shift = shift.max(label_rect.bottom - obstacle.top + gap);
+                }
+
+                if bracket_rect.intersects(obstacle) {
+                    shift = shift.max(bracket_rect.bottom - obstacle.top + gap);
+                }
+            }
+
+            if shift <= 0.0 {
+                break;
+            }
+
+            baseline -= shift;
+        }
+
+        let (label_rect, bracket_rect) = volta.rects(baseline, font, gap, bracket_half);
+
+        obstacles.extend([label_rect, bracket_rect]);
+        placed_rects.extend([label_rect, bracket_rect]);
+        baselines.push(baseline);
+    }
+
+    let min_top = placed_rects
         .iter()
-        .map(|label_y| -bar_baseline(*label_y, font, gap))
-        .fold(0.0, f32::max);
+        .map(|rect| rect.top)
+        .fold(f32::INFINITY, f32::min);
+
+    let shift = (-min_top).max(0.0);
 
     if shift > 0.0 {
         layout.shift(shift);
     }
 
-    let label_bottom = label_baselines
+    let label_bottom = placed_rects
         .iter()
-        .map(|label_y| label_y + shift + font.descent())
+        .map(|rect| rect.bottom + shift)
         .fold(0.0, f32::max);
 
     layout.ensure_height(label_bottom + ctx.fonts.label.key.size() * MARKER_BOTTOM_GAP);
 
-    for (volta, label_y) in voltas.iter_mut().zip(label_baselines) {
-        volta.label_baseline = label_y + shift;
+    for (volta, baseline) in voltas.iter_mut().zip(baselines) {
+        volta.label_baseline = baseline + shift;
         volta.line_y = bar_baseline(volta.label_baseline, font, gap);
     }
-}
-
-fn resolve_label_baseline(
-    volta: &PlacedVolta,
-    markers: &[PlacedMarker],
-    fonts: &Fonts,
-    gap: f32,
-    start_y: f32,
-) -> f32 {
-    let font = &fonts.label.volta;
-    let label_left = volta.label_x;
-    let label_right = volta.label_x + volta.label_width;
-    let mut label_y = start_y;
-
-    loop {
-        let label_top = label_y - font.ascent();
-        let label_bottom = label_y + font.descent();
-        let mut offset: f32 = 0.0;
-
-        for marker in markers {
-            let (left, right) = marker.horizontal_bounds();
-            let (top, bottom) = marker.vertical_bounds(fonts);
-
-            if right > volta.start_x && left < volta.end_x && top < label_top {
-                offset = offset.min(top - label_top); // vertical marker collision
-            }
-
-            if volta.open_start {
-                continue;
-            }
-
-            if right < label_left || left > label_right {
-                continue; // no horizontal label collision
-            }
-
-            if label_bottom + gap > top && label_top < bottom {
-                offset = offset.min(top - font.descent() - gap - label_y); // vertical label collision
-            }
-        }
-
-        if offset >= 0.0 {
-            break;
-        }
-
-        label_y += offset;
-    }
-
-    label_y
 }
 
 fn pad_markers(layout: &mut MarkerLayout, voltas: &[PlacedVolta], padding: f32) {
@@ -155,6 +140,34 @@ fn pad_markers(layout: &mut MarkerLayout, voltas: &[PlacedVolta], padding: f32) 
 
 fn bar_baseline(label_y: f32, font: &FontMetrics, gap: f32) -> f32 {
     label_y - font.ascent() - gap
+}
+
+impl PlacedVolta {
+    fn rects(
+        &self,
+        baseline: f32,
+        font: &FontMetrics,
+        gap: f32,
+        bracket_half: f32,
+    ) -> (Rect, Rect) {
+        let label = Rect {
+            left: self.label_x,
+            right: self.label_x + self.label_width,
+            top: baseline - font.ascent(),
+            bottom: baseline + font.descent(),
+        };
+
+        let line_y = bar_baseline(baseline, font, gap);
+
+        let bracket = Rect {
+            left: self.start_x,
+            right: self.end_x,
+            top: line_y - bracket_half,
+            bottom: line_y + bracket_half,
+        };
+
+        (label, bracket)
+    }
 }
 
 #[derive(Debug)]
