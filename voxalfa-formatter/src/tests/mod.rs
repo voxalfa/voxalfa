@@ -121,7 +121,7 @@ fn test_comment_ranking() {
 
 ; style
 ;; @page width={800} | height={1000}
-;; @note-text font-size={12}
+;; @style name="note-text" | font-size={12}
 
 ---
 "#;

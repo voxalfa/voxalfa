@@ -902,6 +902,7 @@ fn build_header(data: &FinalOutput) -> HeaderView {
         tempo,
         is_bpm,
         meter,
+        rows: data.header.directives.rows.clone(),
     }
 }
 

@@ -1,9 +1,10 @@
 ---
 source: voxalfa-core/src/tests/utils.rs
+assertion_line: 46
 expression: output_str
 ---
 === INPUT ===
-;; @note-text font-size={0}
+;; @style name="note-text" | font-size={0}
 
 [#] title="Invalid directive"
 [#] verses={1}
@@ -17,8 +18,8 @@ expression: output_str
 [1] do re mi fa
 
 === DIAGNOSTICS ===
-error[E034]: invalid value for directive '@note-text': non-positive value
-  ┌─ invalid_directive_value_error.vfa:2:15
+error[E034]: invalid value for directive '@style': non-positive value
+  ┌─ invalid_directive_value_error.vfa:2:30
   │
-2 │ ;; @note-text font-size={0}
-  │               ^^^^^^^^^
+2 │ ;; @style name="note-text" | font-size={0}
+  │                              ^^^^^^^^^

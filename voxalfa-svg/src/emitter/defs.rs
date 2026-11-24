@@ -68,6 +68,8 @@ fn emit_font_rules(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> 
         (".title-text", &text.title, sans, &styles.title),
         (".author-text", &text.author, sans, &styles.author),
         (".composer-text", &text.composer, sans, &styles.composer),
+        (".header-text", &text.header, sans, &styles.header),
+        (".header-row", &text.header_row, sans, &styles.header_row),
         (".key-text", &text.key, symbols, &styles.key),
         (".time-text", &text.time, sans, &styles.time),
         (".meter-text", &text.meter, sans, &styles.meter),
@@ -84,6 +86,12 @@ fn emit_font_rules(svg: &mut String, fonts: &Fonts, options: &RenderOptions) -> 
 
     for (selector, font, fallback, style) in rules {
         font_rule(svg, selector, font, style, fallback)?;
+    }
+
+    for (name, font) in &fonts.custom {
+        if let Some(style) = styles.custom.get(name) {
+            font_rule(svg, &format!(".{name}"), font, style, sans)?;
+        }
     }
 
     Ok(())

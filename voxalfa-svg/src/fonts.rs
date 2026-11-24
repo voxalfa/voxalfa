@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use skrifa::{
     FontRef, MetadataProvider,
@@ -354,6 +354,7 @@ pub struct Fonts {
     pub text: TextFonts,
     pub label: LabelFonts,
     pub touch: FontMetrics,
+    pub custom: BTreeMap<String, FontMetrics>,
     pub faces: Vec<FontFace>,
 }
 
@@ -364,6 +365,8 @@ pub struct TextFonts {
     pub title: FontMetrics,
     pub author: FontMetrics,
     pub composer: FontMetrics,
+    pub header: FontMetrics,
+    pub header_row: FontMetrics,
     pub key: FontMetrics,
     pub time: FontMetrics,
     pub meter: FontMetrics,
@@ -390,6 +393,12 @@ impl Fonts {
 
         let text = TextFonts::new(options, &mut builder)?;
         let label = LabelFonts::new(options, &mut builder)?;
+        let mut custom = BTreeMap::new();
+
+        for (name, style) in &options.elements.custom {
+            let metric = builder.metric(FaceRole::TEXT, options.meta_font_size, style)?;
+            custom.insert(name.clone(), metric);
+        }
 
         let touch = builder.metric(
             FaceRole::SERIF,
@@ -405,6 +414,7 @@ impl Fonts {
             text,
             label,
             touch,
+            custom,
             faces: builder.resolved,
         })
     }
@@ -422,6 +432,8 @@ impl TextFonts {
             title: builder.metric(FaceRole::TEXT_B, opts.title_font_size, &styles.title)?,
             author: builder.metric(FaceRole::TEXT, opts.name_font_size, &styles.author)?,
             composer: builder.metric(FaceRole::TEXT, opts.name_font_size, &styles.composer)?,
+            header: builder.metric(FaceRole::TEXT, meta, &styles.header)?,
+            header_row: builder.metric(FaceRole::TEXT, meta, &styles.header_row)?,
             key: builder.metric(FaceRole::TEXT_B, opts.marker_font_size, &styles.key)?,
             time: builder.metric(FaceRole::TEXT, opts.marker_font_size, &styles.time)?,
             meter: builder.metric(FaceRole::TEXT, meta, &styles.meter)?,

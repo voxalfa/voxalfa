@@ -1,5 +1,9 @@
 use voxalfa_core::{
-    ast::{directives::ElementStyle, solfa::PulseAccent, symbols::VoiceId},
+    ast::{
+        directives::{ElementStyle, HeaderRow},
+        solfa::PulseAccent,
+        symbols::VoiceId,
+    },
     data_types::{ProgressiveTempo, TimeSignature, Touch, Voice},
     ir::solfa::PulseIr,
 };
@@ -16,13 +20,13 @@ pub struct HeaderView {
     pub authors: Vec<String>,
     pub composers: Vec<String>,
     pub language: Option<String>,
-    #[allow(unused)]
     pub description: Option<String>,
     pub key: Option<String>,
     pub time: Option<String>,
     pub tempo: Option<String>,
     pub is_bpm: bool,
     pub meter: Option<String>,
+    pub rows: Vec<HeaderRow>,
 }
 
 pub struct PulseStack<'a> {
