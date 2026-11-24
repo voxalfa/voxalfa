@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    data_types::{Dynamic, Jump, Key, Mark, ProgressiveTempo, StaticTempo, TimeSignature, Touch},
+    data_types::{
+        Barline, Dynamic, ExtendedTempo, Jump, Key, Mark, ProgressiveTempo, StaticTempo,
+        TimeSignature, Touch,
+    },
     validation::event::EventBuffer,
 };
 
@@ -63,6 +66,85 @@ impl NoteTimeline {
 pub struct Event {
     pub kind: EventKind,
     pub role: EventRole,
+    pub anchor: EventAnchor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventAnchor {
+    Before,
+    After,
+}
+
+pub trait TimedPlacement {
+    fn anchor(&self) -> EventAnchor;
+
+    fn implicit_index(&self, _last_index: f32) -> f32 {
+        0.0
+    }
+
+    fn implicit_range_end(&self, _last_index: f32) -> Option<f32> {
+        None
+    }
+}
+
+impl TimedPlacement for Dynamic {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+}
+
+impl TimedPlacement for Touch {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+}
+
+impl TimedPlacement for Key {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+}
+
+impl TimedPlacement for ExtendedTempo {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
+
+    fn implicit_range_end(&self, last_index: f32) -> Option<f32> {
+        matches!(self, ExtendedTempo::Progressive(_)).then_some(last_index)
+    }
+}
+
+impl TimedPlacement for Mark {
+    fn anchor(&self) -> EventAnchor {
+        match self {
+            Mark::Segno | Mark::Coda => EventAnchor::Before,
+            Mark::Fine | Mark::ToCoda => EventAnchor::After,
+        }
+    }
+
+    fn implicit_index(&self, last_index: f32) -> f32 {
+        match self {
+            Mark::Segno | Mark::Coda => 0.0,
+            Mark::Fine | Mark::ToCoda => last_index,
+        }
+    }
+}
+
+impl TimedPlacement for JumpEvent {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::After
+    }
+
+    fn implicit_index(&self, last_index: f32) -> f32 {
+        last_index
+    }
+}
+
+impl TimedPlacement for Barline {
+    fn anchor(&self) -> EventAnchor {
+        EventAnchor::Before
+    }
 }
 
 impl Event {
@@ -70,6 +152,7 @@ impl Event {
         Self {
             kind,
             role: EventRole::Point,
+            anchor: EventAnchor::Before,
         }
     }
 
@@ -77,6 +160,7 @@ impl Event {
         Self {
             kind,
             role: EventRole::Start,
+            anchor: EventAnchor::Before,
         }
     }
 
@@ -84,6 +168,15 @@ impl Event {
         Self {
             kind,
             role: EventRole::End,
+            anchor: EventAnchor::After,
+        }
+    }
+
+    pub fn after(kind: EventKind) -> Self {
+        Self {
+            kind,
+            role: EventRole::Point,
+            anchor: EventAnchor::After,
         }
     }
 
@@ -92,11 +185,7 @@ impl Event {
     }
 
     pub fn is_tail_event(&self) -> bool {
-        self.role == EventRole::End
-            || matches!(
-                self.kind,
-                EventKind::Jump(_) | EventKind::Mark(Mark::Fine | Mark::ToCoda)
-            )
+        self.anchor == EventAnchor::After
     }
 }
 
@@ -110,6 +199,7 @@ pub enum EventKind {
     Jump(JumpEvent),
     Mark(Mark),
     Touch(Touch),
+    Barline(Barline),
     Ending(EndingEvent),
 }
 
@@ -168,6 +258,19 @@ impl ToEventKind for StaticTempo {
     }
 }
 
+impl ToEventKind for ExtendedTempo {
+    fn to_event_kind(&self) -> EventKind {
+        match self {
+            ExtendedTempo::Static(tempo) => EventKind::Tempo(*tempo),
+            ExtendedTempo::Progressive(tempo) => EventKind::ProgressiveTempo(*tempo),
+        }
+    }
+
+    fn is_range(&self) -> bool {
+        matches!(self, ExtendedTempo::Progressive(_))
+    }
+}
+
 impl ToEventKind for JumpEvent {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Jump(*self)
@@ -183,5 +286,11 @@ impl ToEventKind for Mark {
 impl ToEventKind for Touch {
     fn to_event_kind(&self) -> EventKind {
         EventKind::Touch(*self)
+    }
+}
+
+impl ToEventKind for Barline {
+    fn to_event_kind(&self) -> EventKind {
+        EventKind::Barline(*self)
     }
 }

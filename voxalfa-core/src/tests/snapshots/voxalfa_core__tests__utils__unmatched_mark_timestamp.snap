@@ -1,0 +1,18 @@
+---
+source: voxalfa-core/src/tests/utils.rs
+expression: output_str
+---
+=== INPUT ===
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+---
+
+[$] mark={S:1}
+
+[S] :         .s-1      ||
+
+=== DIAGNOSTICS ===
+error[E032]: timestamp is unmatched
+  ┌─ unmatched_mark_timestamp.vfa:5:11
+  │
+5 │ [$] mark={S:1}
+  │           ^^^

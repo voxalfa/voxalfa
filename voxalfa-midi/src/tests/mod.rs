@@ -15,6 +15,48 @@ fn test_c_major_scale_alto() {
 }
 
 #[test]
+fn test_timed_tempo() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={60} | voices={A}
+
+---
+
+[$] tempo={90:2, allegro:4}
+
+[A] |d :r !m :f |s :l !t :d+1 ||"#;
+
+    run_snapshot("test_timed_tempo", source);
+}
+
+#[test]
+fn test_progressive_tempo() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={60} | voices={A}
+
+---
+
+[$] tempo={rit}
+
+[A] |d :r !m :f ||"#;
+
+    run_snapshot("test_progressive_tempo", source);
+}
+
+#[test]
+fn test_tempo_range() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={60} | voices={A}
+
+---
+
+[$] tempo={accel:1..3}
+
+[A] |d :r !m :f |s :l !t :d+1 ||"#;
+
+    run_snapshot("test_tempo_range", source);
+}
+
+#[test]
 fn test_simple_loop() {
     let source = r#"
 [$] key={C} | time={4,4} | tempo={50} | voices={A}

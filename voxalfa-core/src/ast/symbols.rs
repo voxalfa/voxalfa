@@ -64,6 +64,7 @@ pub enum Primitive {
     Tempo,
     Voice,
     Touch,
+    Barline,
 }
 
 impl std::fmt::Display for Primitive {
@@ -369,7 +370,6 @@ pub struct Delimiter {
 pub enum DelimiterKind {
     Header,
     SectionSplit,
-    SectionMajor,
     SectionMerge,
     SubSection,
 }
@@ -378,7 +378,7 @@ impl DelimiterKind {
     pub fn is_section(&self) -> bool {
         matches!(
             self,
-            DelimiterKind::SectionSplit | DelimiterKind::SectionMajor | DelimiterKind::SectionMerge
+            DelimiterKind::SectionSplit | DelimiterKind::SectionMerge
         )
     }
 }
@@ -388,7 +388,6 @@ impl std::fmt::Display for DelimiterKind {
         match self {
             DelimiterKind::Header => write!(f, "---"),
             DelimiterKind::SectionSplit => write!(f, "--"),
-            DelimiterKind::SectionMajor => write!(f, "=="),
             DelimiterKind::SectionMerge => write!(f, "<<"),
             DelimiterKind::SubSection => write!(f, "++"),
         }

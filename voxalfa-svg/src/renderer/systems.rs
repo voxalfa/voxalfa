@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     constants::*,
-    dynamics::{PlacedDynamicSpan, has_voice_dynamic, layout_dynamic_spans, place_voice_dynamics},
+    dynamics::{PlacedSpan, has_voice_dynamic, layout_spans, place_voice_dynamics},
     markers::{MarkerLayout, PlacedMarker, layout_markers},
     voltas::{PlacedVolta, layout_voltas, place_voltas},
 };
@@ -29,13 +29,13 @@ pub fn layout_system(ctx: &LayoutContext) -> SystemLayout {
 
     place_voice_dynamics(ctx, &mut marker_layout, &rows);
 
-    let dynamic_spans = layout_dynamic_spans(ctx, &marker_layout);
+    let spans = layout_spans(ctx, &marker_layout);
     let height = column.height + marker_layout.height;
 
     SystemLayout {
         rows,
         markers: marker_layout.markers,
-        dynamic_spans,
+        spans,
         voltas,
         height,
     }
@@ -153,7 +153,7 @@ struct RowSpec {
 pub struct SystemLayout {
     pub rows: Vec<SystemRow>,
     pub markers: Vec<PlacedMarker>,
-    pub dynamic_spans: Vec<PlacedDynamicSpan>,
+    pub spans: Vec<PlacedSpan>,
     pub voltas: Vec<PlacedVolta>,
     pub height: f32,
 }

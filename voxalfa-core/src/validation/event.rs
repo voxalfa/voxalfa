@@ -1,8 +1,10 @@
 use crate::{
+    ast::symbols::SymbolId,
     data_types::TimedList,
-    ir::{BodyIr, SectionIr, SubSectionIr},
+    ir::{BodyIr, PulseView, SectionIr, SubSectionIr},
     output::event::{
-        EndingEvent, Event, EventKind, SubSectonId, Timestamp, ToEventKind, get_note_ticks,
+        EndingEvent, Event, EventAnchor, EventKind, EventRole, SubSectonId, TimedPlacement,
+        Timestamp, ToEventKind, get_note_ticks,
     },
 };
 
@@ -13,7 +15,7 @@ pub struct EventBuffer {
     elapsed: usize,
     offset: usize,
     results: Vec<BufferedEvent>,
-    processed: Vec<(EventKind, usize)>,
+    processed: Vec<SymbolId>,
     last_ending: Option<u8>,
 }
 
@@ -38,8 +40,8 @@ impl EventBuffer {
         self.processed.clear();
     }
 
-    pub fn has_processed(&self, kind: EventKind, id: usize) -> bool {
-        self.processed.contains(&(kind, id))
+    pub fn has_processed(&self, sid: SymbolId) -> bool {
+        self.processed.contains(&sid)
     }
 
     pub fn add_offset(&mut self, offset: usize) {
@@ -71,7 +73,7 @@ impl EventBuffer {
         }
     }
 
-    pub fn process_local_events<T: ToEventKind>(
+    pub fn process_local_events<T: ToEventKind + TimedPlacement>(
         &mut self,
         sub_section: &SubSectionIr,
         events: &TimedList<T>,
@@ -80,6 +82,7 @@ impl EventBuffer {
             return;
         }
 
+        let last_index = self.section_last_index(&sub_section.views);
         let mut relative_offset = self.offset as f32;
         let mut elapsed = self.elapsed;
 
@@ -91,12 +94,11 @@ impl EventBuffer {
 
                 let params = EventMatchParams {
                     note_start,
-                    note_end,
                     note_ticks,
                     elapsed,
                 };
 
-                self.match_event(sub_section.sid, events, &params);
+                self.match_event(sub_section.sid, events, &params, last_index);
 
                 relative_offset = note_end;
                 elapsed += note_ticks;
@@ -104,64 +106,114 @@ impl EventBuffer {
         }
     }
 
-    fn match_event<T: ToEventKind>(
+    fn match_event<T: ToEventKind + TimedPlacement>(
         &mut self,
         sub_id: SubSectonId,
         events: &TimedList<T>,
         params: &EventMatchParams,
+        last_index: f32,
     ) {
-        for (id, symbol) in events.iter().enumerate() {
+        for symbol in events.iter() {
             let current = &symbol.value;
             let kind = current.value.to_event_kind();
+            let anchor = current.value.anchor();
+            let index = if current.implicit {
+                current.value.implicit_index(last_index)
+            } else {
+                current.start
+            };
 
-            if self.has_processed(kind, id) {
+            if self.has_processed(symbol.sid) {
                 continue;
             }
 
             if current.value.is_range() {
-                if let Some(timestamp) = self.get_range_timestamp(current.start, params) {
-                    self.push_event(sub_id, timestamp, Event::start(kind));
+                if let Some(timestamp) = self.get_timestamp(index, params, anchor) {
+                    self.push_event(
+                        sub_id,
+                        timestamp,
+                        Event {
+                            kind,
+                            role: EventRole::Start,
+                            anchor,
+                        },
+                    );
                 }
 
-                if let Some(timestamp) = current
-                    .end
-                    .and_then(|e| self.get_range_timestamp(e, params))
+                let end = if current.implicit {
+                    current.value.implicit_range_end(last_index)
+                } else {
+                    current.end
+                };
+                if let Some(end) = end
+                    && let Some(timestamp) = self.get_timestamp(end, params, EventAnchor::Before)
                 {
-                    self.push_event(sub_id, timestamp, Event::end(kind));
-                    self.mark_event(kind, id);
+                    self.push_event(
+                        sub_id,
+                        timestamp,
+                        Event {
+                            kind,
+                            role: EventRole::End,
+                            anchor: EventAnchor::Before,
+                        },
+                    );
+                    self.mark_event(symbol.sid);
                 }
 
                 continue;
             }
 
-            if let Some(timestamp) = self.get_timestamp(current.start, params) {
-                self.push_event(sub_id, timestamp, Event::new(kind));
-                self.mark_event(kind, id);
+            if let Some(timestamp) = self.get_timestamp(index, params, anchor) {
+                self.push_event(
+                    sub_id,
+                    timestamp,
+                    Event {
+                        kind,
+                        role: EventRole::Point,
+                        anchor,
+                    },
+                );
+                self.mark_event(symbol.sid);
             };
         }
     }
 
-    fn get_timestamp(&self, value: f32, params: &EventMatchParams) -> Option<Timestamp> {
+    fn get_timestamp(
+        &self,
+        value: f32,
+        params: &EventMatchParams,
+        anchor: EventAnchor,
+    ) -> Option<Timestamp> {
         if self.check_eq(value, params.note_start) {
-            Some(params.elapsed)
-        } else if self.check_eq(value, params.note_end) {
-            Some(params.elapsed + params.note_ticks)
+            Some(match anchor {
+                EventAnchor::Before => params.elapsed,
+                EventAnchor::After => params.elapsed + params.note_ticks,
+            })
         } else {
             None
         }
     }
 
-    fn get_range_timestamp(&self, value: f32, params: &EventMatchParams) -> Option<Timestamp> {
-        self.check_eq(value, params.note_start)
-            .then_some(params.elapsed)
+    fn section_last_index(&self, views: &[PulseView]) -> f32 {
+        let mut index = self.offset as f32;
+        let mut last = index;
+
+        for view in views {
+            for &duration in &view.durations {
+                last = index;
+                index += duration as f32 / view.factor as f32;
+            }
+        }
+
+        last
     }
 
     fn check_eq(&self, lhs: f32, rhs: f32) -> bool {
         (lhs - rhs).abs() < FLOAT_ERROR
     }
 
-    fn mark_event(&mut self, kind: EventKind, id: usize) {
-        self.processed.push((kind, id));
+    fn mark_event(&mut self, sid: SymbolId) {
+        self.processed.push(sid);
     }
 
     fn push_event(&mut self, sub_id: SubSectonId, timestamp: Timestamp, event: Event) {
@@ -169,12 +221,14 @@ impl EventBuffer {
             Event {
                 kind: EventKind::Ending(ending),
                 role,
+                anchor,
             } => Event {
                 kind: EventKind::Ending(EndingEvent {
                     is_last: self.last_ending == Some(ending.id),
                     ..ending
                 }),
                 role,
+                anchor,
             },
             event => event,
         };
@@ -198,7 +252,6 @@ pub struct BufferedEvent {
 #[derive(Debug)]
 struct EventMatchParams {
     note_start: f32,
-    note_end: f32,
     note_ticks: usize,
     elapsed: usize,
 }

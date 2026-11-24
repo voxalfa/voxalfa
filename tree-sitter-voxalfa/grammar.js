@@ -33,12 +33,10 @@ export default grammar({
       choice(
         $.section_split_delimiter,
         $.section_merge_delimiter,
-        $.section_major_delimiter,
       ),
 
     section_split_delimiter: () => "--",
     section_merge_delimiter: () => "<<",
-    section_major_delimiter: () => "==",
     sub_section_delimiter: () => "++",
 
     section: ($) => sep1($.sub_section_delimiter, $.sub_section),

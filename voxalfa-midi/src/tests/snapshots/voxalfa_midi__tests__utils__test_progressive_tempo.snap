@@ -1,0 +1,43 @@
+---
+source: voxalfa-midi/src/tests/utils.rs
+expression: output
+---
+FILE: test_progressive_tempo
+
+=== SOURCE ===
+[$] key={C} | time={4,4} | tempo={60} | voices={A}
+
+---
+
+[$] tempo={rit}
+
+[A] |d :r !m :f ||
+
+=== MIDI TRACKS ===
+--- Track 0 [Tempo / Meta] ---
+[00000 t / +000 t] Event 00 | Meta: Tempo(u24(1000000))
+[00000 t / +000 t] Event 01 | Meta: TimeSignature(4, 2, 24, 8)
+[00120 t / +120 t] Event 02 | Meta: Tempo(u24(1016949))
+[00240 t / +120 t] Event 03 | Meta: Tempo(u24(1034483))
+[00360 t / +120 t] Event 04 | Meta: Tempo(u24(1052632))
+[00480 t / +120 t] Event 05 | Meta: Tempo(u24(1071429))
+[00600 t / +120 t] Event 06 | Meta: Tempo(u24(1090909))
+[00720 t / +120 t] Event 07 | Meta: Tempo(u24(1111111))
+[00840 t / +120 t] Event 08 | Meta: Tempo(u24(1132075))
+[00960 t / +120 t] Event 09 | Meta: Tempo(u24(1153846))
+[01080 t / +120 t] Event 10 | Meta: Tempo(u24(1176471))
+[01200 t / +120 t] Event 11 | Meta: Tempo(u24(1200000))
+[01320 t / +120 t] Event 12 | Meta: Tempo(u24(1224490))
+[01440 t / +120 t] Event 13 | Meta: Tempo(u24(1250000))
+[01920 t / +480 t] Event 14 | Meta: EndOfTrack
+
+--- Track 1 ---
+[00000 t / +000 t] Event 00 | Ch 00 | NoteOn  key: 060 (C4) vel: 080
+[00456 t / +456 t] Event 01 | Ch 00 | NoteOff key: 060 (C4) vel: 000
+[00480 t / +024 t] Event 02 | Ch 00 | NoteOn  key: 062 (D4) vel: 080
+[00936 t / +456 t] Event 03 | Ch 00 | NoteOff key: 062 (D4) vel: 000
+[00960 t / +024 t] Event 04 | Ch 00 | NoteOn  key: 064 (E4) vel: 080
+[01416 t / +456 t] Event 05 | Ch 00 | NoteOff key: 064 (E4) vel: 000
+[01440 t / +024 t] Event 06 | Ch 00 | NoteOn  key: 065 (F4) vel: 080
+[01896 t / +456 t] Event 07 | Ch 00 | NoteOff key: 065 (F4) vel: 000
+[01920 t / +024 t] Event 08 | Meta: EndOfTrack

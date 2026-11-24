@@ -285,3 +285,9 @@ pub const JUMP_BUILTINS: &[BuiltinValueSpec] = &[
         doc: "Repeat from start and end at Fine [F].",
     },
 ];
+
+pub const BARLINE_BUILTINS: &[BuiltinValueSpec] = &[BuiltinValueSpec {
+    label: "double",
+    detail: "Double barline",
+    doc: "Draws a double barline, usually to mark the start of a major section.",
+}];

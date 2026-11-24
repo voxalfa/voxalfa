@@ -198,26 +198,27 @@ impl<'a> Formatter<'a> {
     }
 
     fn proces_section_params(&mut self, params: &SectionParams) {
-        self.add_assignment(Assignment::SectionParams, "ending", params.ending.as_ref());
-        self.add_assignment(Assignment::SectionParams, "label", params.label.as_ref());
-        self.add_assignment(Assignment::SectionParams, "mark", params.mark.as_ref());
-        self.add_assignment(Assignment::SectionParams, "key", params.key.as_ref());
-        self.add_assignment(Assignment::SectionParams, "time", params.time.as_ref());
-        self.add_assignment(Assignment::SectionParams, "tempo", params.tempo.as_ref());
-        self.add_assignment(
-            Assignment::SectionParams,
-            "touches",
-            params.touches.as_ref(),
-        );
-        self.add_assignment(Assignment::SectionParams, "jump", params.jump.as_ref());
-        self.add_assignment(Assignment::SectionParams, "repeat", params.repeat.as_ref());
+        let kind = Assignment::SectionParams;
+
+        self.add_assignment(kind, "ending", params.ending.as_ref());
+        self.add_assignment(kind, "label", params.label.as_ref());
+        self.add_assignment(kind, "mark", params.mark.as_ref());
+        self.add_assignment(kind, "key", params.key.as_ref());
+        self.add_assignment(kind, "time", params.time.as_ref());
+        self.add_assignment(kind, "tempo", params.tempo.as_ref());
+        self.add_assignment(kind, "touches", params.touches.as_ref());
+        self.add_assignment(kind, "jump", params.jump.as_ref());
+        self.add_assignment(kind, "barline", params.barline.as_ref());
+        self.add_assignment(kind, "repeat", params.repeat.as_ref());
     }
 
     fn proces_initial_params(&mut self, params: &InitialParams) {
-        self.add_assignment(Assignment::InitialParams, "key", params.key.as_ref());
-        self.add_assignment(Assignment::InitialParams, "time", params.time.as_ref());
-        self.add_assignment(Assignment::InitialParams, "tempo", params.tempo.as_ref());
-        self.add_assignment(Assignment::InitialParams, "voices", params.voices.as_ref());
+        let kind = Assignment::InitialParams;
+
+        self.add_assignment(kind, "key", params.key.as_ref());
+        self.add_assignment(kind, "time", params.time.as_ref());
+        self.add_assignment(kind, "tempo", params.tempo.as_ref());
+        self.add_assignment(kind, "voices", params.voices.as_ref());
     }
 
     fn process_local_params(&mut self, params: &SubSectionParams) {

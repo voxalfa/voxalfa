@@ -1,6 +1,6 @@
 use voxalfa_core::data_types::{
-    Dynamic, ExtendedTempo, Jump, Key, List, Mark, StaticTempo, TimeSignature, TimedValue, Touch,
-    Voice,
+    Barline, Dynamic, ExtendedTempo, Jump, Key, List, Mark, StaticTempo, TimeSignature, TimedValue,
+    Touch, Voice,
 };
 
 pub trait Formattable {
@@ -125,6 +125,16 @@ impl Formattable for Touch {
     }
 }
 
+impl Formattable for Barline {
+    fn format(&self, embedded: bool) -> String {
+        if embedded {
+            self.to_string()
+        } else {
+            format!("{{{self}}}")
+        }
+    }
+}
+
 impl<T: Formattable> Formattable for List<T> {
     fn format(&self, _embedded: bool) -> String {
         if self.len() > 1 {
@@ -147,10 +157,13 @@ impl<T: Formattable> Formattable for TimedValue<T> {
     fn format(&self, embedded: bool) -> String {
         let inner = self.value.format(true);
 
-        let value = match (self.start, self.end) {
-            (0., None) => inner,
-            (start, None) => format!("{inner}:{start}"),
-            (start, Some(end)) => format!("{inner}:{start}..{end}"),
+        let value = if self.implicit {
+            inner
+        } else {
+            match self.end {
+                Some(end) => format!("{inner}:{}..{end}", self.start),
+                None => format!("{inner}:{}", self.start),
+            }
         };
 
         if embedded {

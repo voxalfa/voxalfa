@@ -4,12 +4,12 @@ use voxalfa_core::{
         solfa::{BaseNote, Note as CoreNote},
     },
     data_types::{
-        BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature, KeyAccidental, Mark,
-        ProgressiveTempo, StaticTempo, TimeSignature, Touch, Voice,
+        Barline as CoreBarline, BaseKey, Dynamic as CoreDynamics, Jump, Key as KeySignature,
+        KeyAccidental, Mark, ProgressiveTempo, StaticTempo, TimeSignature, Touch, Voice,
     },
     ir::solfa::NoteKind,
     output::{
-        event::{EndingEvent, Event, EventKind, EventRole, JumpEvent, NoteId},
+        event::{EndingEvent, EventAnchor, EventKind, EventRole, JumpEvent, NoteId, NoteTimeline},
         lyrics::LyricsMap,
         voice::{LyricContext, LyricMatch, NoteContext, VoiceLine},
     },
@@ -60,25 +60,11 @@ impl<'a> MeasureTask<'a> {
                 self.set_initial_attributes();
             }
 
-            // Section-end events belong to the previous measure, so handle them
-            // before the new measure is inserted.
-            let tail_events = voice_line
-                .timeline
-                .get_events(note_id)
-                .filter(|event| event.is_tail_event());
-
-            self.handle_events(tail_events);
-
             if note.measure_start && note_id > 0 {
                 self.insert_measure();
             }
 
-            let head_events = voice_line
-                .timeline
-                .get_events(note_id)
-                .filter(|event| !event.is_tail_event());
-
-            self.handle_events(head_events);
+            self.handle_events(&voice_line.timeline, note_id, EventAnchor::Before);
 
             let duration = ((MEASURE_DIVISION * note.column.duration as u16) / note.factor as u16)
                 / (4 / self.time.bottom as u16);
@@ -91,11 +77,8 @@ impl<'a> MeasureTask<'a> {
                 NoteKind::EmptyNote => self.handle_empty_note(duration),
             }
 
+            self.handle_events(&voice_line.timeline, note_id, EventAnchor::After);
             self.handle_pending_updates();
-
-            if note_id + 1 == voice_line.notes.len() {
-                self.handle_events(voice_line.timeline.get_events(note_id + 1));
-            }
         }
 
         if !self.items.is_empty() {
@@ -127,12 +110,17 @@ impl<'a> MeasureTask<'a> {
         });
     }
 
-    fn handle_events<'b>(&mut self, events: impl Iterator<Item = &'b Event>) {
+    fn handle_events(&mut self, timeline: &NoteTimeline, note_id: NoteId, anchor: EventAnchor) {
+        let events = timeline
+            .get_events(note_id)
+            .filter(|event| event.anchor == anchor);
+
         for event in events {
             match event.kind {
                 EventKind::Key(key) => self.handle_key_change(key),
                 EventKind::Jump(jump) => self.handle_jump_event(jump),
                 EventKind::Mark(mark) => self.handle_mark_event(mark),
+                EventKind::Barline(barline) => self.handle_barline_event(barline),
                 EventKind::Dynamic(dynamic) => self.handle_dynamics_event(dynamic),
                 EventKind::Tempo(tempo) => self.handle_tempo_event(tempo),
                 EventKind::Touch(touch) => self.handle_touch(touch),
@@ -226,6 +214,16 @@ impl<'a> MeasureTask<'a> {
         }
     }
 
+    fn handle_barline_event(&mut self, barline: CoreBarline) {
+        match barline {
+            CoreBarline::Double => self.items.push(MeasureItem::Barline(Barline {
+                location: BarlineLocation::Right,
+                bar_style: Some(BarStyle::LightLight),
+                ending: None,
+            })),
+        }
+    }
+
     fn handle_ending(&mut self, ending: EndingEvent, role: EventRole) {
         let id = ending.id;
 
@@ -249,11 +247,12 @@ impl<'a> MeasureTask<'a> {
 
         self.items.push(MeasureItem::Barline(Barline {
             location,
-            ending: Ending {
+            bar_style: None,
+            ending: Some(Ending {
                 r#type,
                 number: id.to_string(),
                 content,
-            },
+            }),
         }));
     }
 
@@ -293,7 +292,6 @@ impl<'a> MeasureTask<'a> {
                 words: Some(Words {
                     content: named_tempo.to_string(),
                     font_style: Some(FontStyle::Italic),
-                    ..Default::default()
                 }),
                 ..Default::default()
             },

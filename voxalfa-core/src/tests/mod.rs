@@ -401,6 +401,20 @@ fn test_unmatched_timestamp_error() {
 }
 
 #[test]
+fn test_unmatched_mark_timestamp() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+---
+
+[$] mark={S:1}
+
+[S] :         .s-1      ||
+"#;
+
+    assert_diagnostic_snapshot("unmatched_mark_timestamp", source);
+}
+
+#[test]
 fn test_invalid_section_merge_error() {
     let source = r#"
 [$] time={4,4} | voices={S,T}

@@ -1,7 +1,7 @@
 use crate::{
     ast::{lyrics::LyricOperatorKind, symbols::VoiceId},
     ir::solfa::PulseColumn,
-    output::event::{Event, NoteTimeline, Timestamp, get_note_ticks},
+    output::event::{Event, EventAnchor, NoteTimeline, Timestamp, get_note_ticks},
 };
 
 #[derive(Debug)]
@@ -27,7 +27,12 @@ impl<'a> VoiceLine<'a> {
                 .map(|(_, e)| e);
 
             for event in events {
-                timeline.add_event(index, event.clone());
+                let note = match event.anchor {
+                    EventAnchor::Before => index,
+                    EventAnchor::After => index.saturating_sub(1),
+                };
+
+                timeline.add_event(note, event.clone());
             }
 
             if let Some(ctx) = notes.get(index) {

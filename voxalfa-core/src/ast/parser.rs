@@ -126,9 +126,6 @@ impl<'a> Parser<'a> {
                 node_types::SECTION_SPLIT_DELIMITER => {
                     self.add_delimiter(child, DelimiterKind::SectionSplit)
                 }
-                node_types::SECTION_MAJOR_DELIMITER => {
-                    self.add_delimiter(child, DelimiterKind::SectionMajor)
-                }
                 node_types::SECTION_MERGE_DELIMITER => {
                     self.add_delimiter(child, DelimiterKind::SectionMerge)
                 }
@@ -145,12 +142,10 @@ impl<'a> Parser<'a> {
 
         let mut section = Section::new(sid);
 
-        if let Some(prev) = node.prev_sibling() {
-            match prev.kind_id() {
-                node_types::SECTION_MERGE_DELIMITER => section.merge = true,
-                node_types::SECTION_MAJOR_DELIMITER => section.major_start = true,
-                _ => {}
-            }
+        if let Some(prev) = node.prev_sibling()
+            && prev.kind_id() == node_types::SECTION_MERGE_DELIMITER
+        {
+            section.merge = true;
         }
 
         for child in node.named_children(&mut node.walk()) {
