@@ -7,6 +7,9 @@ mod resolver;
 mod symbols;
 mod visitor;
 
+#[cfg(test)]
+mod tests;
+
 pub mod fonts;
 pub mod options;
 
