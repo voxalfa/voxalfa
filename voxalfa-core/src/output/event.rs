@@ -78,7 +78,9 @@ pub enum EventAnchor {
 pub trait TimedPlacement {
     fn anchor(&self) -> EventAnchor;
 
-    fn implicit_index(&self, last_index: f32) -> f32;
+    fn implicit_index(&self, _last_index: f32) -> f32 {
+        0.0
+    }
 
     fn implicit_range_end(&self, _last_index: f32) -> Option<f32> {
         None
@@ -89,19 +91,11 @@ impl TimedPlacement for Dynamic {
     fn anchor(&self) -> EventAnchor {
         EventAnchor::Before
     }
-
-    fn implicit_index(&self, _last_index: f32) -> f32 {
-        0.0
-    }
 }
 
 impl TimedPlacement for Touch {
     fn anchor(&self) -> EventAnchor {
         EventAnchor::Before
-    }
-
-    fn implicit_index(&self, _last_index: f32) -> f32 {
-        0.0
     }
 }
 
@@ -109,19 +103,11 @@ impl TimedPlacement for Key {
     fn anchor(&self) -> EventAnchor {
         EventAnchor::Before
     }
-
-    fn implicit_index(&self, _last_index: f32) -> f32 {
-        0.0
-    }
 }
 
 impl TimedPlacement for ExtendedTempo {
     fn anchor(&self) -> EventAnchor {
         EventAnchor::Before
-    }
-
-    fn implicit_index(&self, _last_index: f32) -> f32 {
-        0.0
     }
 
     fn implicit_range_end(&self, last_index: f32) -> Option<f32> {
