@@ -31,6 +31,14 @@ pub fn render_with_fonts(
 
     let pages = voxalfa_svg::render_pages_with_fonts(data, &options, faces)?;
 
+    render_svgs_with_fonts(&pages, faces)
+}
+
+pub fn render_svgs(pages: &[String]) -> Result<Vec<u8>> {
+    render_svgs_with_fonts(pages, &FontFaces::default())
+}
+
+pub fn render_svgs_with_fonts(pages: &[String], faces: &FontFaces) -> Result<Vec<u8>> {
     let mut fontdb = fontdb::Database::new();
 
     for face in faces.iter() {
@@ -44,7 +52,7 @@ pub fn render_with_fonts(
 
     let mut document = Document::new();
 
-    for svg in &pages {
+    for svg in pages {
         let tree = usvg::Tree::from_data(svg.as_bytes(), &usvg_options)?;
 
         let page_size = Size::from_wh(
