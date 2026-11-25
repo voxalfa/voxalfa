@@ -1,6 +1,11 @@
 pub mod server;
 pub mod services;
 
+mod transport;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod native;
+
 #[cfg(target_arch = "wasm32")]
 pub mod wasm;
 

@@ -32,9 +32,12 @@ voxalfa-formatter = { workspace = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 async-lsp = { version = "0.2.4", features = ["tokio"] }
 clap = { workspace = true }
-tokio = { version = "1.53.1", features = ["macros", "rt", "io-std"] }
+tokio = { version = "1.53.1", features = ["macros", "rt", "io-std", "io-util"] }
 tokio-util = { version = "0.7.19", features = ["compat", "futures-io"] }
 tracing-subscriber = "0.3.23"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt", "time", "sync"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"
