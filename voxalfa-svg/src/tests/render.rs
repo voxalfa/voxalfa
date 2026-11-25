@@ -161,6 +161,188 @@ fn test_header_layout() {
 }
 
 #[test]
+fn test_custom_header_rows() {
+    let output = analyze(
+        r#"
+;; @header-row center="{{title}}" | center-style="title-text"
+;; @header-row left={"Author: ", "{{author}}"} | left-style={"header-text", "author-text"} | right={"Music: ", "{{composer}}"} | right-style={"header-text", "composer-text"}
+;; @header-row left={"{{key}}", "{{time}}", "{{tempo}}"} | left-style={"key-text", "time-text", "tempo-label"}
+
+[#] title="Custom header"
+[#] author={"Alice"}
+[#] composer={"Bob"}
+[#] language="en"
+[#] meter={4,4}
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={allegro} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert!(svg.contains(r#"class="title-text">Custom header</text>"#));
+    assert!(svg.contains(r#"class="header-text">Author: </text>"#));
+    assert!(svg.contains(r#"class="author-text">Alice</text>"#));
+    assert!(svg.contains(r#"class="composer-text">Bob</text>"#));
+    assert!(svg.contains(r#"class="key-text">Do is C</text>"#));
+    assert!(svg.contains(r#"class="time-text">4/4</text>"#));
+    assert!(svg.contains(r#"class="tempo-label">allegro.</text>"#));
+    assert!(!svg.contains(r#"class="meter-text""#));
+}
+
+#[test]
+fn test_style_merges_with_defaults() {
+    let output = analyze(
+        r#"
+;; @style name="key-text" | color="red"
+
+[#] title="Merged style"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+    let mut options = RenderOptions::default();
+    options.apply_directives(&output.header.directives);
+
+    assert_eq!(options.elements.key.color.as_deref(), Some("red"));
+    assert_eq!(
+        options.elements.key.margin.right,
+        crate::renderer::constants::HEADER_KEY_RIGHT_MARGIN
+    );
+}
+
+#[test]
+fn test_custom_style() {
+    let output = analyze(
+        r#"
+;; @style name="credit" | font-size={10} | color="red"
+;; @header-row left="Author: {{author}}" | left-style="credit"
+
+[#] title="Custom style"
+[#] author={"Alice"}
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert!(svg.contains(".credit {"));
+    assert!(svg.contains(r#"class="credit">Author: Alice</text>"#));
+}
+
+#[test]
+fn test_custom_header_literal_braces() {
+    let output = analyze(
+        r#"
+;; @header-row left={"{{author}}", " {literal}"} | left-style={"author-text", "header-text"}
+
+[#] title="Braces"
+[#] author={"Alice"}
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    assert!(svg.contains(r#"class="author-text">Alice</text>"#));
+    assert!(svg.contains("{literal}</text>"));
+}
+
+#[test]
+fn test_header_row_style_spacing() {
+    let output = analyze(
+        r#"
+;; @style name="row-gap" | margin-bottom={40}
+;; @header-row left="First" | style="row-gap"
+;; @header-row left="Second"
+
+[#] title="Spacing"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+    let y_of = |text: &str| {
+        svg.lines()
+            .find(|line| line.contains(text))
+            .and_then(|line| line.split("y=\"").nth(1))
+            .and_then(|value| value.split('"').next())
+            .and_then(|value| value.parse::<f32>().ok())
+            .expect("header text y position")
+    };
+
+    assert!(y_of("First") + 40.0 <= y_of("Second"));
+}
+
+#[test]
+fn test_custom_header_wraps() {
+    let output = analyze(
+        r#"
+;; @page width={220} | height={800} | margin={20}
+;; @header-row left="A very long left header that must wrap" | right="Right side"
+
+[#] title="Wrapping"
+[#] verses={1}
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+
+[1] do re mi fa
+"#,
+    );
+
+    let svg = render(&output).unwrap();
+
+    let header = svg
+        .split("<text x=")
+        .filter(|part| part.contains(r#"class="header-text""#))
+        .count();
+
+    assert!(header >= 3, "expected the long header cell to wrap");
+}
+
+#[test]
 fn test_header_tempo() {
     let output = analyze(
         r#"
@@ -488,9 +670,9 @@ fn test_virtual_columns() {
 fn test_element_fonts() {
     let output = analyze(
         r#"
-;; @note-text font-family={"Custom Note"} | font-size={18}
-;; @lyrics-text font-size={9}
-;; @jump-label font-size={15}
+;; @style name="note-text" | font-family={"Custom Note"} | font-size={18}
+;; @style name="lyrics-text" | font-size={9}
+;; @style name="jump-label" | font-size={15}
 
 [#] title="Directives"
 [#] verses={1}
@@ -529,8 +711,8 @@ fn test_element_fonts() {
 fn test_element_colors() {
     let output = analyze(
         r##"
-;; @title-text color={"#ff0000"}
-;; @time-text color={"rebeccapurple"}
+;; @style name="title-text" | color={"#ff0000"}
+;; @style name="time-text" | color={"rebeccapurple"}
 
 [#] title="Colored"
 [#] verses={1}
@@ -571,9 +753,9 @@ fn test_element_colors() {
 fn test_font_weight_style() {
     let output = analyze(
         r#"
-;; @title-text font-weight={"normal"}
-;; @tempo-label font-style={"normal"}
-;; @bpm-label font-style={"italic"}
+;; @style name="title-text" | font-weight={"normal"}
+;; @style name="tempo-label" | font-style={"normal"}
+;; @style name="bpm-label" | font-style={"italic"}
 
 [#] title="Font styles"
 [#] verses={1}
@@ -613,7 +795,7 @@ fn test_face_set_fonts() {
 
     let output = analyze(
         r#"
-;; @note-text font-family={"Custom Note"} | font-weight={"normal"} | font-style={"italic"}
+;; @style name="note-text" | font-family={"Custom Note"} | font-weight={"normal"} | font-style={"italic"}
 
 [#] title="Custom faces"
 [#] verses={1}
@@ -647,8 +829,8 @@ fn test_header_box() {
     let output = analyze(
         r#"
 ;; @page width={800} | height={1000} | margin-x={30} | margin-y={40}
-;; @title-text margin-top={10} | padding-x={4}
-;; @author-text margin-bottom={3}
+;; @style name="title-text" | margin-top={10} | padding-x={4}
+;; @style name="author-text" | margin-bottom={3}
 
 [#] title="Boxed header"
 [#] author={"Alice"}
@@ -687,7 +869,7 @@ fn test_header_box() {
 fn test_font_stretch() {
     let output = analyze(
         r#"
-;; @note-text font-stretch={"condensed"}
+;; @style name="note-text" | font-stretch={"condensed"}
 
 [#] title="Stretch"
 [#] verses={1}
@@ -762,7 +944,7 @@ fn test_footer_page_number() {
         r#"
 
 ;; @page width={200} | height={200} | margin-x={30} | margin-y={30}
-;; @footer-text font-size={30}
+;; @style name="footer-text" | font-size={30}
 
 [#] title="Footer"
 

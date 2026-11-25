@@ -15,13 +15,14 @@ use crate::{
     renderer::{
         constants::{BRACE_PADDING_LEFT, BRACE_PADDING_RIGHT},
         geometry::system_width,
+        header::layout_header,
         systems::{LayoutContext, SystemLayout, layout_system},
     },
     resolver::resolve,
 };
 
 use defs::emit_defs;
-use header::{emit_header, layout_header};
+use header::emit_header;
 use systems::{SystemPlacement, emit_system};
 
 const INITIAL_SVG_CAPACITY: usize = 32 * 1024;

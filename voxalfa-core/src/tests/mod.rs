@@ -448,7 +448,7 @@ fn test_unknown_directive_error() {
 #[test]
 fn test_invalid_directive_value_error() {
     let source = r#"
-;; @note-text font-size={0}
+;; @style name="note-text" | font-size={0}
 
 [#] title="Invalid directive"
 [#] verses={1}

@@ -23,6 +23,25 @@ impl EdgeValues {
             left: value,
         }
     }
+
+    fn unset() -> Self {
+        Self::all(f32::NAN)
+    }
+
+    fn merge(&mut self, patch: &Self) {
+        let edges = [
+            (&mut self.top, patch.top),
+            (&mut self.right, patch.right),
+            (&mut self.bottom, patch.bottom),
+            (&mut self.left, patch.left),
+        ];
+
+        for (target, value) in edges {
+            if !value.is_nan() {
+                *target = value;
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
@@ -107,6 +126,23 @@ impl ElementStyle {
 
     pub fn size(&self, default: f32) -> f32 {
         self.font_size.unwrap_or(default)
+    }
+
+    pub fn merge(&mut self, patch: &Self) {
+        merge_option(&mut self.font_family, &patch.font_family);
+        merge_option(&mut self.font_size, &patch.font_size);
+        merge_option(&mut self.font_weight, &patch.font_weight);
+        merge_option(&mut self.font_stretch, &patch.font_stretch);
+        merge_option(&mut self.italic, &patch.italic);
+        merge_option(&mut self.color, &patch.color);
+        self.margin.merge(&patch.margin);
+        self.padding.merge(&patch.padding);
+    }
+}
+
+fn merge_option<T: Clone>(target: &mut Option<T>, patch: &Option<T>) {
+    if patch.is_some() {
+        *target = patch.clone();
     }
 }
 
@@ -216,18 +252,22 @@ pub fn parse_block_style(
     Some(style)
 }
 
-pub fn parse_element_style(
+pub fn parse_style(
     context: &mut Parser,
     node: Node<'_>,
     scope_id: ScopeId,
-    name: &str,
-) -> Option<ElementStyle> {
+) -> Option<(String, ElementStyle)> {
     if node.kind_id() != node_types::STYLE_ASSIGNMENTS {
-        invalid_directive(context, node.range(), name, "expected style assignments");
+        invalid_directive(context, node.range(), "style", "expected style assignments");
         return None;
     }
 
-    let mut style = ElementStyle::default();
+    let mut name = None;
+    let mut style = ElementStyle {
+        margin: EdgeValues::unset(),
+        padding: EdgeValues::unset(),
+        ..ElementStyle::default()
+    };
     let mut cursor = node.walk();
 
     for assignment in node.named_children(&mut cursor) {
@@ -240,6 +280,9 @@ pub fn parse_element_style(
         let value_node = assignment.value_node;
 
         match assignment.key.as_str() {
+            "name" => {
+                name = context.parse_node::<String>(value_node, scope_id);
+            }
             "font-family" => {
                 let family = context.parse_node::<String>(value_node, scope_id)?;
 
@@ -251,7 +294,7 @@ pub fn parse_element_style(
                 match value.as_str() {
                     "normal" => style.italic = Some(false),
                     "italic" => style.italic = Some(true),
-                    _ => invalid_directive(context, key_node.range(), name, "invalid style"),
+                    _ => invalid_directive(context, key_node.range(), "style", "invalid style"),
                 }
             }
             "font-weight" => {
@@ -260,7 +303,7 @@ pub fn parse_element_style(
                 if let Some(weight) = font_weight(&value) {
                     style.font_weight = Some(weight);
                 } else {
-                    invalid_directive(context, key_node.range(), name, "invalid weight value");
+                    invalid_directive(context, key_node.range(), "style", "invalid weight value");
                 }
             }
             "font-stretch" => {
@@ -269,14 +312,14 @@ pub fn parse_element_style(
                 if let Some(stretch) = FontStretch::parse(&value) {
                     style.font_stretch = Some(stretch);
                 } else {
-                    invalid_directive(context, key_node.range(), name, "invalid stretch value");
+                    invalid_directive(context, key_node.range(), "style", "invalid stretch value");
                 }
             }
             "font-size" => {
                 let size = context.parse_node::<f32>(value_node, scope_id)?;
 
                 if !size.is_finite() || size <= 0.0 {
-                    invalid_directive(context, key_node.range(), name, "non-positive value");
+                    invalid_directive(context, key_node.range(), "style", "non-positive value");
                 } else {
                     style.font_size = Some(size);
                 }
@@ -288,7 +331,7 @@ pub fn parse_element_style(
             }
             _ => apply_box_modifier(
                 context,
-                name,
+                "style",
                 &assignment,
                 scope_id,
                 &mut style.margin,
@@ -297,7 +340,12 @@ pub fn parse_element_style(
         }
     }
 
-    Some(style)
+    let Some(name) = name else {
+        invalid_directive(context, node.range(), "style", "missing 'name'");
+        return None;
+    };
+
+    Some((name, style))
 }
 
 fn assignment_parts<'a>(context: &mut Parser, node: Node<'a>) -> Option<StyleAssignment<'a>> {

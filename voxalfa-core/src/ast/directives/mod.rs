@@ -1,5 +1,9 @@
+mod header_row;
 mod style;
 
+pub use header_row::{
+    HeaderCell, HeaderField, HeaderRow, HeaderTemplate, TemplatePart, parse_header_row,
+};
 pub use style::{BlockStyle, EdgeValues, ElementStyle, FontStretch, PageStyle};
 
 use std::collections::BTreeMap;
@@ -13,12 +17,14 @@ use crate::{
     ts_utils::types::AssignmentData,
 };
 
-use style::{parse_block_style, parse_element_style, parse_page_style};
+use style::{parse_block_style, parse_page_style, parse_style};
 
 pub const STYLE_ELEMENTS: &[&str] = &[
     "title-text",
     "author-text",
     "composer-text",
+    "header-text",
+    "header-row",
     "key-text",
     "time-text",
     "meter-text",
@@ -49,6 +55,7 @@ pub struct HeaderDirective {
     pub page: Field<PageStyle>,
     pub header: Field<BlockStyle>,
     pub system: Field<BlockStyle>,
+    pub rows: Vec<HeaderRow>,
     pub elements: BTreeMap<String, SymbolRef<ElementStyle>>,
 }
 
@@ -59,7 +66,12 @@ impl FieldAssign for HeaderDirective {
             "page" => self.assign_page(data, context),
             "header" => self.assign_block(data, context, BlockTarget::Header),
             "system" => self.assign_block(data, context, BlockTarget::System),
-            name if STYLE_ELEMENTS.contains(&name) => self.assign_element(data, context),
+            "style" => self.assign_style(data, context),
+            "header-row" => {
+                if let Some(row) = parse_header_row(context, data.value_node, data.scope_id) {
+                    self.rows.push(row);
+                }
+            }
             _ => {
                 context.reporter.error(
                     data.full_range,
@@ -99,16 +111,15 @@ impl HeaderDirective {
         }
     }
 
-    fn assign_element(&mut self, data: AssignmentData, context: &mut Parser) {
-        let parsed = parse_element_style(context, data.value_node, data.scope_id, &data.key_name);
+    fn assign_style(&mut self, data: AssignmentData, context: &mut Parser) {
+        let parsed = parse_style(context, data.value_node, data.scope_id);
 
-        if let Some(style) = parsed {
+        if let Some((name, style)) = parsed {
             let sid = context
                 .tree
                 .add_symbol(SymbolKind::Token, data.value_range, data.scope_id);
 
-            self.elements
-                .insert(data.key_name, SymbolRef { sid, value: style });
+            self.elements.insert(name, SymbolRef { sid, value: style });
         }
     }
 }

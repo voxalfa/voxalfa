@@ -11,7 +11,13 @@ impl PageSize {
     };
 }
 
+use std::collections::BTreeMap;
+
 use voxalfa_core::ast::directives::{BlockStyle, EdgeValues, ElementStyle, HeaderDirective};
+
+use crate::renderer::constants::{
+    HEADER_KEY_RIGHT_MARGIN, HEADER_ROW_MARGIN_BOTTOM, HEADER_TIME_RIGHT_MARGIN,
+};
 
 #[derive(Debug, Clone)]
 pub struct RenderOptions {
@@ -60,6 +66,16 @@ fn default_system_layout() -> BlockStyle {
     }
 }
 
+fn default_element_styles() -> ElementStyles {
+    let mut styles = ElementStyles::default();
+
+    styles.header_row.margin.bottom = HEADER_ROW_MARGIN_BOTTOM;
+    styles.key.margin.right = HEADER_KEY_RIGHT_MARGIN;
+    styles.time.margin.right = HEADER_TIME_RIGHT_MARGIN;
+
+    styles
+}
+
 impl Default for RenderOptions {
     fn default() -> Self {
         Self {
@@ -80,7 +96,7 @@ impl Default for RenderOptions {
             lyric_row_height: 20.0,
             system_layout: default_system_layout(),
             header_layout: default_header_layout(),
-            elements: ElementStyles::default(),
+            elements: default_element_styles(),
         }
     }
 }
@@ -110,9 +126,7 @@ impl RenderOptions {
         }
 
         for (name, style) in &directives.elements {
-            if let Some(target) = self.elements.get_mut(name) {
-                *target = style.value.clone();
-            }
+            self.elements.insert(name, style.value.clone());
         }
 
         if let Some(header) = &directives.header {
@@ -125,30 +139,42 @@ impl RenderOptions {
     }
 }
 
-macro_rules! element_styles {
+macro_rules! define_element_styles {
     ($($name:literal => $field:ident),* $(,)?) => {
         #[derive(Debug, Clone, Default)]
         pub struct ElementStyles {
             $(pub $field: ElementStyle,)*
+            pub custom: BTreeMap<String, ElementStyle>,
         }
 
         impl ElementStyles {
             pub const NAMES: &[&str] = &[$($name),*];
 
-            fn get_mut(&mut self, name: &str) -> Option<&mut ElementStyle> {
+            pub fn get(&self, name: &str) -> Option<&ElementStyle> {
                 match name {
-                    $($name => Some(&mut self.$field),)*
-                    _ => None,
+                    $($name => Some(&self.$field),)*
+                    _ => self.custom.get(name),
+                }
+            }
+
+            fn insert(&mut self, name: &str, style: ElementStyle) {
+                match name {
+                    $($name => self.$field.merge(&style),)*
+                    _ => {
+                        self.custom.entry(name.to_string()).or_default().merge(&style);
+                    }
                 }
             }
         }
     };
 }
 
-element_styles! {
+define_element_styles! {
     "title-text" => title,
     "author-text" => author,
     "composer-text" => composer,
+    "header-text" => header,
+    "header-row" => header_row,
     "key-text" => key,
     "time-text" => time,
     "meter-text" => meter,

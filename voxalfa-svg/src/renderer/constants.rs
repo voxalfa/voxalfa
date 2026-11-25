@@ -1,8 +1,6 @@
-pub const HEADER_GROUP_GAP: f32 = 0.5;
-pub const HEADER_BOTTOM_PADDING: f32 = 0.45;
-pub const HEADER_TITLE_BOTTOM_GAP: f32 = 0.7;
-pub const HEADER_KEY_RIGHT_MARGIN: f32 = 2.5;
-pub const HEADER_TIME_RIGHT_MARGIN: f32 = 2.5;
+pub const HEADER_ROW_MARGIN_BOTTOM: f32 = 8.0;
+pub const HEADER_KEY_RIGHT_MARGIN: f32 = 15.0;
+pub const HEADER_TIME_RIGHT_MARGIN: f32 = 15.0;
 pub const MARKER_BOTTOM_GAP: f32 = 0.35;
 pub const MARKER_HORIZONTAL_GAP: f32 = 0.55;
 
