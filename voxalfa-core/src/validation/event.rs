@@ -40,6 +40,10 @@ impl EventBuffer {
         self.processed.clear();
     }
 
+    pub fn init_sub_section(&mut self) {
+        self.processed.clear();
+    }
+
     pub fn has_processed(&self, sid: SymbolId) -> bool {
         self.processed.contains(&sid)
     }

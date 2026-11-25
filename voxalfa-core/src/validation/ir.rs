@@ -61,6 +61,8 @@ impl<'a> IrValidator<'a> {
             let barline = section.params.barline.as_ref();
 
             for (sub_id, sub_section) in section.items.iter().enumerate() {
+                buffer.init_sub_section();
+
                 let dynamics = self
                     .resolve_root_params(section_id, sub_id, &body.sections)
                     .and_then(|p| p.dynamics.as_ref());

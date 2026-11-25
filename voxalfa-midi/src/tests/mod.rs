@@ -1,4 +1,6 @@
-use crate::tests::utils::run_snapshot;
+use voxalfa_core::validation::Validator;
+
+use crate::{Converter, tests::utils::run_snapshot};
 
 mod utils;
 
@@ -72,6 +74,41 @@ fn test_simple_loop() {
 [A] |s :l !t :d+1 ||"#;
 
     run_snapshot("test_simple_loop", source);
+}
+
+#[test]
+fn test_mark_in_subsection() {
+    let source = r#"
+[$] key={C} | time={4,4} | tempo={50} | voices={S,A}
+
+---
+
+[S] |d :r !m :f ||
+[A] |d :r !m :f ||
+
+--
+
+[$] mark={S}
+
+[S] |s :l !t :d+1 ||
+
+++
+
+[A] |- :- !- :- ||
+
+--
+
+[$] jump={DS}
+
+[S] |m :- !- :- ||
+[A] |m :- !- :- ||
+"#;
+
+    let mut validator = Validator::init().unwrap();
+    let output = validator.analyze(source);
+
+    assert!(!output.has_error(), "{:?}", output.diagnostics);
+    Converter::new(&output).convert().unwrap();
 }
 
 #[test]
