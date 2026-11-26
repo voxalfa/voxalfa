@@ -124,6 +124,18 @@ impl ElementStyle {
         self.margin.left + self.padding.left
     }
 
+    pub fn x_space(&self) -> f32 {
+        self.left() + self.right()
+    }
+
+    pub fn y_space(&self) -> f32 {
+        self.top() + self.bottom()
+    }
+
+    pub fn gap_to(&self, next: &Self) -> f32 {
+        self.right() + next.left()
+    }
+
     pub fn size(&self, default: f32) -> f32 {
         self.font_size.unwrap_or(default)
     }

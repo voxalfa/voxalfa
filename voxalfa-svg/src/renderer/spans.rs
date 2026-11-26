@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     model::{MarkerKind, SpanKind, SystemSpan},
-    renderer::systems::LayoutContext,
+    renderer::context::LayoutContext,
 };
 
 use super::{
@@ -102,7 +102,7 @@ impl<'a, 'b> SpanPlanner<'a, 'b> {
     }
 
     fn plan_local(&mut self) {
-        let geometry = SystemGeometry::new(self.ctx.system, self.ctx.fonts, self.ctx.lead);
+        let geometry = SystemGeometry::new(*self.ctx);
         let style = &self.ctx.options.elements.dynamic;
         let spans = &self.ctx.system.spans;
 
@@ -176,7 +176,7 @@ pub fn layout_spans(
     }
 
     let style = &ctx.options.elements.dynamic;
-    let geometry = SystemGeometry::new(ctx.system, ctx.fonts, ctx.lead);
+    let geometry = SystemGeometry::new(*ctx);
     let markers = &layout.markers;
     let row_height = plan.row_height();
     let label_gap = ctx.fonts.label.dynamic.size() * DYNAMIC_SPAN_LABEL_GAP;

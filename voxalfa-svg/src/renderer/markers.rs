@@ -4,7 +4,7 @@ use crate::{
     fonts::{FontMetrics, Fonts},
     model::{MarkerGlyph, MarkerKind, SystemMarker, SystemSpan, TextAnchor, VoiceInstance},
     options::RenderOptions,
-    renderer::systems::LayoutContext,
+    renderer::context::LayoutContext,
 };
 
 use super::{
@@ -24,7 +24,7 @@ pub fn layout_markers(ctx: &LayoutContext) -> MarkerLayout {
                     .is_some_and(|voice| Some(voice.id) != global_voice)
         });
 
-    let geometry = SystemGeometry::new(ctx.system, ctx.fonts, ctx.lead);
+    let geometry = SystemGeometry::new(*ctx);
 
     let markers = stacked
         .into_iter()

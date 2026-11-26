@@ -1,6 +1,6 @@
 use crate::{
     model::{MarkerKind, VoiceInstance},
-    renderer::systems::LayoutContext,
+    renderer::context::LayoutContext,
 };
 
 use super::{

@@ -256,7 +256,7 @@ impl<'a> HeaderRows<'a> {
     }
 
     fn wrap_cell(&self, cell: Cell<'a>, width: f32) -> Vec<HeaderText> {
-        let available = (width - cell.style.element.left() - cell.style.element.right()).max(1.0);
+        let available = (width - cell.style.element.x_space()).max(1.0);
         let lines = self.wrap_segments(&cell.segments, available);
         let mut texts = Vec::new();
 
@@ -292,7 +292,7 @@ impl<'a> HeaderRows<'a> {
                 if let Some((index, style)) = &previous
                     && *index != segment.id
                 {
-                    x += style.element.right() + segment.style.element.left();
+                    x += style.element.gap_to(&segment.style.element);
                 }
 
                 let segment_width = segment.style.font.width(&segment.text);
@@ -328,7 +328,7 @@ impl<'a> HeaderRows<'a> {
         if previous.id == current.id {
             0.0
         } else {
-            previous.style.element.right() + current.style.element.left()
+            previous.style.element.gap_to(&current.style.element)
         }
     }
 

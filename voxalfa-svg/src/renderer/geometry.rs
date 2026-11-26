@@ -1,4 +1,7 @@
-use voxalfa_core::ir::solfa::{NoteKind, PulseIr};
+use voxalfa_core::{
+    ast::directives::ElementStyle,
+    ir::solfa::{NoteKind, PulseIr},
+};
 
 use crate::{
     fonts::Fonts,
@@ -7,7 +10,7 @@ use crate::{
     symbols::{SEGNO_ASPECT_RATIO, SEGNO_HEIGHT_SCALE},
 };
 
-use super::constants::*;
+use super::{constants::*, context::LayoutContext};
 
 pub fn system_width(system: &System) -> f32 {
     let leading_width = system
@@ -82,21 +85,25 @@ pub struct SystemGeometry<'a, 'b> {
     fonts: &'a Fonts,
     lead: f32,
     usable_widths: Vec<f32>,
+    note: &'a ElementStyle,
 }
 
 impl<'a, 'b> SystemGeometry<'a, 'b> {
-    pub fn new(system: &'a System<'b>, fonts: &'a Fonts, lead: f32) -> Self {
-        let usable_widths = system
+    pub fn new(ctx: LayoutContext<'a, 'b>) -> Self {
+        let note = &ctx.options.elements.note;
+        let usable_widths = ctx
+            .system
             .pulses
             .iter()
-            .map(|pulse| Self::compute_usable_width(pulse, fonts, lead))
+            .map(|pulse| Self::compute_usable_width(pulse, ctx.fonts, ctx.lead, note))
             .collect();
 
         Self {
-            system,
-            fonts,
-            lead,
+            system: ctx.system,
+            fonts: ctx.fonts,
+            lead: ctx.lead,
             usable_widths,
+            note,
         }
     }
 
@@ -162,10 +169,12 @@ impl<'a, 'b> SystemGeometry<'a, 'b> {
                         _ => self.lead,
                     };
 
-                    let start_x =
-                        self.system.pulse_offsets[pulse_id] + start * usable_width + leading;
+                    let start_x = self.system.pulse_offsets[pulse_id]
+                        + start * usable_width
+                        + leading
+                        + self.note.left();
 
-                    return Some((start_x, start_x + glyph_width));
+                    return Some((start_x, start_x + glyph_width + self.note.right()));
                 }
             }
         }
@@ -173,7 +182,12 @@ impl<'a, 'b> SystemGeometry<'a, 'b> {
         None
     }
 
-    fn compute_usable_width(pulse: &SystemPulse, fonts: &Fonts, lead: f32) -> f32 {
+    fn compute_usable_width(
+        pulse: &SystemPulse,
+        fonts: &Fonts,
+        lead: f32,
+        note: &ElementStyle,
+    ) -> f32 {
         let mut usable = (pulse.pulse_width - octave_width(fonts)).max(0.0);
 
         for sub in &pulse.stack {
@@ -189,6 +203,7 @@ impl<'a, 'b> SystemGeometry<'a, 'b> {
 
                         let available = pulse.pulse_width
                             - extent
+                            - note.x_space()
                             - fonts.text.note.size() * NOTE_BARLINE_CLEARANCE;
 
                         if available <= 0.0 {

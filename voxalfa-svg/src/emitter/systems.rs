@@ -76,7 +76,12 @@ impl<'a> SystemRender<'a> {
         origin_x: f32,
         options: &'a RenderOptions,
     ) -> Self {
-        let geometry = SystemGeometry::new(placement.system, fonts, lead);
+        let geometry = SystemGeometry::new(crate::renderer::context::LayoutContext {
+            system: placement.system,
+            fonts,
+            lead,
+            options,
+        });
 
         Self {
             svg,
@@ -403,7 +408,7 @@ impl<'a> SystemRender<'a> {
                     let glyph_center = glyph_start + glyph_width / 2.0;
 
                     note_start = glyph_start;
-                    note_end = glyph_start + glyph_width;
+                    note_end = glyph_start + glyph_width + self.options.elements.note.right();
                     last_note_end = note_end;
 
                     emit_text(

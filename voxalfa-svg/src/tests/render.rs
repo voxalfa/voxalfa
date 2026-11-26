@@ -1,9 +1,11 @@
 use crate::{
     RenderOptions,
-    fonts::{FontFace, FontFaces},
+    fonts::{FontFace, FontFaces, Fonts},
     render_pages, render_pages_with, render_pages_with_fonts,
+    renderer::{context::LayoutContext, geometry::SystemGeometry},
+    resolver::resolve,
 };
-use voxalfa_core::{output::FinalOutput, validation::Validator};
+use voxalfa_core::{data_types::Voice, output::FinalOutput, validation::Validator};
 
 fn render(output: &FinalOutput) -> crate::Result<String> {
     render_pages(output).map(|pages| pages.join("\n"))

@@ -57,17 +57,20 @@ pub fn resolve<'a>(
         .max()
         .unwrap_or(1) as f32;
 
-    let hyphen_width = fonts.text.lyric.width("-");
-    let exact_gap = (ref_col.width - ref_col.exact_width).max(0.0);
+    // let hyphen_width = fonts.text.lyric.width("-");
+    // let exact_gap = (ref_col.width - ref_col.exact_width).max(0.0);
+    //
+    // let lyrics_extra = if exact_gap < hyphen_width {
+    //     hyphen_width - exact_gap
+    // } else {
+    //     0.0
+    // };
 
-    let lyrics_extra = if exact_gap < hyphen_width {
-        hyphen_width - exact_gap
-    } else {
-        0.0
-    };
-
-    let lyrics_width = max_factor as f32 * ref_col.width + max_columns * lead_width + lyrics_extra;
-    let notes_width = max_columns * (options.min_col_width + options.col_padding + lead_width);
+    let lyrics_width = max_factor as f32 * ref_col.width
+        + max_columns * (lead_width + options.elements.lyrics.x_space());
+    let note_spacing = options.elements.note.x_space();
+    let notes_width =
+        max_columns * (options.min_col_width + options.col_padding + lead_width + note_spacing);
 
     let grid_pulse_width = lyrics_width.max(notes_width);
     let systems = build_systems(resolver_data, grid_pulse_width, content_width);

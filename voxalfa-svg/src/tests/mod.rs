@@ -5,8 +5,9 @@ use crate::{
     model::MarkerKind,
     options::RenderOptions,
     renderer::{
+        context::LayoutContext,
         markers::PlacedMarker,
-        systems::{LayoutContext, SystemLayout, layout_system},
+        systems::{SystemLayout, layout_system},
     },
     resolver::resolve,
 };

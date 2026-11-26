@@ -14,9 +14,10 @@ use crate::{
     options::RenderOptions,
     renderer::{
         constants::{BRACE_PADDING_LEFT, BRACE_PADDING_RIGHT},
+        context::LayoutContext,
         geometry::system_width,
         header::layout_header,
-        systems::{LayoutContext, SystemLayout, layout_system},
+        systems::{SystemLayout, layout_system},
     },
     resolver::resolve,
 };

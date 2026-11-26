@@ -1,24 +1,16 @@
 use crate::{
-    RenderOptions,
-    fonts::Fonts,
     model::{System, VoiceInstance},
     renderer::markers::PlacedMarker,
 };
 
 use super::{
     constants::*,
+    context::LayoutContext,
     dynamics::{has_voice_dynamic, place_voice_dynamics},
     markers::{MarkerLayout, layout_markers},
     spans::{PlacedSpan, SpanPlan, SpanPlanner, layout_spans},
     voltas::{PlacedVolta, layout_voltas, place_voltas},
 };
-
-pub struct LayoutContext<'a, 'b> {
-    pub system: &'a System<'b>,
-    pub fonts: &'a Fonts,
-    pub lead: f32,
-    pub options: &'a RenderOptions,
-}
 
 pub fn layout_system(ctx: &LayoutContext) -> SystemLayout {
     let mut marker_layout = layout_markers(ctx);
@@ -80,16 +72,12 @@ fn layout_rows(
     let note_scale = ctx.fonts.text.note.size() / ctx.options.solfa_font_size.max(1.0);
     let lyric_scale = ctx.fonts.text.lyric.size() / ctx.options.lyric_font_size.max(1.0);
 
-    let voice_height =
-        ctx.options.voice_row_height * note_scale + elements.note.top() + elements.note.bottom();
+    let voice_height = ctx.options.voice_row_height * note_scale + elements.note.y_space();
 
-    let lyric_height = ctx.options.lyric_row_height * lyric_scale
-        + elements.lyrics.top()
-        + elements.lyrics.bottom();
+    let lyric_height = ctx.options.lyric_row_height * lyric_scale + elements.lyrics.y_space();
 
     let dynamic_height = ctx.fonts.label.dynamic.line_height()
-        + elements.dynamic.top()
-        + elements.dynamic.bottom()
+        + elements.dynamic.y_space()
         + ctx.fonts.label.dynamic.size() * DYNAMIC_VOICE_GAP;
 
     let global_voice = ctx.system.voices.first().map(|voice| voice.id);
