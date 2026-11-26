@@ -236,6 +236,13 @@ pub fn default_font_style(element: &str) -> Option<(u16, bool, FontStretch)> {
     FaceRole::for_element(element).map(|role| (role.weight, role.italic, role.stretch))
 }
 
+pub fn default_font_face(
+    element: &str,
+) -> Option<(&'static str, u16, bool, FontStretch)> {
+    FaceRole::for_element(element)
+        .map(|role| (role.family, role.weight, role.italic, role.stretch))
+}
+
 #[derive(Debug, Clone, Copy)]
 struct FaceQuery<'a> {
     family: &'a str,

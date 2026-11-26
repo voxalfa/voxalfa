@@ -2009,6 +2009,8 @@ dependencies = [
  "codespan-reporting",
  "insta",
  "semver",
+ "serde",
+ "serde_json",
  "thiserror",
  "tree-sitter",
  "tree-sitter-voxalfa",
@@ -2095,6 +2097,7 @@ name = "voxalfa-svg"
 version = "0.1.0-alpha.3"
 dependencies = [
  "base64 0.23.1",
+ "serde",
  "skrifa 0.45.1",
  "thiserror",
  "voxalfa-core",

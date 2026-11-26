@@ -7,6 +7,9 @@ pub mod output;
 pub mod ts_utils;
 pub mod validation;
 
+#[cfg(feature = "json")]
+pub mod json;
+
 #[cfg(test)]
 mod tests;
 

@@ -13,6 +13,9 @@ mod tests;
 pub mod fonts;
 pub mod options;
 
+#[cfg(feature = "json")]
+pub mod json;
+
 pub use error::{Error, Result};
 pub use options::{PageSize, RenderOptions};
 
