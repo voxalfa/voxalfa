@@ -1004,3 +1004,33 @@ fn test_single_voice_curly() {
 
     assert_eq!(svg.matches(r#"class="brace"/>"#).count(), 1);
 }
+
+#[test]
+fn test_layout_style_merge() {
+    let output = analyze(
+        r#"
+;; @page width={600}
+;; @system margin-top={30}
+
+[#] title="Merge defaults"
+
+[$] key={C} | time={4,4} | tempo={100} | voices={S}
+
+---
+
+[S] |d :r !m :f ||
+"#,
+    );
+
+    let mut options = RenderOptions::default();
+
+    options.apply_directives(&output.header.directives);
+
+    assert_eq!(options.page.width, 600.0);
+    assert_eq!(options.page_margin.top, 56.7);
+    assert_eq!(options.page_margin.right, 56.7);
+    assert_eq!(options.page_margin.bottom, 56.7);
+    assert_eq!(options.page_margin.left, 56.7);
+    assert_eq!(options.system_layout.margin.top, 30.0);
+    assert_eq!(options.system_layout.margin.bottom, 10.0);
+}

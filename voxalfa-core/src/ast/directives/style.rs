@@ -24,11 +24,11 @@ impl EdgeValues {
         }
     }
 
-    fn unset() -> Self {
+    pub fn unset() -> Self {
         Self::all(f32::NAN)
     }
 
-    fn merge(&mut self, patch: &Self) {
+    pub fn merge(&mut self, patch: &Self) {
         let edges = [
             (&mut self.top, patch.top),
             (&mut self.right, patch.right),
@@ -170,7 +170,10 @@ pub fn parse_page_style(
         return None;
     }
 
-    let mut style = PageStyle::default();
+    let mut style = PageStyle {
+        margin: EdgeValues::unset(),
+        ..PageStyle::default()
+    };
     let mut cursor = node.walk();
 
     for assignment in node.named_children(&mut cursor) {
@@ -229,7 +232,10 @@ pub fn parse_block_style(
         return None;
     }
 
-    let mut style = BlockStyle::default();
+    let mut style = BlockStyle {
+        margin: EdgeValues::unset(),
+        padding: EdgeValues::unset(),
+    };
     let mut cursor = node.walk();
 
     for assignment in node.named_children(&mut cursor) {

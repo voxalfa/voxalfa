@@ -122,7 +122,7 @@ impl RenderOptions {
                 self.page.height = height;
             }
 
-            self.page_margin = page.margin;
+            self.page_margin.merge(&page.margin);
         }
 
         for (name, style) in &directives.elements {
@@ -130,11 +130,13 @@ impl RenderOptions {
         }
 
         if let Some(header) = &directives.header {
-            self.header_layout = header.value;
+            self.header_layout.margin.merge(&header.value.margin);
+            self.header_layout.padding.merge(&header.value.padding);
         }
 
         if let Some(system) = &directives.system {
-            self.system_layout = system.value;
+            self.system_layout.margin.merge(&system.value.margin);
+            self.system_layout.padding.merge(&system.value.padding);
         }
     }
 }
