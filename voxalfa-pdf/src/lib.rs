@@ -10,8 +10,7 @@ use voxalfa_core::output::FinalOutput;
 use voxalfa_svg::{RenderOptions, fonts::FontFaces};
 
 pub use error::{Error, Result};
-
-use crate::fonts::build_font_faces;
+pub use fonts::build_font_faces;
 
 const PDF_PX_TO_PT: f32 = 72.0 / 96.0;
 
